@@ -1,5 +1,4 @@
 use super::*;
-use rune_kit::ScrollBar;
 
 pub fn detail_view(s: &State, k: &Kit, cx: &Cx<State>) -> El {
     let Some(id) = s.selected else {
@@ -175,7 +174,7 @@ fn content(s: &State, k: &Kit, cx: &Cx<State>) -> El {
     if s.tab == 4 {
         return motion::detail(
             s,
-            compare::view(s, detail, k)
+            compare::view(s, detail, k, cx)
                 .role("tabpanel")
                 .label("Compare"),
         );
@@ -222,17 +221,24 @@ fn content(s: &State, k: &Kit, cx: &Cx<State>) -> El {
     }
     motion::detail(
         s,
-        col()
-            .role("tabpanel")
-            .label("Overview")
-            .key("detail-scroll")
-            .grow(1.0)
-            .min_h(0.0)
-            .scroll(rune::ScrollSpec {
-                stick_bottom: false,
-            })
-            .child(body.pr(16.0))
-            .scroll_bar_styled(rune_kit::ScrollBarStyle::from_kit(k).thumb(k.c.text_faint)),
+        request_scroll::area(
+            cx,
+            k,
+            "detail-scroll",
+            "overview-content",
+            col()
+                .role("tabpanel")
+                .label("Overview")
+                .key("detail-scroll")
+                .grow(1.0)
+                .min_h(0.0)
+                .scroll(rune::ScrollSpec {
+                    stick_bottom: false,
+                })
+                .focusable(true)
+                .child(body.key("overview-content")),
+            false,
+        ),
     )
 }
 

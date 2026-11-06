@@ -1,7 +1,6 @@
 use crate::{State, label};
 use jev_protocol::Capture;
 use rune::{El, TextStyle, col, el, rich, row, text};
-use rune_kit::ScrollBar;
 use rune_kit::{
     Button, ButtonVariant, Kit,
     syntax::{self, SyntaxTheme},
@@ -212,6 +211,7 @@ impl JsonDocument {
                 .key(format!("{key}:copy")),
             );
         let code = row()
+            .key(format!("{key}:content"))
             .items_start()
             .child(
                 text(numbers)
@@ -333,16 +333,30 @@ impl JsonDocument {
         }
         panel = panel
             .child(el().w_full().h(1.0).fill(k.c.border_base))
-            .child(
+            .child(crate::request_scroll::area(
+                cx,
+                k,
+                if key == "request-json" {
+                    "request-json:scroll"
+                } else {
+                    "response-json:scroll"
+                },
+                if key == "request-json" {
+                    "request-json:content"
+                } else {
+                    "response-json:content"
+                },
                 col()
                     .key(format!("{key}:scroll"))
                     .w_full()
                     .grow(1.0)
                     .min_h(0.0)
                     .scroll_xy()
-                    .child(code)
-                    .scroll_bar_styled(rune_kit::ScrollBarStyle::from_kit(k).thumb(k.c.text_faint)),
-            );
+                    .focusable(true)
+                    .label("JSON code")
+                    .child(code),
+                true,
+            ));
         if self.truncated() {
             panel=panel.child(label("Preview limited to 16,000 bytes. Copy JSON includes the complete captured JSON.",11.0,k.c.text_muted)
                 .wrap().px(14.0).py(10.0).fill(k.c.layer_01));

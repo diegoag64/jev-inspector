@@ -101,6 +101,7 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
         Diagram::new("request-diagram", &graph, &s.diagram, |s: &mut State| {
             &mut s.diagram
         })
+        .readable_focus("answer")
         .build(k),
     )
     .child(label(

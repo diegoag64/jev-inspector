@@ -12,6 +12,7 @@ fn runtime() -> rune::Runtime<State> {
             scale: 1.0,
         },
     );
+    rt.on_key = Some(workspace::on_key);
     rt.frame(0.0);
     rt.frame(1.0);
     rt
@@ -316,4 +317,188 @@ fn expanded_inventory_scrollbar_moves_content_without_changing_the_exchange() {
         rt.find("json-tree-scroll-thumb").is_none(),
         "collapsed content no longer overflows"
     );
+}
+
+#[test]
+fn compact_diagrams_open_on_readable_answer_and_fit_uses_the_settled_viewport() {
+    let mut rt = runtime();
+    for slug in [
+        "support-routing",
+        "fraud-check",
+        "invoice-box",
+        "many-choices",
+    ] {
+        rt.update(|s, _| {
+            showcase::select_example(s, slug).unwrap();
+        });
+        rt.frame(0.1);
+        rt.frame(0.3);
+        assert_eq!(
+            rt.state.diagram.camera.scale, 1.0,
+            "readable initial scale for {slug}"
+        );
+        let (v, _) = rt.presented("request-diagram:viewport").unwrap();
+        let (a, _) = rt.presented("request-diagram:node:6:answer").unwrap();
+        assert!(a[0] >= v[0] && a[0] + a[2] <= v[0] + v[2] + 0.1);
+        assert!(a[1] >= v[1] && a[1] < v[1] + 40.0);
+        let (x, y) = rt.find("request-diagram:fit").unwrap();
+        rt.pointer_down(x, y);
+        rt.pointer_up(x, y);
+        rt.frame(0.3);
+        let first_fit = rt.state.diagram.camera;
+        rt.frame(0.2);
+        let (x, y) = rt.find("request-diagram:fit").unwrap();
+        rt.pointer_down(x, y);
+        rt.pointer_up(x, y);
+        rt.frame(0.3);
+        assert_eq!(
+            rt.state.diagram.camera, first_fit,
+            "Fit is stable after final layout"
+        );
+    }
+}
+
+#[test]
+fn json_scrollbar_axes_preserve_each_other_and_short_content_hides_them() {
+    let mut s = State::default();
+    demo::scenario(&mut s, "long-json").unwrap();
+    s.tab = 2;
+    let mut rt = rune::Runtime::new(
+        s,
+        view,
+        (1100.0, 700.0),
+        rune::Env {
+            system_dark: true,
+            scale: 1.0,
+        },
+    );
+    rt.frame(0.0);
+    rt.frame(0.3);
+    let (x, y) = rt
+        .find("detail-horizontal-thumb")
+        .expect("long scalar needs horizontal thumb");
+    rt.pointer_down(x, y);
+    rt.pointer_move(x + 80.0, y);
+    rt.pointer_up(x + 80.0, y);
+    rt.frame(0.2);
+    rt.frame(0.1);
+    let before = rt.presented("response-json:content").unwrap().0;
+    let (x, y) = rt
+        .find("detail-vertical-thumb")
+        .expect("long JSON needs vertical thumb");
+    rt.pointer_down(x, y);
+    rt.pointer_move(x, y + 50.0);
+    rt.pointer_up(x, y + 50.0);
+    rt.frame(0.2);
+    rt.frame(0.1);
+    let after = rt.presented("response-json:content").unwrap().0;
+    assert!(
+        (after[0] - before[0]).abs() < 0.1,
+        "vertical scroll preserves horizontal offset"
+    );
+    assert!(after[1] < before[1] - 10.0);
+    rt.update(|s, _| {
+        showcase::populate(s);
+        showcase::select_example(s, "empty").unwrap();
+    });
+    rt.frame(0.3);
+    rt.frame(0.1);
+    assert!(rt.find("detail-horizontal-thumb").is_none());
+    assert!(rt.find("detail-vertical-thumb").is_none());
+}
+
+#[test]
+fn find_focus_and_copy_follow_current_capture_during_interrupted_transitions() {
+    fn focused_within(node: &serde_json::Value, key: &str, inside: bool) -> bool {
+        let inside = inside || node["key"] == key;
+        (inside
+            && node["states"]
+                .as_array()
+                .is_some_and(|states| states.contains(&serde_json::json!("focused"))))
+            || node["children"].as_array().is_some_and(|children| {
+                children
+                    .iter()
+                    .any(|child| focused_within(child, key, inside))
+            })
+    }
+    for reduced in [false, true] {
+        let mut rt = runtime();
+        rt.set_system_reduced_motion(reduced);
+        for tab in [1, 2] {
+            rt.update(|s, _| {
+                s.select(8);
+                s.tab = tab;
+                s.request_text.tree = false;
+                s.response_text.tree = false;
+            });
+            rt.frame(0.3);
+            for id in [7, 6, 5] {
+                rt.key(rune::KeyEvent {
+                    key: rune::Key::Command('f'),
+                    mods: rune::Mods {
+                        cmd: true,
+                        ..Default::default()
+                    },
+                });
+                rt.frame(0.01);
+                rt.key(rune::KeyEvent {
+                    key: rune::Key::Down,
+                    mods: rune::Mods {
+                        alt: true,
+                        ..Default::default()
+                    },
+                });
+                rt.frame(0.01);
+                rt.frame(0.015);
+                assert_eq!(rt.state.selected, Some(id));
+                let search = if tab == 1 {
+                    "request-json:search"
+                } else {
+                    "response-json:search"
+                };
+                let focused: Vec<_> = rt.elements().into_iter().filter(|e| e.focused).collect();
+                assert_eq!(
+                    focused.len(),
+                    1,
+                    "one focused control after keyboard navigation: tab={tab}, id={id}, reduced={reduced}"
+                );
+                assert!(
+                    focused_within(&rt.accessibility_json(), search, false),
+                    "current Find field owns focus"
+                );
+                assert!(!focused[0].exiting && !focused[0].inert);
+                rt.key(rune::KeyEvent {
+                    key: rune::Key::Text("a".into()),
+                    mods: Default::default(),
+                });
+                rt.frame(0.01);
+                let doc = if tab == 1 {
+                    &rt.state.request_text
+                } else {
+                    &rt.state.response_text
+                };
+                assert!(
+                    doc.search.text.ends_with('a'),
+                    "typing reaches the current Find field"
+                );
+                let copy = if tab == 1 {
+                    "request-json:copy"
+                } else {
+                    "response-json:copy"
+                };
+                let (x, y) = rt.find(copy).unwrap();
+                rt.pointer_down(x, y);
+                rt.pointer_up(x, y);
+                rt.frame(0.01);
+                let copied: serde_json::Value =
+                    serde_json::from_str(rt.copy_request.take().unwrap().content().text()).unwrap();
+                let capture = if tab == 1 {
+                    &rt.state.detail.as_ref().unwrap().request
+                } else {
+                    &rt.state.detail.as_ref().unwrap().response
+                };
+                assert_eq!(Some(copied), capture.json);
+            }
+        }
+    }
 }

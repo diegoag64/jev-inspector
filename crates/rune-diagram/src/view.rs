@@ -1,7 +1,5 @@
 use crate::theme::{alpha, percent};
-use crate::{
-    Camera, ContentState, DiagramContent, DiagramState, Graph, Node, NodeBody, NodeStatus,
-};
+use crate::{ContentState, DiagramContent, DiagramState, Graph, Node, NodeBody, NodeStatus};
 use rune::{
     Color, El, Key, LineCap, Path, Phase, ScrollSpec, Shape, TextStyle, canvas, col, el, row, text,
 };
@@ -18,6 +16,7 @@ pub struct Diagram<'a, S> {
     state: &'a DiagramState,
     get: fn(&mut S) -> &mut DiagramState,
     minimum_size: [f32; 2],
+    readable_focus: Option<&'a str>,
 }
 impl<'a, S: 'static> Diagram<'a, S> {
     pub fn new(
@@ -32,6 +31,7 @@ impl<'a, S: 'static> Diagram<'a, S> {
             state,
             get,
             minimum_size: [0.0, 0.0],
+            readable_focus: None,
         }
     }
     /// Reserve whitespace around the caller's layout without adding fake nodes.
@@ -42,6 +42,12 @@ impl<'a, S: 'static> Diagram<'a, S> {
         {
             self.minimum_size = size;
         }
+        self
+    }
+    /// When fitting would shrink text below 75%, start on this node at actual
+    /// size. Fit still shows the whole graph; manual pan/zoom survives resizing.
+    pub fn readable_focus(mut self, node: &'a str) -> Self {
+        self.readable_focus = Some(node);
         self
     }
     pub fn build(self, k: &Kit) -> El {
@@ -57,15 +63,19 @@ impl<'a, S: 'static> Diagram<'a, S> {
             bounds[0].max(self.minimum_size[0]),
             bounds[1].max(self.minimum_size[1]),
         ];
+        let focus = self
+            .readable_focus
+            .and_then(|id| self.graph.nodes.iter().find(|n| n.id == id))
+            .map(|n| n.rect);
         let cam = if self.state.fitted {
             self.state.camera
         } else {
-            Camera::fit(self.state.viewport, size)
+            self.state.initial_camera(size, focus)
         };
         let initialize = move |s: &mut S| {
             let state = get(s);
             if !state.fitted {
-                state.fit(size);
+                state.initialize(size, focus);
             }
         };
         let toolbar = row()
@@ -197,29 +207,38 @@ impl<'a, S: 'static> Diagram<'a, S> {
             .fill(k.c.layer_01).radius(8.0).clip_rounded(8.0).border(1.0,k.c.border_base)
             .focusable(true).role("group").label("Diagram canvas")
             .description("Drag background to pan. Wheel or pinch to zoom. Arrow keys pan, plus and minus zoom, zero fits, one sets actual size.")
-            .on_layout_tx(move |s: &mut S, [_,_,w,h], tx| { let state=get(s); state.viewport=[w,h]; if !state.fitted { state.fit(size); tx.instant(); } })
+            .on_layout_tx(move |s: &mut S, [_,_,w,h], tx| {
+                let state=get(s);
+                let changed = (state.viewport[0]-w).abs() > 0.5 || (state.viewport[1]-h).abs() > 0.5;
+                state.viewport=[w,h];
+                if !state.fitted || (changed && !state.manual_view) {
+                    if !state.fitted || state.initial_view { state.initialize(size, focus); }
+                    else { state.fit(size); }
+                    tx.instant();
+                }
+            })
             .on_drag(move |s: &mut S, d, _| {
-                initialize(s); let state = get(s);
+                initialize(s); let state = get(s); state.manual_view = true;
                 match d.phase {
                     Phase::Down => state.drag_start=state.camera,
                     _ => { state.camera=state.drag_start; if !d.cancelled() { state.camera.pan(d.dx,d.dy); } }
                 }
             })
             .on_wheel(move |s: &mut S, e, _| {
-                initialize(s); get(s).camera.zoom((-e.dy/240.0).clamp(-2.0,2.0).exp(), [e.x,e.y], [e.x,e.y]); true
+                initialize(s); get(s).manual_view = true; get(s).camera.zoom((-e.dy/240.0).clamp(-2.0,2.0).exp(), [e.x,e.y], [e.x,e.y]); true
             })
             .on_magnify(move |s: &mut S, e, _| {
-                initialize(s); get(s).camera.zoom((1.0+e.delta).max(0.01), [e.x,e.y], [e.x,e.y]); true
+                initialize(s); get(s).manual_view = true; get(s).camera.zoom((1.0+e.delta).max(0.01), [e.x,e.y], [e.x,e.y]); true
             })
             .on_key(move |s: &mut S, e, _| {
-                initialize(s); let state=get(s);
+                initialize(s); let state=get(s); let was_manual = state.manual_view; state.manual_view = true;
                 match &e.key {
                     Key::Left => state.camera.pan(40.0,0.0), Key::Right => state.camera.pan(-40.0,0.0),
                     Key::Up => state.camera.pan(0.0,40.0), Key::Down => state.camera.pan(0.0,-40.0),
                     Key::Text(t) if t=="+" || t=="=" => state.zoom(1.2),
                     Key::Text(t) if t=="-" => state.zoom(1.0/1.2),
                     Key::Text(t) if t=="0" => state.fit(size),
-                    Key::Text(t) if t=="1" => state.zoom(1.0 / state.camera.scale), _ => return false,
+                    Key::Text(t) if t=="1" => state.zoom(1.0 / state.camera.scale), _ => { state.manual_view = was_manual; return false; },
                 } true
             }).child(canvas(grid).absolute(0.0,0.0).size(w.max(1.0),h.max(1.0))).child(world);
         col()
@@ -235,6 +254,7 @@ impl<'a, S: 'static> Diagram<'a, S> {
                     11.0,
                     k.c.text_muted,
                 )
+                .wrap()
                 .px(12.0)
                 .py(3.0),
             )

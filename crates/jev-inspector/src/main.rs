@@ -163,8 +163,12 @@ impl State {
         self.mailbox.lock().expect("inspector mailbox").selected = Some(id);
         if let Some(detail) = self.workspace.cache.get(&id).cloned() {
             self.set_detail(detail);
-        } else if self.demo && self.workspace.session_name.is_none() {
+        } else if self.demo && self.showcase.is_none() && self.workspace.session_name.is_none() {
             self.set_detail(demo::exchange(id));
+        } else if self.showcase.is_some() && self.workspace.session_name.is_none() {
+            self.detail_error = Some(
+                "This example's capture is unavailable. Reopen the showcase to restore it.".into(),
+            );
         } else if self.workspace.session_name.is_some() {
             self.detail_error = Some(
                 "This session contains a summary only. The capture was unavailable when saved."

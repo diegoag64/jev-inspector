@@ -156,11 +156,15 @@ pub struct DiagramState {
     pub(crate) fitted: bool,
     pub(crate) viewport: [f32; 2],
     pub(crate) drag_start: Camera,
+    pub(crate) initial_view: bool,
+    pub(crate) manual_view: bool,
+    fit_requested: bool,
 }
 impl DiagramState {
     /// Fit on the next viewport layout while preserving selection and disclosures.
     pub fn request_fit(&mut self) {
         self.fitted = false;
+        self.fit_requested = true;
     }
     pub fn reset(&mut self) {
         let viewport = self.viewport;
@@ -170,8 +174,36 @@ impl DiagramState {
     pub fn fit(&mut self, content: [f32; 2]) {
         self.camera = Camera::fit(self.viewport, content);
         self.fitted = true;
+        self.initial_view = false;
+        self.manual_view = false;
+        self.fit_requested = false;
+    }
+    pub(crate) fn initial_camera(&self, content: [f32; 2], focus: Option<[f32; 4]>) -> Camera {
+        let fit = Camera::fit(self.viewport, content);
+        if self.fit_requested || fit.scale >= 0.75 {
+            return fit;
+        }
+        let Some([x, y, w, h]) = focus else {
+            return fit;
+        };
+        Camera {
+            x: (self.viewport[0] - w) / 2.0 - x,
+            y: ((self.viewport[1] - h) / 2.0).max(24.0) - y,
+            scale: 1.0,
+        }
+    }
+    pub(crate) fn initialize(&mut self, content: [f32; 2], focus: Option<[f32; 4]>) {
+        if self.fit_requested {
+            self.fit(content);
+            return;
+        }
+        self.camera = self.initial_camera(content, focus);
+        self.fitted = true;
+        self.initial_view = true;
+        self.manual_view = false;
     }
     pub fn zoom(&mut self, factor: f32) {
+        self.manual_view = true;
         let center = [self.viewport[0] / 2.0, self.viewport[1] / 2.0];
         self.camera.zoom(factor, center, center);
     }

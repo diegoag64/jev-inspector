@@ -170,7 +170,7 @@ pub fn scenario(s: &mut State, name: &str) -> Result<(), String> {
         "long-json" => {
             let mut current = exchange(12);
             current.response.json = Some(
-                json!({"records": (0..2000).map(|i| json!({"id":i,"department":"billing","message":"Synthetic captured record"})).collect::<Vec<_>>()}),
+                json!({"a_long_value": "long scalar ".repeat(120), "records": (0..2000).map(|i| json!({"id":i,"department":"billing","message":"Synthetic captured record"})).collect::<Vec<_>>()}),
             );
             let bytes = serde_json::to_vec(current.response.json.as_ref().unwrap()).unwrap().len() as u64;
             current.summary.response_bytes = bytes;

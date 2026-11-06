@@ -31,6 +31,7 @@ CASES = {
     "missing-compare": ["--fixture", "missing-compare"],
     "invalid-query": ["--fixture", "invalid-query"],
     "long-json-small": ["--fixture", "long-json", "--size", "1100x700", "--script", "tests/inspector-workspace-find.script.json"],
+    "long-scalar-small": ["--fixture", "long-json", "--size", "1100x700"],
     "export-progress": ["--fixture", "export-progress"],
     "export-cancelled": ["--fixture", "export-cancelled"],
     "export-failed": ["--fixture", "export-failed"],

@@ -74,7 +74,7 @@ impl Comparison {
         }
     }
 }
-pub fn view(s: &State, current: &Exchange, k: &Kit) -> El {
+pub fn view(s: &State, current: &Exchange, k: &Kit, cx: &Cx<State>) -> El {
     let cmp = &s.workspace.comparison;
     let mut panel = col()
         .grow(1.0)
@@ -169,7 +169,11 @@ pub fn view(s: &State, current: &Exchange, k: &Kit) -> El {
             .child(label("Choose exchanges with captured JSON. Missing bodies cannot establish whether requests or responses match.", 13.0, k.c.text_muted).wrap());
     }
     let header_kit = k.clone();
-    panel.child(
+    panel.child(request_scroll::area(
+        cx,
+        k,
+        "exchange-diff/scroll",
+        "exchange-diff/scroll/rows",
         DiffView::new(
             |s: &State| &s.workspace.comparison.diff,
             |s| &mut s.workspace.comparison.diff,
@@ -186,7 +190,8 @@ pub fn view(s: &State, current: &Exchange, k: &Kit) -> El {
         .grow(1.0)
         .min_h(0.0)
         .on_key(|s: &mut State, ev, tx| s.workspace.comparison.diff.key(ev, tx)),
-    )
+        false,
+    ))
 }
 
 #[cfg(test)]

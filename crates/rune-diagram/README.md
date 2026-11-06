@@ -55,7 +55,12 @@ from the source card's right midpoint to the destination's left midpoint.
 `Diagram::content_size()` reserves whitespace around an authored layout.
 `DiagramState::request_fit()` refits after a resize without clearing disclosures.
 `DiagramState::reset()` clears selection, expansion, and the camera when changing
-documents. Resizing preserves the user's camera; Fit recalculates it.
+documents. Automatic fitting tracks viewport changes; manual pan and zoom survive
+resizing. Fit recalculates the camera for the settled viewport.
+
+Use `Diagram::readable_focus("node-id")` to start on a specific card at actual size
+when fitting the entire graph would shrink it below 75%. Fit still shows the whole
+graph. The inspector uses this option for the answer card in compact panes.
 
 `NodeBody::Json(None)` displays “Not captured.” `Some(Value::Null)` displays the
 captured value `null`. Active edges and selected probability categories are

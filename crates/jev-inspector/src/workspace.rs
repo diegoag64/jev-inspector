@@ -249,12 +249,18 @@ impl State {
 }
 pub fn on_key(s: &mut State, event: &rune::KeyEvent, tx: &mut Tx) -> bool {
     if event.is_command('k') || (event.is_command('f') && !matches!(s.tab, 1 | 2)) {
-        tx.blur();
+        s.request_text.search.focused = false;
+        s.response_text.search.focused = false;
         s.filter.focused = true;
         return true;
     }
     if event.is_command('f') {
-        tx.blur();
+        s.filter.focused = false;
+        if s.tab == 1 {
+            s.response_text.search.focused = false;
+        } else {
+            s.request_text.search.focused = false;
+        }
         let doc = if s.tab == 1 {
             &mut s.request_text
         } else {

@@ -54,3 +54,31 @@ Keep the ten review categories separate. List defects before optional enhancemen
 For each claim, distinguish rendered evidence, runtime tests, source inspection, and native OS verification. Report unperformed checks as unverified. Native clipboard paste, actual file-picker interaction, keyboard delivery, and screen-reader announcements still require a working desktop-control connection. macOS requires its own run.
 
 Previously overlooked areas that need explicit attention include resting scrollbars outside the traffic list, horizontal JSON overflow, first-use and comparison copy, loading without a cached exchange, saved sessions without bodies, and reduced-motion behavior. An inventory entry is a review obligation, not a claim that the feature has passed.
+
+## Findings from the complete example reviews
+
+The complete reviews found defects that the earlier sample reviews missed:
+showcase export used legacy demo captures, Open could leave the tour running while
+a picker was pending, and compact diagrams started below a readable scale.
+Static example screenshots did not exercise export fidelity or pending dialogs.
+
+Regression checks now compare all 14 exported captures with their originals and
+repeat the check for filtered exports. Runtime tests hold both pickers pending,
+cancel them, and cover failed import. Diagram tests check initial answer framing,
+Fit after layout and resizing, and preservation of manual camera changes.
+
+Find and Copy tests navigate between requests during unfinished transitions, with
+and without reduced motion. They check that the current search field owns focus,
+receives typing, and copies exactly the current JSON. This caught a focus loss
+caused by blurring the field while asking it to regain focus. Clipboard payload
+assertions do not establish OS clipboard delivery.
+
+The long-JSON fixture now includes a genuinely long scalar. Inspect its horizontal
+thumb as well as vertical overflow. Runtime tests drag both axes and verify that
+one preserves the other's offset; short content must hide both thumbs. Overview,
+JSON code, tree, comparison, and Traffic need separate resting-overflow checks.
+
+The Windows desktop connection was retried on 2026-11-06. It still reports
+"Computer Use native pipe is unavailable" (OS error 2). Clipboard paste, picker UI,
+OS keyboard/focus and screen-reader announcements remain not tested through the
+native desktop. Do not replace these results with runtime-test passes.

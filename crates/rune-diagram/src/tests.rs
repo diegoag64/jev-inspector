@@ -168,3 +168,52 @@ fn first_fit_contains_scaled_cards_without_a_startup_spring() {
         );
     }
 }
+
+#[test]
+fn automatic_fit_tracks_resizing_but_manual_camera_is_preserved() {
+    let mut rt = Runtime::new(
+        State::default(),
+        view,
+        (400.0, 300.0),
+        Env {
+            system_dark: true,
+            scale: 1.0,
+        },
+    );
+    rt.frame(0.0);
+    rt.frame(0.1);
+    for size in [(700.0, 500.0), (360.0, 260.0)] {
+        rt.set_viewport(size, 1.0);
+        rt.frame(0.1);
+        rt.frame(0.1);
+        assert_eq!(
+            rt.state.diagram.camera,
+            Camera::fit(rt.state.diagram.viewport, fixture().size())
+        );
+    }
+    tap(&mut rt, "test:zoom-in");
+    let manual = rt.state.diagram.camera;
+    rt.set_viewport((650.0, 450.0), 1.0);
+    rt.frame(0.1);
+    rt.frame(0.1);
+    assert_eq!(rt.state.diagram.camera, manual);
+    tap(&mut rt, "test:fit");
+    assert_eq!(
+        rt.state.diagram.camera,
+        Camera::fit(rt.state.diagram.viewport, fixture().size())
+    );
+}
+
+#[test]
+fn explicit_fit_request_overrides_readable_initial_focus() {
+    let mut state = DiagramState::default();
+    state.viewport = [400.0, 300.0];
+    let size = [1400.0, 600.0];
+    let focus = Some([400.0, 100.0, 320.0, 340.0]);
+    state.initialize(size, focus);
+    assert_eq!(state.camera.scale, 1.0);
+    state.request_fit();
+    state.initialize(size, focus);
+    assert_eq!(state.camera, Camera::fit(state.viewport, size));
+    assert!(!state.initial_view);
+}
