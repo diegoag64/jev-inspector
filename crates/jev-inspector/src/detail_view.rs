@@ -1,6 +1,7 @@
 use super::*;
+use rune_kit::ScrollBar;
 
-pub fn detail_view(s: &State, k: &Kit) -> El {
+pub fn detail_view(s: &State, k: &Kit, cx: &Cx<State>) -> El {
     let Some(id) = s.selected else {
         return col()
             .padding(28.0)
@@ -145,29 +146,35 @@ pub fn detail_view(s: &State, k: &Kit) -> El {
             .wrap(),
         );
     }
+    pane.child(content(s, k, cx))
+}
+
+fn content(s: &State, k: &Kit, cx: &Cx<State>) -> El {
     let Some(detail) = &s.detail else {
-        return pane.child(detail_states::missing(s, k));
+        return motion::detail(s, detail_states::missing(s, k));
     };
     if s.tab == 2 && detail.response.json.is_none() {
         if detail.summary.outcome == Outcome::Pending && !detail.response.complete {
-            return pane.child(detail_states::waiting_response(s, k));
+            return motion::detail(s, detail_states::waiting_response(s, k));
         }
         if detail.response.complete
             && detail.response.wire_bytes == 0
             && detail.response.notes.is_empty()
         {
-            return pane.child(detail_states::empty_body(s, k));
+            return motion::detail(s, detail_states::empty_body(s, k));
         }
     }
     if s.tab == 3 {
-        return pane.child(
+        return motion::detail(
+            s,
             diagram::view(s, detail, k)
                 .role("tabpanel")
                 .label("Diagram"),
         );
     }
     if s.tab == 4 {
-        return pane.child(
+        return motion::detail(
+            s,
             compare::view(s, detail, k)
                 .role("tabpanel")
                 .label("Compare"),
@@ -204,15 +211,17 @@ pub fn detail_view(s: &State, k: &Kit) -> El {
         } else {
             ("response-json", |s| &mut s.response_text)
         };
-        return pane.child(
+        return motion::detail(
+            s,
             body.role("tabpanel")
                 .label(if s.tab == 1 { "Request" } else { "Response" })
                 .grow(1.0)
                 .min_h(0.0)
-                .child(preview.view(key, get, k, s)),
+                .child(preview.view(key, get, k, s, cx)),
         );
     }
-    pane.child(
+    motion::detail(
+        s,
         col()
             .role("tabpanel")
             .label("Overview")
@@ -222,7 +231,8 @@ pub fn detail_view(s: &State, k: &Kit) -> El {
             .scroll(rune::ScrollSpec {
                 stick_bottom: false,
             })
-            .child(body),
+            .child(body.pr(16.0))
+            .scroll_bar_styled(rune_kit::ScrollBarStyle::from_kit(k).thumb(k.c.text_faint)),
     )
 }
 
@@ -233,7 +243,10 @@ fn tab(name: &str, value: u8, current: u8, k: &Kit) -> El {
         } else {
             ButtonVariant::Ghost
         })
-        .on_press(move |s: &mut State| s.tab = value)
+        .on_press(move |s: &mut State| {
+            showcase::stop(s);
+            s.tab = value;
+        })
         .build(k)
         .role("tab")
         .focus_selected(value == current)

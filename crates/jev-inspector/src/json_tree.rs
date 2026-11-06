@@ -69,7 +69,7 @@ pub fn model(value: &Value) -> TreeModel<Property> {
     add(&mut model, value, "$", "$".into(), None, 0);
     model
 }
-pub fn view(s: &State, request: bool, k: &Kit) -> El {
+pub fn view(s: &State, request: bool, k: &Kit, cx: &Cx<State>) -> El {
     type Read = fn(&State) -> &TreeModel<Property>;
     let read: Read = if request {
         |s| &s.request_text.outline
@@ -143,19 +143,34 @@ pub fn view(s: &State, request: bool, k: &Kit) -> El {
                 ),
         )
         .child(
-            Tree::new(read, edit, |n: &Property| &n.label)
-                .row(move |n, _| {
-                    TreeItem::new(&n.label).label_color(match n.kind {
-                        "string" => colors.success.fg,
-                        "number" | "boolean" => colors.warning.fg,
-                        "null" => colors.text_faint,
-                        _ => colors.text_base,
-                    })
-                })
-                .style(style)
-                .build(s, k)
+            col()
                 .grow(1.0)
-                .min_h(0.0),
+                .min_h(0.0)
+                .pr(16.0)
+                .child(
+                    Tree::new(read, edit, |n: &Property| &n.label)
+                        .row(move |n, _| {
+                            TreeItem::new(&n.label).label_color(match n.kind {
+                                "string" => colors.success.fg,
+                                "number" | "boolean" => colors.warning.fg,
+                                "null" => colors.text_faint,
+                                _ => colors.text_base,
+                            })
+                        })
+                        .style(style)
+                        .build(s, k)
+                        .grow(1.0)
+                        .min_h(0.0),
+                )
+                .child(request_scroll::vertical(
+                    cx,
+                    k,
+                    0.0,
+                    "json-properties/viewport",
+                    "json-properties/viewport/rows",
+                    "json-tree-scrollbar",
+                    "json-tree-scroll-thumb",
+                )),
         )
         .child(
             label(

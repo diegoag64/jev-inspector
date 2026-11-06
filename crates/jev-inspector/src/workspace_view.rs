@@ -25,9 +25,12 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
         .child(label("/", 21.0, k.c.text_faint))
         .child(label("inspector", 17.0, k.c.text_muted))
         .child(el().grow(1.0))
+        .child(showcase::controls(s, &k))
         .child(ui::badge(
             if s.workspace.session_name.is_some() {
                 "SAVED SESSION"
+            } else if s.showcase.is_some() {
+                "EXAMPLES"
             } else if s.demo {
                 "SYNTHETIC FIXTURE"
             } else if s.connected {
@@ -197,7 +200,7 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
         body = body.child(traffic(s, &k, cx)).child(splitter(&k));
     }
     body = body.child(
-        detail_view::detail_view(s, &k)
+        detail_view::detail_view(s, &k, cx)
             .grow(1.0)
             .min_w(0.0)
             .h_full()
@@ -335,7 +338,7 @@ fn metrics(s: &State, k: &Kit) -> El {
                     .gap(8.0)
                     .center_y()
                     .child(label(title, 10.0, k.c.text_faint))
-                    .child(label(value, 15.0, color))
+                    .child(motion::metric(title, value, 15.0, color, k))
                     .help(format!("{title}: {sub}")),
             );
         } else {
@@ -344,7 +347,7 @@ fn metrics(s: &State, k: &Kit) -> El {
                     .grow(1.0)
                     .gap(6.0)
                     .child(label(title, 10.0, k.c.text_faint))
-                    .child(label(value, 23.0, color))
+                    .child(motion::metric(title, value, 23.0, color, k))
                     .child(label(sub, 10.0, k.c.text_faint)),
             );
         }
@@ -635,16 +638,31 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
         let r = &s.visible[i];
         let k = &table_kit;
         match column {
-            "star" => Cell::text(if s.workspace.starred.contains(&r.id) {
-                "★"
-            } else {
-                "·"
-            })
-            .color(if s.workspace.starred.contains(&r.id) {
-                k.c.text_accent
-            } else {
-                k.c.text_faint
-            }),
+            "star" => {
+                let starred = s.workspace.starred.contains(&r.id);
+                let mut cell = row().h(24.0).center_y().child(label(
+                    if starred { "\u{2605}" } else { "\u{00b7}" },
+                    12.0,
+                    if starred {
+                        k.c.text_accent
+                    } else {
+                        k.c.text_faint
+                    },
+                ));
+                if s.selected == Some(r.id) {
+                    cell = cell.child(
+                        el().key("request-selection-marker")
+                            .matched("request-selection-marker")
+                            .absolute(-7.0, 1.0)
+                            .size(3.0, 22.0)
+                            .radius(1.5)
+                            .fill(k.c.text_base)
+                            .motion(rune::Spring::new(0.24, 0.0))
+                            .a11y_hidden(),
+                    );
+                }
+                Cell::el(cell)
+            }
             "request" if !s.workspace.compact => Cell::el(
                 col()
                     .gap(4.0)
@@ -815,6 +833,8 @@ fn footer(s: &State, k: &Kit) -> El {
             label(
                 if s.workspace.session_name.is_some() {
                     "Offline · no requests sent".into()
+                } else if s.showcase.is_some() {
+                    "Synthetic examples · no API calls".into()
                 } else if s.demo {
                     "Synthetic fixture · no inference calls".into()
                 } else {

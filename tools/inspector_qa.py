@@ -55,6 +55,18 @@ CASES = {
     "compare-unset": ["--fixture", "compare-unset", "--size", "1100x700"],
 }
 
+EXAMPLES = json.loads((ROOT / "examples/demo-requests.json").read_text(encoding="utf-8"))["cases"]
+for example in EXAMPLES:
+    name = "example-" + example["id"]
+    CASES[name] = ["--fixture", name, "--size", "1100x700"]
+CASES["example-box-overview"] = ["--fixture", "example-invoice-box", "--size", "1100x700", "--script", "tests/inspector-overview.script.json"]
+CASES["example-noul-overview"] = ["--fixture", "example-fraud-check", "--size", "1100x700", "--script", "tests/inspector-overview.script.json"]
+
+CASES["example-inventory-expanded"] = ["--fixture", "example-inventory", "--size", "1100x700", "--script", "tests/inspector-expand-json.script.json"]
+CASES["example-box-light"] = ["--fixture", "example-invoice-box", "--size", "1100x700", "--script", "tests/inspector-overview-light.script.json", "--scroll-bars", "always"]
+
+CASES["example-unicode-scrolled"] = ["--fixture", "example-unicode", "--size", "1100x700", "--script", "tests/inspector-unicode-scroll.script.json"]
+
 
 def verify_state(name: str, tree_path: Path) -> list[str]:
     """A rendered PNG is not enough: verify the scripted workflow reached its destination."""
@@ -67,6 +79,15 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
     keyed = {n["key"]: n for n in nodes if "key" in n}
     names = "\n".join(n.get("name", "") for n in nodes)
     errors = []
+    if name.startswith("example-"):
+        if "showcase-tour" not in keyed:
+            errors.append("Example did not reach the offline showcase")
+        slug = CASES[name][1].removeprefix("example-")
+        example_id = next(i + 1 for i, case in enumerate(EXAMPLES) if case["id"] == slug)
+        if f"Exchange #{example_id:03}" not in names:
+            errors.append("Example selected the wrong exchange")
+        if slug in ("unicode", "inventory") and "selected" not in keyed.get("tab-1", {}).get("states", []):
+            errors.append("Large/Unicode example must show its request payload")
     selected_tabs = {"overview-dark": 0, "response-small-light": 2, "json-find": 2,
                      "json-tree": 2, "compare": 4, "diagram-expanded": 3,
                      "missing-compare": 4, "long-json-small": 2, "tree-small": 2, "compare-small-split": 4, "compare-small-expanded": 4}

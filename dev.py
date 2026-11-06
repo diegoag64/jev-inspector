@@ -11,13 +11,22 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.error import HTTPError
 from urllib.request import ProxyHandler, Request, build_opener
+from tools.demo_catalog import load_cases, response_bytes
 
 ROOT = Path(__file__).resolve().parent
 LOCAL_HTTP = build_opener(ProxyHandler({}))
+DEMO_CASES = load_cases()
+DEMO_BY_ID = {case["id"]: case for case in DEMO_CASES}
 
 
 class MockHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
+
+    def handle(self):
+        try:
+            super().handle()
+        except (BrokenPipeError, ConnectionResetError):
+            pass  # The relay may close pooled HTTP connections on shutdown.
 
     def log_message(self, *args):
         pass
@@ -59,7 +68,21 @@ class MockHandler(BaseHTTPRequestHandler):
         if self.path != "/v1/models":
             self.reply(404, {"error": {"message": "Unknown demo endpoint"}})
             return
-        self.reply(200, {"models": [{"name": "jev-demo", "description": "Local synthetic model", "release_date": "2026-11-06"}]})
+        self.reply_case(DEMO_BY_ID["models"])
+
+    def reply_case(self, case):
+        time.sleep(case["delay_ms"] / 1000)
+        data = response_bytes(case)
+        self.send_response(case["status"])
+        if data:
+            self.send_header("Content-Type", case.get("content_type", "application/json"))
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("x-typesafe-request-id", f"demo-{case['id']}")
+        try:
+            self.end_headers()
+            self.wfile.write(data)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def do_POST(self):
         try:
@@ -70,23 +93,13 @@ class MockHandler(BaseHTTPRequestHandler):
         if self.path != "/v1/systemone":
             self.reply(404, {"error": {"message": "Unknown demo endpoint"}})
             return
-        scenario = int(payload.get("state", {}).get("scenario", 0))
-        time.sleep(0.08 + scenario % 5 * 0.035)
-        if scenario % 9 == 7:
-            self.reply(429, {"error": {"message": "Synthetic rate-limit response"}}, f"demo-{scenario:04}")
+        state = payload.get("state", {}) if isinstance(payload, dict) else {}
+        slug = state.get("demo_case", "support-routing") if isinstance(state, dict) else "support-routing"
+        case = DEMO_BY_ID.get(slug)
+        if case is None or case["method"] != "POST":
+            self.reply(400, {"error": {"message": "Unknown synthetic example"}})
             return
-        if scenario % 9 == 4:
-            self.reply(401, {"error": {"message": "Synthetic authentication error"}}, f"demo-{scenario:04}")
-            return
-        answers = {
-            "department": {"type": "choice", "choice": "billing", "confidence": 0.91,
-                           "probabilities": {"billing": 0.94, "technical": 0.04, "sales": 0.02}},
-            "needs_follow_up": {"type": "noul", "noul": 0.98},
-            "urgency": {"type": "score", "score": 3, "confidence": 0.86,
-                        "probabilities": {"1": 0.02, "2": 0.12, "3": 0.86}},
-        }
-        self.reply(200, {"model": "jev-demo", "answers": answers,
-                         "usage": {"input_tokens": 186, "output_tokens": 12}}, f"demo-{scenario:04}")
+        self.reply_case(case)
 
 
 def run_demo(args):
@@ -138,15 +151,11 @@ def run_demo(args):
                 raise RuntimeError("Relay did not become ready within 10 seconds.")
 
             def traffic():
-                scenario = 1
+                index = 0
                 while not stopped.is_set():
-                    payload = {"model": "jev-latest", "state": {"scenario": scenario, "message": "My invoice was charged twice.", "channel": "support"},
-                        "questions": {
-                            "department": {"type": "choice", "instructions": "Which team should handle this?", "criteria": {"billing": "Payments and invoices", "technical": "Product issues", "sales": "Plans and pricing"}},
-                            "needs_follow_up": {"type": "noul", "instructions": "Does this require a response?"},
-                            "urgency": {"type": "score", "instructions": "How urgent is this?", "criteria": {"1": "Low", "2": "Medium", "3": "High"}},
-                        }}
-                    request = Request(f"http://127.0.0.1:{args.port}/v1/systemone", data=json.dumps(payload).encode(),
+                    case = DEMO_CASES[index % len(DEMO_CASES)]
+                    data = None if case.get("request") is None else json.dumps(case["request"], ensure_ascii=False).encode("utf-8")
+                    request = Request(f"http://127.0.0.1:{args.port}{case['path']}", data=data, method=case["method"],
                         headers={"Content-Type": "application/json", "Authorization": "Bearer synthetic-demo-key"})
                     try:
                         with LOCAL_HTTP.open(request, timeout=5) as response:
@@ -155,8 +164,12 @@ def run_demo(args):
                         error.read()
                     except OSError:
                         stopped.set()
-                    scenario += 1
-                    stopped.wait(0.12 if scenario <= 12 else 1.8)
+                    index += 1
+                    if index == len(DEMO_CASES):
+                        print(f"Seeded {index} varied examples. " + ("Continuing synthetic traffic." if args.continuous else "Traffic is idle; browse requests at your own pace."), flush=True)
+                    if index >= len(DEMO_CASES) and not args.continuous:
+                        return
+                    stopped.wait(0.12 if index < len(DEMO_CASES) else 1.8)
 
             threading.Thread(target=traffic, daemon=True).start()
             ui = None
@@ -217,6 +230,7 @@ def main():
     parser.add_argument("--inspector-port", type=int, default=8788)
     parser.add_argument("--no-ui", action="store_true", help="Run the mock and relay without opening a window")
     parser.add_argument("--diagram", action="store_true", help="Open the inspector on the Diagram tab")
+    parser.add_argument("--continuous", action="store_true", help="Keep sending examples after the initial varied batch")
     parser.add_argument("--duration", type=float, default=0, help="Stop the demo after this many seconds; 0 waits for the window to close")
     args = parser.parse_args()
     try:

@@ -11,7 +11,14 @@ Try a complete local demo on this Windows machine:
 
 It builds both programs, starts a local mock API, and sends synthetic requests
 through the actual Rust relay. No TypeSafe account or API key is needed. Close the
-window to stop the demo. Use `python3 dev.py demo` on macOS with Rust installed.
+window to stop the demo. It sends one batch of 14 varied examples, then leaves
+traffic idle. Add `--continuous` to repeat the batch. Use `python3 dev.py demo`
+on macOS with Rust installed.
+
+For an offline animation tour, run `cargo run -p jev-inspector -- --tour`.
+**Pause tour** keeps the current layout; selecting a request also stops playback.
+Use `--showcase` to open the examples without starting playback. See
+[the example catalog and motion checks](docs/inspector-examples.md).
 
 See [the bridge quickstart](docs/bridge-quickstart.md) to connect your own backend,
 and [the implementation contract](docs/bridge-v1.md) for capture limits and testing.

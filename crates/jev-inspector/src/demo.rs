@@ -73,6 +73,10 @@ pub fn populate(state: &mut State) {
 
 /// Deterministic renderer states. These never start the feed or load live preferences.
 pub fn scenario(s: &mut State, name: &str) -> Result<(), String> {
+    if let Some(slug) = name.strip_prefix("example-") {
+        crate::showcase::populate(s);
+        return crate::showcase::select_example(s, slug);
+    }
     populate(s);
     s.offline_fixture = true;
     s.workspace.cache = (1..=12).map(|id| (id, exchange(id))).collect();

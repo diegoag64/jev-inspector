@@ -1,0 +1,1910 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "support-routing",
+      "title": "Support routing",
+      "method": "POST",
+      "path": "/v1/systemone",
+      "request": {
+        "model": "support-router",
+        "state": {
+          "demo_case": "support-routing",
+          "message": "My invoice was charged twice.",
+          "channel": "email"
+        },
+        "questions": {
+          "department": {
+            "type": "choice",
+            "instructions": "Which team should handle this?",
+            "criteria": {
+              "billing": "Payments",
+              "technical": "Product issues",
+              "sales": "Plans"
+            }
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "model": "support-router",
+        "answers": {
+          "department": {
+            "type": "choice",
+            "choice": "billing",
+            "confidence": 0.94,
+            "probabilities": {
+              "billing": 0.94,
+              "technical": 0.04,
+              "sales": 0.02
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 180,
+          "output_tokens": 24
+        }
+      },
+      "delay_ms": 140
+    },
+    {
+      "id": "fraud-check",
+      "title": "Fraud probability",
+      "method": "POST",
+      "path": "/v1/systemone",
+      "request": {
+        "model": "risk-check",
+        "state": {
+          "demo_case": "fraud-check",
+          "amount": 49.95,
+          "currency": "USD",
+          "signals": {
+            "known_device": true,
+            "account_age_days": 842,
+            "prior_chargebacks": 0
+          }
+        },
+        "questions": {
+          "needs_review": {
+            "type": "noul",
+            "instructions": "Does this transaction need manual review?"
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "model": "risk-check",
+        "answers": {
+          "needs_review": {
+            "type": "noul",
+            "noul": 0.12,
+            "confidence": 0.89
+          }
+        },
+        "usage": {
+          "input_tokens": 180,
+          "output_tokens": 24
+        }
+      },
+      "delay_ms": 140
+    },
+    {
+      "id": "incident-score",
+      "title": "Incident severity",
+      "method": "POST",
+      "path": "/v1/systemone",
+      "request": {
+        "model": "incident-triage",
+        "state": {
+          "demo_case": "incident-score",
+          "service": "checkout",
+          "message": "Payment processing is unavailable in one region.",
+          "affected_regions": [
+            "eu-west"
+          ],
+          "error_rate": 0.34
+        },
+        "questions": {
+          "severity": {
+            "type": "score",
+            "instructions": "How severe is this incident?",
+            "criteria": {
+              "1": "Cosmetic",
+              "2": "Minor",
+              "3": "Degraded",
+              "4": "Major",
+              "5": "Critical"
+            }
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "model": "incident-triage",
+        "answers": {
+          "severity": {
+            "type": "score",
+            "score": 4,
+            "confidence": 0.87,
+            "probabilities": {
+              "1": 0.01,
+              "2": 0.02,
+              "3": 0.12,
+              "4": 0.78,
+              "5": 0.07
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 180,
+          "output_tokens": 24
+        }
+      },
+      "delay_ms": 420
+    },
+    {
+      "id": "invoice-box",
+      "title": "Invoice region",
+      "method": "POST",
+      "path": "/v1/systemone",
+      "request": {
+        "model": "document-locator",
+        "state": {
+          "demo_case": "invoice-box",
+          "document": {
+            "name": "synthetic-invoice.png",
+            "width": 1200,
+            "height": 1600,
+            "note": "Synthetic coordinates only; image bytes are not included."
+          }
+        },
+        "questions": {
+          "total_region": {
+            "type": "box",
+            "instructions": "Locate the invoice total in the document."
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "model": "document-locator",
+        "answers": {
+          "total_region": {
+            "type": "box",
+            "box": {
+              "left": 0.61,
+              "top": 0.72,
+              "right": 0.93,
+              "bottom": 0.84
+            },
+            "confidence": 0.96
+          }
+        },
+        "usage": {
+          "input_tokens": 180,
+          "output_tokens": 24
+        }
+      },
+      "delay_ms": 140
+    },
+    {
+      "id": "return-review",
+      "title": "Return approval",
+      "method": "POST",
+      "path": "/v1/systemone",
+      "request": {
+        "model": "returns-review",
+        "state": {
+          "demo_case": "return-review",
+          "order": {
+            "id": "DEMO-1042",
+            "items": [
+              {
+                "sku": "LAMP-01",
+                "quantity": 1,
+                "price": 89.0
+              }
+            ],
+            "delivered_days_ago": 4
+          },
+          "message": "The lamp arrived with a broken shade. I would prefer a replacement."
+        },
+        "questions": {
+          "action": {
+            "type": "choice",
+            "instructions": "Choose the next action.",
+            "criteria": {
+              "refund": "Refund payment",
+              "replace": "Ship replacement",
+              "review": "Manual review"
+            }
+          },
+          "eligible": {
+            "type": "noul",
+            "instructions": "Does the return meet policy?"
+          },
+          "condition": {
+            "type": "score",
+            "instructions": "Rate the item condition.",
+            "criteria": {
+              "1": "Damaged",
+              "2": "Used",
+              "3": "Like new"
+            }
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "model": "returns-review",
+        "answers": {
+          "action": {
+            "type": "choice",
+            "choice": "replace",
+            "confidence": 0.88,
+            "probabilities": {
+              "refund": 0.15,
+              "replace": 0.8,
+              "review": 0.05
+            }
+          },
+          "eligible": {
+            "type": "noul",
+            "noul": 0.97
+          },
+          "condition": {
+            "type": "score",
+            "score": 1,
+            "confidence": 0.91,
+            "probabilities": {
+              "1": 0.91,
+              "2": 0.07,
+              "3": 0.02
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 180,
+          "output_tokens": 24
+        }
+      },
+      "delay_ms": 280
+    },
+    {
+      "id": "many-choices",
+      "title": "Large classification",
+      "method": "POST",
+      "path": "/v1/systemone",
+      "request": {
+        "model": "message-classifier",
+        "state": {
+          "demo_case": "many-choices",
+          "message": "Keyboard focus disappears after I open the menu. Screen reader output also misses the selected item."
+        },
+        "questions": {
+          "topic": {
+            "type": "choice",
+            "instructions": "Classify this message.",
+            "criteria": {
+              "billing": "Billing",
+              "technical": "Technical",
+              "sales": "Sales",
+              "security": "Security",
+              "account": "Account",
+              "delivery": "Delivery",
+              "returns": "Returns",
+              "feedback": "Feedback",
+              "accessibility": "Accessibility",
+              "partnerships": "Partnerships",
+              "legal": "Legal",
+              "other": "Other"
+            }
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "model": "message-classifier",
+        "answers": {
+          "topic": {
+            "type": "choice",
+            "choice": "accessibility",
+            "confidence": 0.84,
+            "probabilities": {
+              "billing": 0.02,
+              "technical": 0.02,
+              "sales": 0.02,
+              "security": 0.02,
+              "account": 0.02,
+              "delivery": 0.02,
+              "returns": 0.02,
+              "feedback": 0.02,
+              "accessibility": 0.78,
+              "partnerships": 0.02,
+              "legal": 0.02,
+              "other": 0.02
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 480,
+          "output_tokens": 24
+        }
+      },
+      "delay_ms": 140
+    },
+    {
+      "id": "inventory",
+      "title": "Nested inventory",
+      "method": "POST",
+      "path": "/v1/systemone",
+      "request": {
+        "model": "inventory-audit",
+        "state": {
+          "demo_case": "inventory",
+          "warehouses": [
+            {
+              "code": "DEMO-0",
+              "items": [
+                {
+                  "sku": "SKU-0-000",
+                  "stock": 0,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-001",
+                  "stock": 3,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-002",
+                  "stock": 6,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-003",
+                  "stock": 9,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-004",
+                  "stock": 12,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-005",
+                  "stock": 15,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-006",
+                  "stock": 18,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-007",
+                  "stock": 21,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-008",
+                  "stock": 24,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-009",
+                  "stock": 27,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-010",
+                  "stock": 30,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-011",
+                  "stock": 33,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-012",
+                  "stock": 36,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-013",
+                  "stock": 39,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-014",
+                  "stock": 42,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-015",
+                  "stock": 45,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-016",
+                  "stock": 48,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-017",
+                  "stock": 51,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-018",
+                  "stock": 54,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-019",
+                  "stock": 57,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-020",
+                  "stock": 60,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-021",
+                  "stock": 63,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-022",
+                  "stock": 66,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-023",
+                  "stock": 69,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-024",
+                  "stock": 72,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-025",
+                  "stock": 75,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-026",
+                  "stock": 78,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-027",
+                  "stock": 81,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-028",
+                  "stock": 84,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-029",
+                  "stock": 87,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-030",
+                  "stock": 90,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-031",
+                  "stock": 93,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-032",
+                  "stock": 96,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-033",
+                  "stock": 99,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-0-034",
+                  "stock": 102,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                }
+              ]
+            },
+            {
+              "code": "DEMO-1",
+              "items": [
+                {
+                  "sku": "SKU-1-000",
+                  "stock": 0,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-001",
+                  "stock": 3,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-002",
+                  "stock": 6,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-003",
+                  "stock": 9,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-004",
+                  "stock": 12,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-005",
+                  "stock": 15,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-006",
+                  "stock": 18,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-007",
+                  "stock": 21,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-008",
+                  "stock": 24,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-009",
+                  "stock": 27,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-010",
+                  "stock": 30,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-011",
+                  "stock": 33,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-012",
+                  "stock": 36,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-013",
+                  "stock": 39,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-014",
+                  "stock": 42,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-015",
+                  "stock": 45,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-016",
+                  "stock": 48,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-017",
+                  "stock": 51,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-018",
+                  "stock": 54,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-019",
+                  "stock": 57,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-020",
+                  "stock": 60,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-021",
+                  "stock": 63,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-022",
+                  "stock": 66,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-023",
+                  "stock": 69,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-024",
+                  "stock": 72,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-025",
+                  "stock": 75,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-026",
+                  "stock": 78,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-027",
+                  "stock": 81,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-028",
+                  "stock": 84,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-029",
+                  "stock": 87,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-030",
+                  "stock": 90,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-031",
+                  "stock": 93,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-032",
+                  "stock": 96,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-033",
+                  "stock": 99,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-1-034",
+                  "stock": 102,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                }
+              ]
+            },
+            {
+              "code": "DEMO-2",
+              "items": [
+                {
+                  "sku": "SKU-2-000",
+                  "stock": 0,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-001",
+                  "stock": 3,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-002",
+                  "stock": 6,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-003",
+                  "stock": 9,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-004",
+                  "stock": 12,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-005",
+                  "stock": 15,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-006",
+                  "stock": 18,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-007",
+                  "stock": 21,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-008",
+                  "stock": 24,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-009",
+                  "stock": 27,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-010",
+                  "stock": 30,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-011",
+                  "stock": 33,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-012",
+                  "stock": 36,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-013",
+                  "stock": 39,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-014",
+                  "stock": 42,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-015",
+                  "stock": 45,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-016",
+                  "stock": 48,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-017",
+                  "stock": 51,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-018",
+                  "stock": 54,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-019",
+                  "stock": 57,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-020",
+                  "stock": 60,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-021",
+                  "stock": 63,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-022",
+                  "stock": 66,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-023",
+                  "stock": 69,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-024",
+                  "stock": 72,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-025",
+                  "stock": 75,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-026",
+                  "stock": 78,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-027",
+                  "stock": 81,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-028",
+                  "stock": 84,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-029",
+                  "stock": 87,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-030",
+                  "stock": 90,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-031",
+                  "stock": 93,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-032",
+                  "stock": 96,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-033",
+                  "stock": 99,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                },
+                {
+                  "sku": "SKU-2-034",
+                  "stock": 102,
+                  "tags": [
+                    "fragile",
+                    "seasonal"
+                  ],
+                  "metadata": {
+                    "supplier": "Synthetic supplier",
+                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "questions": {
+          "consistent": {
+            "type": "noul",
+            "instructions": "Is the inventory internally consistent?"
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "model": "inventory-audit",
+        "answers": {
+          "consistent": {
+            "type": "noul",
+            "noul": 0.98
+          }
+        },
+        "usage": {
+          "input_tokens": 3600,
+          "output_tokens": 24
+        }
+      },
+      "delay_ms": 650
+    },
+    {
+      "id": "unicode",
+      "title": "Multilingual support",
+      "method": "POST",
+      "path": "/v1/systemone",
+      "request": {
+        "model": "global-support",
+        "state": {
+          "demo_case": "unicode",
+          "message": "請求書の再発行をお願いします。",
+          "customer": {
+            "display_name": "田中さくら",
+            "locale": "ja-JP"
+          },
+          "notes": [
+            "Español: devolución",
+            "Français: remboursement"
+          ]
+        },
+        "questions": {
+          "language": {
+            "type": "choice",
+            "instructions": "Which language is used?",
+            "criteria": {
+              "ja": "Japanese",
+              "en": "English",
+              "es": "Spanish"
+            }
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "model": "global-support",
+        "answers": {
+          "language": {
+            "type": "choice",
+            "choice": "ja",
+            "confidence": 0.99,
+            "probabilities": {
+              "ja": 0.99,
+              "en": 0.005,
+              "es": 0.005
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 180,
+          "output_tokens": 24
+        }
+      },
+      "delay_ms": 140
+    },
+    {
+      "id": "models",
+      "title": "Available models",
+      "method": "GET",
+      "path": "/v1/models",
+      "request": null,
+      "status": 200,
+      "response": {
+        "models": [
+          {
+            "name": "support-router",
+            "description": "Classify support messages",
+            "release_date": "2026-11-06"
+          },
+          {
+            "name": "document-locator",
+            "description": "Locate document regions",
+            "release_date": "2026-11-06"
+          },
+          {
+            "name": "incident-triage",
+            "description": "Score incidents",
+            "release_date": "2026-11-06"
+          }
+        ]
+      },
+      "delay_ms": 90
+    },
+    {
+      "id": "rate-limit",
+      "title": "Rate limit",
+      "method": "POST",
+      "path": "/v1/systemone",
+      "request": {
+        "model": "rate-limit",
+        "state": {
+          "demo_case": "rate-limit"
+        },
+        "questions": {
+          "ok": {
+            "type": "noul",
+            "instructions": "Is the operation valid?"
+          }
+        }
+      },
+      "status": 429,
+      "response": {
+        "error": {
+          "type": "rate-limit",
+          "message": "Synthetic rate limit reached. Retry after 30 seconds.",
+          "request_id": "demo-rate-limit"
+        }
+      },
+      "delay_ms": 110
+    },
+    {
+      "id": "auth-error",
+      "title": "Authentication error",
+      "method": "POST",
+      "path": "/v1/systemone",
+      "request": {
+        "model": "auth-error",
+        "state": {
+          "demo_case": "auth-error"
+        },
+        "questions": {
+          "ok": {
+            "type": "noul",
+            "instructions": "Is the operation valid?"
+          }
+        }
+      },
+      "status": 401,
+      "response": {
+        "error": {
+          "type": "auth-error",
+          "message": "Synthetic credential rejected. This example contains no real credentials.",
+          "request_id": "demo-auth-error"
+        }
+      },
+      "delay_ms": 110
+    },
+    {
+      "id": "empty",
+      "title": "Empty response",
+      "method": "POST",
+      "path": "/v1/systemone",
+      "request": {
+        "model": "empty-response",
+        "state": {
+          "demo_case": "empty"
+        },
+        "questions": {}
+      },
+      "status": 204,
+      "response": null,
+      "delay_ms": 100
+    },
+    {
+      "id": "non-json",
+      "title": "Non-JSON upstream error",
+      "method": "POST",
+      "path": "/v1/systemone",
+      "request": {
+        "model": "maintenance",
+        "state": {
+          "demo_case": "non-json"
+        },
+        "questions": {}
+      },
+      "status": 503,
+      "response_text": "<html><body><h1>Service unavailable</h1><p>Synthetic maintenance response.</p></body></html>",
+      "content_type": "text/html",
+      "delay_ms": 180
+    },
+    {
+      "id": "slow-analysis",
+      "title": "Slow analysis",
+      "method": "POST",
+      "path": "/v1/systemone",
+      "request": {
+        "model": "long-analysis",
+        "state": {
+          "demo_case": "slow-analysis",
+          "message": "Analyze a longer synthetic case to exercise the in-flight response UI.",
+          "history": [
+            {
+              "step": 0,
+              "note": "Investigation note 0"
+            },
+            {
+              "step": 1,
+              "note": "Investigation note 1"
+            },
+            {
+              "step": 2,
+              "note": "Investigation note 2"
+            },
+            {
+              "step": 3,
+              "note": "Investigation note 3"
+            },
+            {
+              "step": 4,
+              "note": "Investigation note 4"
+            },
+            {
+              "step": 5,
+              "note": "Investigation note 5"
+            },
+            {
+              "step": 6,
+              "note": "Investigation note 6"
+            },
+            {
+              "step": 7,
+              "note": "Investigation note 7"
+            },
+            {
+              "step": 8,
+              "note": "Investigation note 8"
+            },
+            {
+              "step": 9,
+              "note": "Investigation note 9"
+            },
+            {
+              "step": 10,
+              "note": "Investigation note 10"
+            },
+            {
+              "step": 11,
+              "note": "Investigation note 11"
+            }
+          ]
+        },
+        "questions": {
+          "priority": {
+            "type": "score",
+            "instructions": "Rate the priority.",
+            "criteria": {
+              "1": "Low",
+              "2": "Normal",
+              "3": "High"
+            }
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "model": "long-analysis",
+        "answers": {
+          "priority": {
+            "type": "score",
+            "score": 2,
+            "confidence": 0.76,
+            "probabilities": {
+              "1": 0.14,
+              "2": 0.76,
+              "3": 0.1
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 2100,
+          "output_tokens": 24
+        }
+      },
+      "delay_ms": 2400
+    }
+  ]
+}

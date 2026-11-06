@@ -1,3 +1,4 @@
+mod answer_value;
 mod compare;
 mod demo;
 mod detail_states;
@@ -9,10 +10,14 @@ mod feed;
 mod icons;
 mod json_tree;
 mod json_view;
+mod motion;
 mod overview;
 mod query;
 mod request_scroll;
 mod session;
+mod showcase;
+#[cfg(test)]
+mod showcase_tests;
 mod ui;
 mod workspace;
 #[cfg(test)]
@@ -57,6 +62,7 @@ struct State {
     connection_error: Option<String>,
     demo: bool,
     offline_fixture: bool,
+    showcase: Option<showcase::Playback>,
     workspace: workspace::Workspace,
 }
 
@@ -83,6 +89,7 @@ impl Default for State {
             connection_error: None,
             demo: false,
             offline_fixture: false,
+            showcase: None,
             workspace: workspace::Workspace::default(),
         }
     }
@@ -142,6 +149,7 @@ impl State {
         }
     }
     fn select(&mut self, id: u64) {
+        showcase::stop(self);
         if self.selected != Some(id) {
             self.request_text.copied = false;
             self.response_text.copied = false;
@@ -191,8 +199,8 @@ fn setup(state: &mut State, waker: rune::Waker) {
     }
 }
 
-fn poll(state: &mut State, _: f64, _: &mut Tx) -> bool {
-    let changed = state.poll_job();
+fn poll(state: &mut State, now: f64, tx: &mut Tx) -> bool {
+    let changed = state.poll_job() | showcase::tick(state, now, tx);
     let update = state
         .mailbox
         .lock()
@@ -280,6 +288,11 @@ fn main() {
                 state.connection_file = path.into();
             }
             "--demo" => demo::populate(&mut state),
+            "--showcase" => showcase::populate(&mut state),
+            "--tour" => {
+                showcase::populate(&mut state);
+                state.showcase.as_mut().unwrap().playing = true;
+            }
             "--fixture" => {
                 fixture = Some(args.next().unwrap_or_else(|| {
                     eprintln!("--fixture requires a scenario name");
@@ -289,7 +302,7 @@ fn main() {
             "--diagram" => state.tab = 3,
             "--help" | "-h" => {
                 println!(
-                    "Jev inspector\n  --connection-file PATH  Connection written by jev-bridge (default .jev/connection.json)\n  --demo                  Synthetic, offline UI fixture\n  --diagram               Start on the Diagram tab\nRune QA flags are also accepted, including --snap FILE and --tree FILE."
+                    "Jev inspector\n  --connection-file PATH  Connection written by jev-bridge (default .jev/connection.json)\n  --demo                  Synthetic, offline UI fixture\n  --showcase              14 varied offline examples\n  --tour                  Open examples and cycle layouts automatically\n  --diagram               Start on the Diagram tab\nRune QA flags are also accepted, including --snap FILE and --tree FILE."
                 );
                 return;
             }

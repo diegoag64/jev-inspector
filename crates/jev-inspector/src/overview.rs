@@ -32,6 +32,131 @@ pub fn view(detail: &Exchange, k: &Kit) -> El {
             .child(tile("Sent", ui::bytes(r.request_bytes), k))
             .child(tile("Received", ui::bytes(r.response_bytes), k)),
     );
+    body = body.child(ui::rule(k));
+    if let Some(answers) = detail
+        .response
+        .json
+        .as_ref()
+        .and_then(|j| j.get("answers"))
+        .and_then(|a| a.as_object())
+    {
+        body = body.child(
+            row()
+                .child(label("Answers", 15.0, k.c.text_base).grow(1.0))
+                .child(label(
+                    format!(
+                        "{} {}",
+                        answers.len(),
+                        if answers.len() == 1 {
+                            "question"
+                        } else {
+                            "questions"
+                        }
+                    ),
+                    11.0,
+                    k.c.text_faint,
+                )),
+        );
+        for (name, answer) in answers.iter().take(32) {
+            let kind = answer["type"].as_str().unwrap_or("unknown");
+            let value = match kind {
+                "choice" => &answer["choice"],
+                "noul" => &answer["noul"],
+                "score" => &answer["score"],
+                "box" => &answer["box"],
+                _ => answer,
+            };
+            let mut card = col()
+                .gap(10.0)
+                .padding(14.0)
+                .radius(8.0)
+                .fill(k.c.bg_deep)
+                .border(1.0, k.c.border_base)
+                .child(
+                    row()
+                        .center_y()
+                        .gap(8.0)
+                        .child(
+                            label(clip(name, 100), 12.0, k.c.text_muted)
+                                .wrap()
+                                .grow(1.0),
+                        )
+                        .child(ui::badge(kind.to_uppercase(), k.c.text_accent, k)),
+                )
+                .child(answer_value::view(kind, value, k));
+            if let Some(probabilities) = answer["probabilities"].as_object() {
+                let mut values: Vec<_> = probabilities
+                    .iter()
+                    .filter_map(|(n, v)| v.as_f64().map(|v| (n, v)))
+                    .collect();
+                values.sort_by(|a, b| b.1.total_cmp(&a.1));
+                for (name, probability) in values.into_iter().take(12) {
+                    let p = probability.clamp(0.0, 1.0) as f32;
+                    card = card.child(
+                        row()
+                            .gap(12.0)
+                            .center_y()
+                            .child(label(clip(name, 36), 11.0, k.c.text_muted).w(130.0))
+                            .child(
+                                row()
+                                    .grow(1.0)
+                                    .h(4.0)
+                                    .radius(2.0)
+                                    .clip_rounded(2.0)
+                                    .fill(k.c.layer_02)
+                                    .child(el().grow(p.max(0.0001)).h_full().fill(k.c.text_accent))
+                                    .child(
+                                        el().grow((1.0 - p).max(0.0001))
+                                            .h_full()
+                                            .fill(k.c.layer_02),
+                                    ),
+                            )
+                            .child(
+                                ui::mono(
+                                    format!("{:.1}%", probability * 100.0),
+                                    11.0,
+                                    k.c.text_base,
+                                )
+                                .w(55.0),
+                            ),
+                    );
+                }
+            }
+            if let Some(confidence) = answer["confidence"].as_f64() {
+                card = card.child(label(
+                    format!("Confidence {:.1}%", confidence * 100.0),
+                    11.0,
+                    k.c.text_faint,
+                ));
+            }
+            body = body.child(card);
+        }
+        if answers.len() > 32 {
+            body = body.child(
+                label(
+                    "Showing the first 32 answers. Open Response for the full captured JSON.",
+                    11.0,
+                    k.c.text_faint,
+                )
+                .wrap(),
+            );
+        }
+    } else {
+        body = body
+            .child(label(
+                "No typed answers in this response",
+                14.0,
+                k.c.text_muted,
+            ))
+            .child(
+                label(
+                    "Open Response to inspect the captured payload and any error details.",
+                    12.0,
+                    k.c.text_faint,
+                )
+                .wrap(),
+            );
+    }
     let mut timing = col()
         .gap(12.0)
         .padding(16.0)
@@ -119,131 +244,6 @@ pub fn view(detail: &Exchange, k: &Kit) -> El {
         ));
     if let Some(note) = &r.note {
         body = body.child(label(note, 12.0, k.c.warning.fg).wrap());
-    }
-    body = body.child(ui::rule(k));
-    if let Some(answers) = detail
-        .response
-        .json
-        .as_ref()
-        .and_then(|j| j.get("answers"))
-        .and_then(|a| a.as_object())
-    {
-        body = body.child(
-            row()
-                .child(label("Answers", 15.0, k.c.text_base).grow(1.0))
-                .child(label(
-                    format!("{} questions", answers.len()),
-                    11.0,
-                    k.c.text_faint,
-                )),
-        );
-        for (name, answer) in answers.iter().take(32) {
-            let kind = answer["type"].as_str().unwrap_or("unknown");
-            let value = match kind {
-                "choice" => &answer["choice"],
-                "noul" => &answer["noul"],
-                "score" => &answer["score"],
-                "box" => &answer["box"],
-                _ => answer,
-            };
-            let value = value
-                .as_str()
-                .map(str::to_owned)
-                .unwrap_or_else(|| value.to_string());
-            let mut card = col()
-                .gap(10.0)
-                .padding(14.0)
-                .radius(8.0)
-                .fill(k.c.bg_deep)
-                .border(1.0, k.c.border_base)
-                .child(
-                    row()
-                        .center_y()
-                        .gap(8.0)
-                        .child(
-                            label(clip(name, 100), 12.0, k.c.text_muted)
-                                .wrap()
-                                .grow(1.0),
-                        )
-                        .child(ui::badge(kind.to_uppercase(), k.c.text_accent, k)),
-                )
-                .child(
-                    label(clip(&value, 500), 20.0, k.c.text_base)
-                        .wrap()
-                        .selectable(true),
-                );
-            if let Some(probabilities) = answer["probabilities"].as_object() {
-                let mut values: Vec<_> = probabilities
-                    .iter()
-                    .filter_map(|(n, v)| v.as_f64().map(|v| (n, v)))
-                    .collect();
-                values.sort_by(|a, b| b.1.total_cmp(&a.1));
-                for (name, probability) in values.into_iter().take(12) {
-                    let p = probability.clamp(0.0, 1.0) as f32;
-                    card = card.child(
-                        row()
-                            .gap(12.0)
-                            .center_y()
-                            .child(label(clip(name, 36), 11.0, k.c.text_muted).w(130.0))
-                            .child(
-                                row()
-                                    .grow(1.0)
-                                    .h(4.0)
-                                    .radius(2.0)
-                                    .clip_rounded(2.0)
-                                    .fill(k.c.layer_02)
-                                    .child(el().grow(p.max(0.0001)).h_full().fill(k.c.text_accent))
-                                    .child(
-                                        el().grow((1.0 - p).max(0.0001))
-                                            .h_full()
-                                            .fill(k.c.layer_02),
-                                    ),
-                            )
-                            .child(
-                                ui::mono(
-                                    format!("{:.1}%", probability * 100.0),
-                                    11.0,
-                                    k.c.text_base,
-                                )
-                                .w(55.0),
-                            ),
-                    );
-                }
-            }
-            if let Some(confidence) = answer["confidence"].as_f64() {
-                card = card.child(label(
-                    format!("Confidence {:.1}%", confidence * 100.0),
-                    11.0,
-                    k.c.text_faint,
-                ));
-            }
-            body = body.child(card);
-        }
-        if answers.len() > 32 {
-            body = body.child(
-                label(
-                    "Showing the first 32 answers. Open Response for the full captured JSON.",
-                    11.0,
-                    k.c.text_faint,
-                )
-                .wrap(),
-            );
-        }
-    } else {
-        body = body
-            .child(label(
-                "No typed answers in this response",
-                14.0,
-                k.c.text_muted,
-            ))
-            .child(
-                label(
-                    "Open Response to inspect the captured payload and any error details.",
-                    12.0,
-                    k.c.text_faint,
-                )
-                .wrap(),
-            );
     }
     if let Some(usage) = detail.response.json.as_ref().and_then(|j| j.get("usage")) {
         body = body.child(fact(

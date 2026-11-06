@@ -4,8 +4,28 @@ use super::*;
 // its virtual rows, selection and keyboard handling; attach a separate gutter
 // that reads the viewport's actual geometry and scrolls that same viewport.
 pub fn view(cx: &Cx<State>, k: &Kit, header: f32) -> El {
-    let viewport = cx.window_layout("requests/viewport");
-    let rows = cx.window_layout("requests/viewport/rows");
+    vertical(
+        cx,
+        k,
+        header,
+        "requests/viewport",
+        "requests/viewport/rows",
+        "request-scrollbar",
+        "request-scroll-thumb",
+    )
+}
+
+pub fn vertical(
+    cx: &Cx<State>,
+    k: &Kit,
+    header: f32,
+    viewport_key: &'static str,
+    rows_key: &'static str,
+    bar_key: &'static str,
+    thumb_key: &'static str,
+) -> El {
+    let viewport = cx.window_layout(viewport_key);
+    let rows = cx.window_layout(rows_key);
     let (Some(v), Some(r)) = (viewport, rows) else {
         return el();
     };
@@ -18,7 +38,7 @@ pub fn view(cx: &Cx<State>, k: &Kit, header: f32) -> El {
     let travel = track - height;
     let offset = (v[1] - r[1]).clamp(0.0, max);
     let top = 2.0 + travel * offset / max;
-    el().key("request-scrollbar")
+    el().key(bar_key)
         .pin(None, Some(header), Some(0.0), Some(0.0))
         .w(16.0)
         .fill(k.c.layer_02)
@@ -30,11 +50,11 @@ pub fn view(cx: &Cx<State>, k: &Kit, header: f32) -> El {
                 } else {
                     offset + v[3]
                 };
-                tx.scroll_to_instant("requests/viewport", 0.0, next.clamp(0.0, max));
+                tx.scroll_to_instant(viewport_key, 0.0, next.clamp(0.0, max));
             }
         })
         .child(
-            el().key("request-scroll-thumb")
+            el().key(thumb_key)
                 .absolute(4.0, top)
                 .size(8.0, height)
                 .radius(4.0)
@@ -48,7 +68,7 @@ pub fn view(cx: &Cx<State>, k: &Kit, header: f32) -> El {
                         d.data = offset;
                     }
                     tx.scroll_to_instant(
-                        "requests/viewport",
+                        viewport_key,
                         0.0,
                         (d.data + d.dy * max / travel).clamp(0.0, max),
                     );

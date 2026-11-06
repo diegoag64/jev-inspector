@@ -38,6 +38,15 @@ Inspect each PNG and its matching tree. A successful render only proves that the
 
 For transitions, inspect the state before, during, and after the action. Runtime tests cover request selection races, retry signals, loading replacement, placeholder accessibility, and distinct missing-body states. They do not establish OS input delivery or spoken announcements.
 
+Run `python tools/inspector_motion.py` for a repeatable mixed-layout trace and frame
+strip. Include the shared example catalog in the branch inventory: a large request
+is not a large response, a language code is not evidence of Unicode glyph rendering,
+and collapsed tree nodes do not establish expanded-tree usability. Exercise tour
+start/pause, manual interruption, filters and dialogs; verify the final idle state.
+Measure intermediate frames with Rune's delta-time API rather than advancing each
+test frame by an entire second. Keep native display fluidity distinct from forced
+headless CPU timing.
+
 ## Score with explicit limits
 
 Keep the ten review categories separate. List defects before optional enhancements. Do not let an overall average conceal a weak category or award a target score to end iteration.

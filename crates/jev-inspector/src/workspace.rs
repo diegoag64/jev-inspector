@@ -240,7 +240,9 @@ impl State {
         self.reset_filters();
         // Force the poller's revision check to refresh even if the relay is idle.
         self.mailbox.lock().unwrap().refresh = true;
-        if self.demo {
+        if self.showcase.is_some() {
+            showcase::populate(self);
+        } else if self.demo {
             demo::populate(self);
         }
     }
@@ -285,6 +287,7 @@ pub fn on_key(s: &mut State, event: &rune::KeyEvent, tx: &mut Tx) -> bool {
     }
     for n in 0..5 {
         if event.is_command(char::from(b'1' + n)) {
+            showcase::stop(s);
             s.tab = n;
             tx.blur();
             return true;

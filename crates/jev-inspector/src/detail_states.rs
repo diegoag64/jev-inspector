@@ -234,6 +234,7 @@ pub fn loading(s: &State, k: &Kit) -> El {
         .child(
             col()
                 .key("loading-preview")
+                .looping(rune::LoopSpec::opacity(1.8, 0.0, 0.65, 1.0))
                 .a11y_hidden()
                 .grow(1.0)
                 .min_h(0.0)

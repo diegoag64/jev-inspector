@@ -1,6 +1,7 @@
 use crate::{State, label};
 use jev_protocol::Capture;
 use rune::{El, TextStyle, col, el, rich, row, text};
+use rune_kit::ScrollBar;
 use rune_kit::{
     Button, ButtonVariant, Kit,
     syntax::{self, SyntaxTheme},
@@ -97,6 +98,7 @@ impl JsonDocument {
         get: fn(&mut State) -> &mut JsonDocument,
         k: &Kit,
         state: &State,
+        cx: &rune::Cx<State>,
     ) -> El {
         let Some(source) = &self.source else {
             return col()
@@ -246,7 +248,7 @@ impl JsonDocument {
         if self.tree {
             return panel
                 .child(el().w_full().h(1.0).fill(k.c.border_base))
-                .child(crate::json_tree::view(state, key == "request-json", k));
+                .child(crate::json_tree::view(state, key == "request-json", k, cx));
         }
         if self.search_open {
             let search_key = key.to_string();
@@ -338,7 +340,8 @@ impl JsonDocument {
                     .grow(1.0)
                     .min_h(0.0)
                     .scroll_xy()
-                    .child(code),
+                    .child(code)
+                    .scroll_bar_styled(rune_kit::ScrollBarStyle::from_kit(k).thumb(k.c.text_faint)),
             );
         if self.truncated() {
             panel=panel.child(label("Preview limited to 16,000 bytes. Copy JSON includes the complete captured JSON.",11.0,k.c.text_muted)
