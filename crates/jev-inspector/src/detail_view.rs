@@ -146,12 +146,19 @@ pub fn detail_view(s: &State, k: &Kit) -> El {
         );
     }
     let Some(detail) = &s.detail else {
-        return pane.child(label(
-            s.detail_error.as_deref().unwrap_or("Loading exchange…"),
-            13.0,
-            k.c.text_muted,
-        ));
+        return pane.child(detail_states::missing(s, k));
     };
+    if s.tab == 2 && detail.response.json.is_none() {
+        if detail.summary.outcome == Outcome::Pending && !detail.response.complete {
+            return pane.child(detail_states::waiting_response(s, k));
+        }
+        if detail.response.complete
+            && detail.response.wire_bytes == 0
+            && detail.response.notes.is_empty()
+        {
+            return pane.child(detail_states::empty_body(s, k));
+        }
+    }
     if s.tab == 3 {
         return pane.child(
             diagram::view(s, detail, k)

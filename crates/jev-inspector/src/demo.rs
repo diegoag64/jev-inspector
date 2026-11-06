@@ -77,6 +77,60 @@ pub fn scenario(s: &mut State, name: &str) -> Result<(), String> {
     s.offline_fixture = true;
     s.workspace.cache = (1..=12).map(|id| (id, exchange(id))).collect();
     match name {
+        "loading" | "loading-request" | "loading-response" | "loading-diagram" | "loading-compare" | "detail-failed" | "disconnected-empty" => {
+            s.demo = false;
+            s.connected = true;
+            s.detail = None;
+            s.workspace.cache.remove(&12);
+            s.tab = match name {
+                "loading-request" => 1,
+                "loading-response" => 2,
+                "loading-diagram" => 3,
+                "loading-compare" => 4,
+                _ => 0,
+            };
+            if name == "detail-failed" {
+                s.detail_error = Some("Inspector returned HTTP 404. The relay may have restarted or this exchange was evicted.".into());
+            } else if name == "disconnected-empty" {
+                s.connected = false;
+                s.connection_error = Some("The local relay is not responding. Start jev-bridge or check its connection file.".into());
+            }
+        }
+        "pending-response" | "empty-response" => {
+            let mut current = exchange(12);
+            current.response = Capture::default();
+            current.summary.response_bytes = 0;
+            if name == "pending-response" {
+                current.summary.outcome = Outcome::Pending;
+                current.summary.status = None;
+                current.summary.duration_ms = None;
+                current.summary.upstream_headers_ms = None;
+            } else {
+                current.summary.status = Some(204);
+                current.response.complete = true;
+            }
+            s.snapshot.requests[0] = current.summary.clone();
+            s.set_detail(current);
+            s.filter_rows();
+            s.tab = 2;
+        }
+        "first-use" | "saved-empty" => {
+            s.snapshot.requests.clear();
+            s.snapshot.total_requests = 0;
+            s.workspace.cache.clear();
+            s.demo = false;
+            s.connected = true;
+            s.snapshot.relay_url = "http://127.0.0.1:8787".into();
+            if name == "saved-empty" {
+                s.workspace.session_name = Some("empty-session.jev.json".into());
+            }
+            s.filter_rows();
+        }
+        "no-matches" => {
+            s.filter = rune::TextEdit::new("model:nonexistent");
+            s.filter_rows();
+        }
+        "compare-unset" => s.tab = 4,
         "saved" | "summary-only" => {
             s.workspace.session_name = Some("support-investigation.jev.json".into());
             if name == "summary-only" {
@@ -145,7 +199,7 @@ pub fn scenario(s: &mut State, name: &str) -> Result<(), String> {
         }
         _ => {
             return Err(format!(
-                "Unknown fixture '{name}'. Use saved, summary-only, disconnected, paused, missing-compare, long-json, invalid-query, export-progress, or export-cancelled."
+                "Unknown fixture '{name}'. See demo::scenario for supported fixture names."
             ));
         }
     }

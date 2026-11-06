@@ -1,5 +1,8 @@
 mod compare;
 mod demo;
+mod detail_states;
+#[cfg(test)]
+mod detail_states_tests;
 mod detail_view;
 mod diagram;
 mod feed;

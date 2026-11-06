@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -38,6 +39,20 @@ CASES = {
     "compare-small-split": ["--size", "1100x700", "--script", "tests/inspector-workspace-compare-split.script.json"],
     "compare-small-expanded": ["--size", "1100x700", "--script", "tests/inspector-workspace-compare-expanded.script.json"],
     "help-small": ["--size", "1100x700", "--script", "tests/inspector-workspace-help.script.json"],
+    "loading-overview": ["--fixture", "loading"],
+    "loading-overview-small": ["--fixture", "loading", "--size", "1100x700"],
+    "loading-request": ["--fixture", "loading-request", "--size", "1100x700"],
+    "loading-response-light": ["--fixture", "loading", "--size", "1100x700", "--script", "tests/inspector-json-response.script.json"],
+    "loading-diagram": ["--fixture", "loading-diagram", "--size", "1100x700"],
+    "loading-compare": ["--fixture", "loading-compare", "--size", "1100x700"],
+    "detail-failed": ["--fixture", "detail-failed", "--size", "1100x700"],
+    "disconnected-empty": ["--fixture", "disconnected-empty", "--size", "1100x700"],
+    "pending-response": ["--fixture", "pending-response", "--size", "1100x700"],
+    "empty-response": ["--fixture", "empty-response", "--size", "1100x700"],
+    "first-use": ["--fixture", "first-use", "--size", "1100x700"],
+    "saved-empty": ["--fixture", "saved-empty", "--size", "1100x700"],
+    "no-matches": ["--fixture", "no-matches", "--size", "1100x700"],
+    "compare-unset": ["--fixture", "compare-unset", "--size", "1100x700"],
 }
 
 
@@ -65,11 +80,24 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
                      "tree-small": "copy-json-value", "compare-small-split": "exchange-diff", "help-small": "help-dialog"}
     if name in required_keys and required_keys[name] not in keyed:
         errors.append(f"Missing {required_keys[name]}")
+    if name.startswith("loading-"):
+        if "detail-loading" not in keyed or "Loading request details" not in names:
+            errors.append("Loading fixture did not reach the loading panel")
+        if "loading-preview" in keyed and keyed["loading-preview"].get("children"):
+            errors.append("Skeleton decoration should be hidden from accessibility")
+    new_states = {"detail-failed": "retry-detail", "disconnected-empty": "detail-unavailable",
+                  "pending-response": "response-pending", "empty-response": "body-empty",
+                  "no-matches": "reset-filters", "compare-unset": "set-baseline"}
+    if name in new_states and new_states[name] not in keyed:
+        errors.append(f"Missing {new_states[name]}")
+    new_text = {"first-use": "No requests yet", "saved-empty": "No requests in this session"}
+    if name in new_text and new_text[name] not in names:
+        errors.append(f"Missing {new_text[name]}")
     if name in ("compare-small-split", "compare-small-expanded") and keyed.get("diff-mode", {}).get("name") != "Unified":
         errors.append("Expected split comparison mode")
     if name == "compare-small-expanded" and "requests" in keyed:
         errors.append("Expected expanded comparison")
-    required_text = {"saved-session": "SAVED WITH BODIES", "summary-only": "summary only",
+    required_text = {"saved-session": "SAVED WITH BODIES", "summary-only": "Summary only",
                      "disconnected": "CAPTURE UNKNOWN", "paused": "List paused",
                      "missing-compare": "No captured bodies available to compare",
                      "invalid-query": "Use status:200", "long-json-small": "Preview limited",
@@ -93,6 +121,13 @@ def main() -> int:
     if not 0.5 <= args.scale <= 3:
         parser.error("--scale must be between 0.5 and 3")
     out.mkdir(parents=True, exist_ok=True)
+    with binary.open("rb") as stream:
+        binary_sha256 = hashlib.file_digest(stream, "sha256").hexdigest()
+    try:
+        revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, stderr=subprocess.DEVNULL).strip()
+        dirty = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True))
+    except (OSError, subprocess.CalledProcessError):
+        revision, dirty = None, None
     results = []
     for name in args.cases or CASES:
         options = list(CASES[name])
@@ -128,7 +163,8 @@ def main() -> int:
         results.append(result)
         print(f"{'PASS' if ok else 'FAIL'} {name} ({result['wall_seconds']:.1f}s)", flush=True)
     report = {"created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "platform": platform.platform(),
-              "machine": platform.machine(), "binary": str(binary), "scale": args.scale,
+              "machine": platform.machine(), "binary": str(binary), "binary_sha256": binary_sha256,
+              "source_revision": revision, "working_tree_dirty": dirty, "scale": args.scale,
               "measurement": "Forced headless frames, including scripted transitions. Not interactive FPS or network latency. Compare the same build profile and scale.",
               "results": results}
     (out / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")

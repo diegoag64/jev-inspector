@@ -85,11 +85,11 @@ pub fn view(s: &State, current: &Exchange, k: &Kit) -> El {
             12.0
         });
     let Some(base) = &cmp.baseline else {
-        return panel.child(label("Spot what changed", 20.0, k.c.text_base))
-            .child(label("Keep this exchange as a baseline, then select another request. Compare both input and output JSON with Rune’s diff viewer.", 13.0, k.c.text_muted).wrap())
-            .child(ui::button("Use this exchange as baseline", "set-baseline", false, k, |s| {
+        return panel.child(label("Compare requests", 20.0, k.c.text_base))
+            .child(label("Set this request as the baseline, then select another request to compare their captured JSON.", 13.0, k.c.text_muted).wrap())
+            .child(row().child(ui::button("Set baseline", "set-baseline", true, k, |s| {
                 if let Some(detail) = &s.detail { s.workspace.comparison.baseline = Some(detail.clone()); s.workspace.comparison.update(detail); }
-            }));
+            })));
     };
     panel = panel.child(
         row()

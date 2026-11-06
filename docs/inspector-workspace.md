@@ -157,11 +157,16 @@ cargo build --workspace --locked
 python tools/inspector_qa.py
 ```
 
-The command renders twenty-four offline fixtures sequentially, including dark and light
+The command renders the offline fixtures sequentially, including dark and light
 themes, the minimum window size, JSON search and tree views, comparison, dialogs,
 an error response, an empty view, and the expanded diagram. It also covers paused,
 disconnected, saved and summary-only sessions, missing comparison bodies, invalid
 queries, long JSON with Find at minimum size, export progress/cancellation/failure, long labels, and compact tree, split diff, and Help views.
+Loading fixtures cover all five tabs. Other cases cover failed detail loading,
+uncached disconnection, pending and empty responses, first use, empty saved
+sessions, no search matches, and comparison before a baseline is set.
+Use the [UI review checklist](ui-review-coverage.md) to audit states and transitions
+that screenshots alone do not establish.
 It writes PNGs, Rune element trees, logs,
 and `report.json` to `artifacts/inspector-qa`. Inspect the PNGs for visual regressions.
 The runner checks selected tabs and expected state markers in the accessibility

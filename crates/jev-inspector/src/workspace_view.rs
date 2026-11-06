@@ -664,8 +664,20 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                     )),
             ),
             "request" => Cell::text(format!("#{:03} {}", r.id, r.path)),
-            "status" => Cell::text(status(r)).color(ui::status_color(r, k)).mono(),
-            "time" => Cell::text(ui::duration(r.duration_ms)).mono().muted(),
+            "status" => Cell::text(if r.outcome == Outcome::Pending {
+                "Pending".into()
+            } else {
+                status(r)
+            })
+            .color(ui::status_color(r, k))
+            .mono(),
+            "time" => Cell::text(
+                r.duration_ms
+                    .map(|ms| ui::duration(Some(ms)))
+                    .unwrap_or_else(|| "—".into()),
+            )
+            .mono()
+            .muted(),
             "started" => Cell::text(ui::time(r.started_at_ms)).mono().muted(),
             _ => Cell::text(""),
         }
@@ -855,8 +867,8 @@ fn dialogs(s: &State, k: &Kit, layers: &mut Vec<El>) {
             .child(label(title, 13.0, k.c.text_base))
             .child(label(body, 12.0, k.c.text_muted).wrap());
     }
-    Dialog::new("help", "Make yourself at home")
-        .description("Jev inspector · local request workspace")
+    Dialog::new("help", "Help and shortcuts")
+        .description("Search, inspect, compare, and save requests")
         .open(s.workspace.help)
         .width(600.0)
         .fit()
