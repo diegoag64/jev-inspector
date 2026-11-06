@@ -333,14 +333,43 @@ fn compact_diagrams_open_on_readable_answer_and_fit_uses_the_settled_viewport() 
         });
         rt.frame(0.1);
         rt.frame(0.3);
-        assert_eq!(
-            rt.state.diagram.camera.scale, 1.0,
+        assert!(
+            (0.8..=1.0).contains(&rt.state.diagram.camera.scale),
             "readable initial scale for {slug}"
         );
         let (v, _) = rt.presented("request-diagram:viewport").unwrap();
         let (a, _) = rt.presented("request-diagram:node:6:answer").unwrap();
         assert!(a[0] >= v[0] && a[0] + a[2] <= v[0] + v[2] + 0.1);
         assert!(a[1] >= v[1] && a[1] < v[1] + 40.0);
+        if slug == "many-choices" {
+            let (x, y) = rt
+                .find("request-diagram:card-reveal")
+                .expect("tall answer has explicit overflow navigation");
+            rt.pointer_down(x, y);
+            rt.pointer_up(x, y);
+            rt.frame(0.3);
+            rt.frame(0.1);
+            let (a, _) = rt.presented("request-diagram:node:6:answer").unwrap();
+            assert!(
+                a[1] + a[3] <= v[1] + v[3] + 0.5,
+                "answer bottom is reachable"
+            );
+            let (x, y) = rt
+                .find("request-diagram:card-reveal")
+                .expect("return-to-top affordance");
+            rt.pointer_down(x, y);
+            rt.pointer_up(x, y);
+            rt.frame(0.3);
+            rt.frame(0.1);
+            let (a, _) = rt.presented("request-diagram:node:6:answer").unwrap();
+            assert!(a[1] >= v[1], "answer top is reachable");
+        } else {
+            assert!(
+                a[1] + a[3] <= v[1] + v[3] + 0.5,
+                "ordinary answer fully visible: {slug}: {a:?} in {v:?}"
+            );
+            assert!(rt.find("request-diagram:card-overflow").is_none());
+        }
         let (x, y) = rt.find("request-diagram:fit").unwrap();
         rt.pointer_down(x, y);
         rt.pointer_up(x, y);

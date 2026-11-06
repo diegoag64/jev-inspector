@@ -58,9 +58,10 @@ from the source card's right midpoint to the destination's left midpoint.
 documents. Automatic fitting tracks viewport changes; manual pan and zoom survive
 resizing. Fit recalculates the camera for the settled viewport.
 
-Use `Diagram::readable_focus("node-id")` to start on a specific card at actual size
-when fitting the entire graph would shrink it below 75%. Fit still shows the whole
-graph. The inspector uses this option for the answer card in compact panes.
+Use `Diagram::readable_focus("node-id")` to frame a specific card at 80–100% scale
+when fitting the entire graph would shrink it below 75%. Ordinary cards fit fully;
+taller cards expose Show bottom / Show top controls without shrinking text further.
+Fit still shows the whole graph. The inspector uses this option for answer cards.
 
 `NodeBody::Json(None)` displays “Not captured.” `Some(Value::Null)` displays the
 captured value `null`. Active edges and selected probability categories are

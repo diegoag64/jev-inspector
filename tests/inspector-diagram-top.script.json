@@ -1,0 +1,4 @@
+[
+  {"t": 0.2, "type": "tap", "key": "request-diagram:card-reveal"},
+  {"t": 0.8, "type": "tap", "key": "request-diagram:card-reveal"}
+]

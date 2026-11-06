@@ -66,6 +66,10 @@ Regression checks now compare all 14 exported captures with their originals and
 repeat the check for filtered exports. Runtime tests hold both pickers pending,
 cancel them, and cover failed import. Diagram tests check initial answer framing,
 Fit after layout and resizing, and preservation of manual camera changes.
+The follow-up review found that checking only the answer card's top edge missed
+clipped confidence and selected-value rows. Check its bottom edge too. Ordinary
+cards must fit completely at minimum size. Taller cards must expose overflow and
+provide working navigation to both ends; inspect both resulting views.
 
 Find and Copy tests navigate between requests during unfinished transitions, with
 and without reduced motion. They check that the current search field owns focus,

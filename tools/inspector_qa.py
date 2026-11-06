@@ -67,6 +67,9 @@ CASES["example-inventory-expanded"] = ["--fixture", "example-inventory", "--size
 CASES["example-box-light"] = ["--fixture", "example-invoice-box", "--size", "1100x700", "--script", "tests/inspector-overview-light.script.json", "--scroll-bars", "always"]
 
 CASES["example-unicode-scrolled"] = ["--fixture", "example-unicode", "--size", "1100x700", "--script", "tests/inspector-unicode-scroll.script.json"]
+CASES["example-many-choices-bottom"] = ["--fixture", "example-many-choices", "--size", "1100x700", "--script", "tests/inspector-diagram-bottom.script.json"]
+CASES["example-many-choices-top"] = ["--fixture", "example-many-choices", "--size", "1100x700", "--script", "tests/inspector-diagram-top.script.json"]
+CASES["example-choice-expanded"] = ["--fixture", "example-support-routing", "--size", "1100x700", "--script", "tests/inspector-diagram-expanded.script.json"]
 
 
 def verify_state(name: str, tree_path: Path) -> list[str]:
@@ -89,6 +92,12 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
             errors.append("Example selected the wrong exchange")
         if slug in ("unicode", "inventory") and "selected" not in keyed.get("tab-1", {}).get("states", []):
             errors.append("Large/Unicode example must show its request payload")
+    if name in ("example-many-choices-bottom", "example-many-choices-top"):
+        expected = "Show top" if name.endswith("bottom") else "Show bottom"
+        if keyed.get("request-diagram:card-reveal", {}).get("name") != expected:
+            errors.append(f"Tall-card navigation did not reach {expected}")
+    if name == "example-choice-expanded" and "requests" in keyed:
+        errors.append("Expected expanded diagram")
     selected_tabs = {"overview-dark": 0, "response-small-light": 2, "json-find": 2,
                      "json-tree": 2, "compare": 4, "diagram-expanded": 3,
                      "missing-compare": 4, "long-json-small": 2, "tree-small": 2, "compare-small-split": 4, "compare-small-expanded": 4}

@@ -211,7 +211,7 @@ fn explicit_fit_request_overrides_readable_initial_focus() {
     let size = [1400.0, 600.0];
     let focus = Some([400.0, 100.0, 320.0, 340.0]);
     state.initialize(size, focus);
-    assert_eq!(state.camera.scale, 1.0);
+    assert!((0.8..=1.0).contains(&state.camera.scale));
     state.request_fit();
     state.initialize(size, focus);
     assert_eq!(state.camera, Camera::fit(state.viewport, size));

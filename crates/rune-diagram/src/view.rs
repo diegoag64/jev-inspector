@@ -44,8 +44,8 @@ impl<'a, S: 'static> Diagram<'a, S> {
         }
         self
     }
-    /// When fitting would shrink text below 75%, start on this node at actual
-    /// size. Fit still shows the whole graph; manual pan/zoom survives resizing.
+    /// When fitting would shrink text below 75%, frame this node at 80–100%.
+    /// Taller cards get explicit top/bottom navigation. Fit shows the whole graph.
     pub fn readable_focus(mut self, node: &'a str) -> Self {
         self.readable_focus = Some(node);
         self
@@ -203,7 +203,7 @@ impl<'a, S: 'static> Diagram<'a, S> {
                 );
             }
         }
-        let viewport = el().key(format!("{}:viewport", self.key)).w_full().grow(1.0).min_h(0.0)
+        let mut viewport = el().key(format!("{}:viewport", self.key)).w_full().grow(1.0).min_h(0.0)
             .fill(k.c.layer_01).radius(8.0).clip_rounded(8.0).border(1.0,k.c.border_base)
             .focusable(true).role("group").label("Diagram canvas")
             .description("Drag background to pan. Wheel or pinch to zoom. Arrow keys pan, plus and minus zoom, zero fits, one sets actual size.")
@@ -241,6 +241,55 @@ impl<'a, S: 'static> Diagram<'a, S> {
                     Key::Text(t) if t=="1" => state.zoom(1.0 / state.camera.scale), _ => { state.manual_view = was_manual; return false; },
                 } true
             }).child(canvas(grid).absolute(0.0,0.0).size(w.max(1.0),h.max(1.0))).child(world);
+        if let Some([fx, fy, fw, fh]) = focus {
+            let visible_x = fx * cam.scale + cam.x;
+            let top = fy * cam.scale + cam.y;
+            let bottom = (fy + fh) * cam.scale + cam.y;
+            let below = bottom > h + 0.5;
+            let above = top < -0.5;
+            if (below || above) && visible_x < w && visible_x + fw * cam.scale > 0.0 {
+                viewport = viewport.child(
+                    row()
+                        .key(format!("{}:card-overflow", self.key))
+                        .pin(
+                            Some(8.0),
+                            if below { None } else { Some(8.0) },
+                            Some(8.0),
+                            if below { Some(8.0) } else { None },
+                        )
+                        .padding(6.0)
+                        .gap(8.0)
+                        .center_y()
+                        .justify_between()
+                        .fill(k.c.bg_base)
+                        .radius(6.0)
+                        .border(1.0, k.c.border_strong)
+                        .child(label(
+                            if below {
+                                "Card continues below"
+                            } else {
+                                "Card continues above"
+                            },
+                            12.0,
+                            k.c.text_base,
+                        ))
+                        .child(
+                            Button::new(if below { "Show bottom" } else { "Show top" })
+                                .on_press(move |s: &mut S| {
+                                    let state = get(s);
+                                    state.manual_view = true;
+                                    state.camera.y = if below {
+                                        state.viewport[1] - 8.0 - (fy + fh) * state.camera.scale
+                                    } else {
+                                        8.0 - fy * state.camera.scale
+                                    };
+                                })
+                                .build(k)
+                                .key(format!("{}:card-reveal", self.key)),
+                        ),
+                );
+            }
+        }
         col()
             .w_full()
             .grow(1.0)
@@ -250,7 +299,7 @@ impl<'a, S: 'static> Diagram<'a, S> {
             .child(viewport)
             .child(
                 label(
-                    "Drag / arrows to pan · Scroll / + / − to zoom · 0 to fit · 1 for readable actual size",
+                    "Drag / arrows to pan · Scroll to zoom · 0 Fit · 1 Actual size",
                     11.0,
                     k.c.text_muted,
                 )

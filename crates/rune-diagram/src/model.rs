@@ -186,10 +186,13 @@ impl DiagramState {
         let Some([x, y, w, h]) = focus else {
             return fit;
         };
+        let scale = ((self.viewport[0] - 16.0) / w)
+            .min((self.viewport[1] - 16.0) / h)
+            .clamp(0.8, 1.0);
         Camera {
-            x: (self.viewport[0] - w) / 2.0 - x,
-            y: ((self.viewport[1] - h) / 2.0).max(24.0) - y,
-            scale: 1.0,
+            x: (self.viewport[0] - w * scale) / 2.0 - x * scale,
+            y: ((self.viewport[1] - h * scale) / 2.0).max(8.0) - y * scale,
+            scale,
         }
     }
     pub(crate) fn initialize(&mut self, content: [f32; 2], focus: Option<[f32; 4]>) {
