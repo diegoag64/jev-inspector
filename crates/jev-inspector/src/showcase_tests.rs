@@ -17,6 +17,107 @@ fn runtime() -> rune::Runtime<State> {
     rt
 }
 
+fn wait_job(rt: &mut rune::Runtime<State>) {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while rt.state.workspace.job.is_some() {
+        assert!(std::time::Instant::now() < deadline, "file job timed out");
+        rt.state.poll_job();
+        std::thread::sleep(std::time::Duration::from_millis(2));
+    }
+    rt.frame(0.02);
+}
+
+#[test]
+fn showcase_session_round_trip_preserves_every_capture_and_filtered_exports() {
+    let mut rt = runtime();
+    rt.state.workspace.starred.insert(4);
+    let originals = serde_json::to_value(&rt.state.workspace.cache).unwrap();
+    let path = std::env::temp_dir().join(format!(
+        "jev-showcase-roundtrip-{}.json",
+        std::process::id()
+    ));
+    rt.update(|s, tx| session::save_dialog(s, tx, 0));
+    rt.frame(0.01);
+    rt.resolve_file_dialog(Some(path.clone())).unwrap();
+    rt.frame(0.01);
+    wait_job(&mut rt);
+    let saved = session::read(&path).unwrap();
+    assert_eq!(serde_json::to_value(&saved.exchanges).unwrap(), originals);
+    assert_eq!(saved.snapshot.requests.len(), 14);
+    assert!(saved.starred.contains(&4));
+    rt.update(session::open_dialog);
+    rt.frame(0.01);
+    rt.resolve_file_dialog(Some(path.clone())).unwrap();
+    rt.frame(0.01);
+    wait_job(&mut rt);
+    assert_eq!(
+        serde_json::to_value(&rt.state.workspace.cache).unwrap(),
+        originals
+    );
+    assert!(rt.state.workspace.starred.contains(&4));
+    rt.update(|s, _| {
+        s.return_live();
+        s.filter = TextEdit::new("status:200");
+        s.filter_rows();
+    });
+    let expected: Vec<_> = rt.state.visible.iter().map(|r| r.id).collect();
+    rt.update(|s, tx| session::save_dialog(s, tx, 0));
+    rt.frame(0.01);
+    rt.resolve_file_dialog(Some(path.clone())).unwrap();
+    rt.frame(0.01);
+    wait_job(&mut rt);
+    let filtered = session::read(&path).unwrap();
+    assert_eq!(filtered.exchanges.len(), expected.len());
+    for id in expected {
+        assert_eq!(
+            serde_json::to_value(&filtered.exchanges[&id]).unwrap(),
+            originals[id.to_string()]
+        );
+    }
+    std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn pending_open_and_save_pickers_pause_tour_before_cancel_or_failed_import() {
+    let mut rt = runtime();
+    for save in [false, true] {
+        rt.update(|s, tx| {
+            s.showcase.as_mut().unwrap().playing = true;
+            showcase::tick(s, 0.0, tx);
+            if save {
+                session::save_dialog(s, tx, 0);
+            } else {
+                session::open_dialog(s, tx);
+            }
+        });
+        rt.frame(0.01);
+        let selected = rt.state.selected;
+        assert!(rt.file_dialog().is_some());
+        rt.update(|s, tx| {
+            showcase::tick(s, 10.0, tx);
+        });
+        assert_eq!(rt.state.selected, selected);
+        assert!(!rt.state.showcase.as_ref().unwrap().playing);
+        rt.resolve_file_dialog(None).unwrap();
+        rt.frame(0.01);
+        assert_eq!(rt.state.selected, selected);
+    }
+    rt.update(|s, tx| {
+        s.showcase.as_mut().unwrap().playing = true;
+        session::open_dialog(s, tx);
+    });
+    rt.frame(0.01);
+    rt.resolve_file_dialog(Some(
+        std::env::temp_dir().join("jev-missing-showcase-folder/no-file.json"),
+    ))
+    .unwrap();
+    rt.frame(0.01);
+    wait_job(&mut rt);
+    assert!(!rt.state.showcase.as_ref().unwrap().playing);
+    assert_eq!(rt.state.selected, Some(14));
+    assert!(rt.state.workspace.notice.as_ref().unwrap().1);
+}
+
 #[test]
 fn catalog_exercises_typed_answers_payloads_and_protocol_edge_cases() {
     let mut s = State::default();

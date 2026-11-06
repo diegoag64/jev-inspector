@@ -165,6 +165,7 @@ fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
     result.map_err(|e| format!("Cannot save {}: {e}", path.display()))
 }
 pub fn save_dialog(s: &mut State, tx: &mut rune::Tx, kind: u8) {
+    crate::showcase::stop(s);
     if s.workspace.job.is_some() {
         return;
     }
@@ -196,6 +197,7 @@ pub fn save_dialog(s: &mut State, tx: &mut rune::Tx, kind: u8) {
     );
 }
 pub fn open_dialog(s: &mut State, tx: &mut rune::Tx) {
+    crate::showcase::stop(s);
     if s.workspace.job.is_some() {
         return;
     }
@@ -242,12 +244,14 @@ fn start_save(s: &mut State, path: PathBuf, kind: u8) {
         .copied()
         .collect();
     let offline = s.demo || s.offline_fixture || s.workspace.session_name.is_some();
-    if s.demo && s.workspace.session_name.is_none() {
-        exchanges = snapshot
-            .requests
-            .iter()
-            .map(|r| (r.id, crate::demo::exchange(r.id)))
-            .collect();
+    if s.demo && s.showcase.is_none() && s.workspace.session_name.is_none() {
+        // Legacy fixtures generate uncached captures on demand. Preserve captured
+        // values already in the cache, and never use that generator for the catalog.
+        for r in &snapshot.requests {
+            exchanges
+                .entry(r.id)
+                .or_insert_with(|| crate::demo::exchange(r.id));
+        }
     }
     let detail = s.detail.clone();
     let connection_path = s.connection_file.clone();

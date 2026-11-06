@@ -188,6 +188,7 @@ pub fn tick(s: &mut State, now: f64, tx: &mut Tx) -> bool {
         || s.workspace.session_name.is_some()
         || s.workspace.help
         || s.workspace.export
+        || s.workspace.job.is_some()
         || s.visible.len() != playback.items.len()
         || s.filter.focused
         || s.request_text.search.focused
