@@ -531,3 +531,234 @@ fn find_focus_and_copy_follow_current_capture_during_interrupted_transitions() {
         }
     }
 }
+
+#[test]
+fn diagram_keyboard_navigation_keeps_focused_cards_visible() {
+    for actual_size in [false, true] {
+        let mut rt = runtime();
+        rt.set_system_reduced_motion(actual_size);
+        rt.update(|s, _| showcase::select_example(s, "many-choices").unwrap());
+        rt.frame(0.3);
+        if actual_size {
+            rt.update(|s, _| s.diagram.zoom(1.0 / s.diagram.camera.scale));
+            rt.set_viewport((1100.0, 700.0), 1.5);
+            rt.frame(0.3);
+        }
+        let mut seen = std::collections::BTreeSet::new();
+        for step in 0..160 {
+            if step == 80 {
+                rt.update(|s, _| s.diagram.camera.pan(-2000.0, -1000.0));
+                rt.frame(0.3);
+            }
+            rt.key(rune::KeyEvent {
+                key: rune::Key::Tab,
+                mods: rune::Mods {
+                    shift: step >= 80,
+                    ..Default::default()
+                },
+            });
+            rt.frame(0.3);
+            let focused = rt.elements().into_iter().find(|e| e.focused);
+            if let Some(e) = focused
+                && e.key
+                    .as_deref()
+                    .is_some_and(|key| key.starts_with("request-diagram:node:"))
+            {
+                let key = e.key.unwrap();
+                let (r, _) = rt.presented(&key).unwrap();
+                let (v, _) = rt.presented("request-diagram:viewport").unwrap();
+                assert!(
+                    r[0] >= v[0]
+                        && r[1] >= v[1]
+                        && r[0] + r[2] <= v[0] + v[2] + 0.5
+                        && r[1] + r[3] <= v[1] + v[3] + 0.5,
+                    "Tab focus clipped: {key}: {r:?} in {v:?}"
+                );
+                seen.insert(key);
+            }
+        }
+        assert!(!seen.is_empty(), "Tab enters the cards");
+        // Start at the active card, then arrow through the whole group.
+        for _ in 0..80 {
+            rt.key(rune::KeyEvent {
+                key: rune::Key::Tab,
+                mods: Default::default(),
+            });
+            rt.frame(0.3);
+            if rt
+                .elements()
+                .iter()
+                .any(|e| e.focused && e.key.as_deref().is_some_and(|key| key.ends_with(":select")))
+            {
+                break;
+            }
+        }
+        let scale = rt.state.diagram.camera.scale;
+        for key in
+            std::iter::repeat_n(rune::Key::Down, 10).chain(std::iter::repeat_n(rune::Key::Up, 20))
+        {
+            rt.key(rune::KeyEvent {
+                key,
+                mods: Default::default(),
+            });
+            rt.frame(0.3);
+            if let Some(e) = rt.elements().into_iter().find(|e| e.focused)
+                && let Some(key) = e.key
+                && key.starts_with("request-diagram:node:")
+            {
+                let (r, _) = rt.presented(&key).unwrap();
+                let (v, _) = rt.presented("request-diagram:viewport").unwrap();
+                assert!(
+                    r[0] >= v[0]
+                        && r[1] >= v[1]
+                        && r[0] + r[2] <= v[0] + v[2] + 0.5
+                        && r[1] + r[3] <= v[1] + v[3] + 0.5,
+                    "Arrow focus clipped: {key}: {r:?} in {v:?}"
+                );
+                seen.insert(key);
+            }
+            assert_eq!(
+                rt.state.diagram.camera.scale, scale,
+                "navigation preserves zoom"
+            );
+        }
+        assert!(seen.len() >= 6, "all six cards reachable: {seen:?}");
+    }
+}
+
+#[test]
+fn traffic_text_contrast_passes_in_both_themes_and_densities() {
+    fn luminance(c: rune::Color) -> f32 {
+        c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722
+    }
+    let mut rt = runtime();
+    for dark in [false, true] {
+        for compact in [false, true] {
+            for slug in [
+                "support-routing",
+                "rate-limit",
+                "auth-error",
+                "pending-response",
+            ] {
+                rt.update(|s, _| {
+                    showcase::select_example(
+                        s,
+                        if slug == "pending-response" {
+                            "support-routing"
+                        } else {
+                            slug
+                        },
+                    )
+                    .unwrap();
+                    if slug == "pending-response" {
+                        let row = s
+                            .visible
+                            .iter_mut()
+                            .find(|r| Some(r.id) == s.selected)
+                            .unwrap();
+                        row.outcome = Outcome::Pending;
+                        row.status = None;
+                    }
+                    s.dark = dark;
+                    s.workspace.compact = compact;
+                });
+                rt.frame(0.3);
+                rt.frame(0.2);
+                let elements = rt.elements();
+                let suffix = format!("/rows/{}", rt.state.selected.unwrap());
+                let row = elements
+                    .iter()
+                    .find(|e| e.role == "row" && e.path.ends_with(&suffix))
+                    .expect("selected traffic row is mounted");
+                assert_eq!(row.fill.a, 1.0, "selection background is opaque");
+                let bg = luminance(row.fill);
+                let prefix = format!("{}/", row.path);
+                let mut checked = 0;
+                for e in &elements {
+                    if e.path.starts_with(&prefix)
+                        && e.text.is_some()
+                        && let Some(fg) = e.text_color
+                    {
+                        let foreground = luminance(fg) * fg.a + bg * (1.0 - fg.a);
+                        let ratio = (foreground.max(bg) + 0.05) / (foreground.min(bg) + 0.05);
+                        assert!(
+                            ratio >= 4.5,
+                            "selected text {:?}: contrast={ratio}, dark={dark}, compact={compact}",
+                            e.text
+                        );
+                        checked += 1;
+                    }
+                }
+                assert!(checked >= 5, "checked actual selected-row text");
+            }
+        }
+    }
+}
+
+#[test]
+fn diagram_card_properties_require_activation_and_remain_keyboard_reachable() {
+    let mut rt = runtime();
+    rt.update(|s, _| {
+        showcase::select_example(s, "support-routing").unwrap();
+        let mut detail = s.detail.clone().unwrap();
+        detail.request.json.as_mut().unwrap()["state"] = serde_json::json!({"nested":{"value":42}});
+        s.set_detail(detail);
+    });
+    rt.frame(0.3);
+    // Tab reaches the answer; two Up presses reach the state heading.
+    for _ in 0..80 {
+        rt.key(rune::KeyEvent {
+            key: rune::Key::Tab,
+            mods: Default::default(),
+        });
+        rt.frame(0.1);
+        if rt
+            .elements()
+            .iter()
+            .any(|e| e.focused && e.key.as_deref() == Some("request-diagram:node:6:answer:select"))
+        {
+            break;
+        }
+    }
+    for _ in 0..2 {
+        rt.key(rune::KeyEvent {
+            key: rune::Key::Up,
+            mods: Default::default(),
+        });
+        rt.frame(0.2);
+    }
+    assert_eq!(rt.state.diagram.selected.as_deref(), Some("state"));
+    rt.key(rune::KeyEvent {
+        key: rune::Key::Down,
+        mods: Default::default(),
+    });
+    rt.frame(0.2);
+    let focused = rt.elements().into_iter().find(|e| e.focused).unwrap();
+    let key = focused.key.unwrap();
+    assert!(
+        key.ends_with("/nested:toggle"),
+        "property control reached: {key}"
+    );
+    let path = key.strip_suffix(":toggle").unwrap();
+    assert!(
+        !rt.state.diagram.content.expanded(path),
+        "arrow navigation doesn't activate disclosures"
+    );
+    let (r, _) = rt.presented(&key).unwrap();
+    let (v, _) = rt.presented("request-diagram:viewport").unwrap();
+    assert!(
+        r[0] >= v[0]
+            && r[1] >= v[1]
+            && r[0] + r[2] <= v[0] + v[2] + 0.5
+            && r[1] + r[3] <= v[1] + v[3] + 0.5
+    );
+    rt.key(rune::KeyEvent {
+        key: rune::Key::Text(" ".into()),
+        mods: Default::default(),
+    });
+    rt.frame(0.2);
+    assert!(
+        rt.state.diagram.content.expanded(path),
+        "Space activates the focused disclosure"
+    );
+}

@@ -5,6 +5,30 @@ use rune_diagram::{Diagram, Edge, Graph, Node, NodeBody, NodeStatus, ResultConte
 use rune_kit::{Button, ButtonVariant, Kit};
 use serde_json::Value;
 
+/// Rune's Tab traversal runs after element key handlers. Restore the active
+/// card before traversal can enter it from either direction after a manual pan.
+pub fn reveal_keyboard_card(s: &mut State) {
+    let Some(detail) = s.detail.as_ref() else {
+        return;
+    };
+    let questions = detail
+        .request
+        .json
+        .as_ref()
+        .and_then(|v| v.get("questions"))
+        .and_then(Value::as_object);
+    let selected = questions.and_then(|q| {
+        q.get_key_value(&s.diagram_question)
+            .or_else(|| q.iter().next())
+    });
+    let extra = s.diagram.content.visible("categories").saturating_sub(12);
+    let (graph, _) = graph(detail, selected, extra);
+    let id = s.diagram.selected.as_deref().unwrap_or("answer");
+    if let Some(node) = graph.nodes.iter().find(|n| n.id == id) {
+        s.diagram.reveal(node.rect);
+    }
+}
+
 pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
     let questions = detail
         .request

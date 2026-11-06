@@ -21,11 +21,13 @@ impl ResultContent {
         state: &ContentState,
         get: impl Fn(&mut S) -> &mut ContentState + Copy + 'static,
         k: &Kit,
+        keyboard: bool,
     ) -> El {
         let mut body = col().w_full().gap(12.0);
         if !self.probabilities.is_empty() {
             body = body.child(
                 ProbabilityBars::new(key, &self.probabilities, self.selected.as_deref())
+                    .keyboard(keyboard)
                     .rows(state, get, k),
             );
         } else if let Some(selected) = &self.selected {

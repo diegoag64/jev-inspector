@@ -36,10 +36,19 @@ impl ContentState {
 pub struct DiagramContent<'a> {
     key: &'a str,
     value: Option<&'a Value>,
+    keyboard: bool,
 }
 impl<'a> DiagramContent<'a> {
     pub fn new(key: &'a str, value: Option<&'a Value>) -> Self {
-        Self { key, value }
+        Self {
+            key,
+            value,
+            keyboard: true,
+        }
+    }
+    pub(crate) fn keyboard(mut self, enabled: bool) -> Self {
+        self.keyboard = enabled;
+        self
     }
     pub fn build<S: 'static>(
         &self,
@@ -49,7 +58,7 @@ impl<'a> DiagramContent<'a> {
     ) -> El {
         let mut budget = 160;
         let content = match self.value {
-            Some(v) => value::<S>(v, self.key, state, get, k, 0, &mut budget),
+            Some(v) => value::<S>(v, self.key, state, get, k, 0, &mut budget, self.keyboard),
             None => copy("Not captured", k),
         };
         col()
@@ -80,6 +89,7 @@ fn child_path(parent: &str, key: &str) -> String {
     format!("{parent}/{}", key.replace('~', "~0").replace('/', "~1"))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn value<S: 'static>(
     v: &Value,
     path: &str,
@@ -88,6 +98,7 @@ fn value<S: 'static>(
     k: &Kit,
     depth: usize,
     budget: &mut usize,
+    keyboard: bool,
 ) -> El {
     if *budget == 0 || depth > 8 {
         return copy("Preview limit reached", k);
@@ -147,13 +158,24 @@ fn value<S: 'static>(
                     .variant(ButtonVariant::Ghost)
                     .on_press(move |s: &mut S| get(s).toggle(action.clone()))
                     .build(k)
+                    .focusable(keyboard)
                     .expanded(expanded)
                     .key(button_key),
                 );
                 *budget -= 1;
                 if expanded {
                     out = out.child(
-                        value::<S>(child, &child_key, state, get, k, depth + 1, budget).pl(10.0),
+                        value::<S>(
+                            child,
+                            &child_key,
+                            state,
+                            get,
+                            k,
+                            depth + 1,
+                            budget,
+                            keyboard,
+                        )
+                        .pl(10.0),
                     );
                 }
             } else {
@@ -171,6 +193,7 @@ fn value<S: 'static>(
                         k,
                         depth + 1,
                         budget,
+                        keyboard,
                     ));
             }
         }
@@ -181,6 +204,7 @@ fn value<S: 'static>(
                     .variant(ButtonVariant::Ghost)
                     .on_press(move |s: &mut S| get(s).more(action.clone()))
                     .build(k)
+                    .focusable(keyboard)
                     .key(format!("{path}:more")),
             );
         }
@@ -216,6 +240,7 @@ fn value<S: 'static>(
                 .variant(ButtonVariant::Ghost)
                 .on_press(move |s: &mut S| get(s).toggle(action.clone()))
                 .build(k)
+                .focusable(keyboard)
                 .key(format!("{path}:text")),
             );
         }

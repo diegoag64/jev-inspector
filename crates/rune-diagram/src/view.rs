@@ -158,6 +158,9 @@ impl<'a, S: 'static> Diagram<'a, S> {
             }
         }
         let mut world = el()
+            .role("radiogroup")
+            .label("Diagram cards")
+            .focus_group()
             .size(size[0], size[1])
             .opacity(if self.state.viewport[0] > 0.0 {
                 1.0
@@ -179,12 +182,21 @@ impl<'a, S: 'static> Diagram<'a, S> {
             let key = format!("{}:node:{}:{}", self.key, node.id.len(), node.id);
             world = world.child(
                 DiagramCard::new(&key, node)
+                    .tab_selected(
+                        self.state
+                            .selected
+                            .as_deref()
+                            .or(self.readable_focus)
+                            .unwrap_or(&self.graph.nodes[0].id)
+                            == node.id,
+                    )
                     .build(self.state, get, k)
                     .absolute(node.rect[0], node.rect[1]),
             );
         }
         let mut grid = Shape::new();
         let [w, h] = self.state.viewport;
+        let node_prefix = format!("{}:node:", self.key);
         // useDiagramViewport.ts thins the decorative grid at overview zooms.
         let spacing =
             (24.0 * cam.scale.max(1.0 / cam.scale.sqrt())).max(((w * h) / 12_000.0).sqrt());
@@ -206,7 +218,7 @@ impl<'a, S: 'static> Diagram<'a, S> {
         let mut viewport = el().key(format!("{}:viewport", self.key)).w_full().grow(1.0).min_h(0.0)
             .fill(k.c.layer_01).radius(8.0).clip_rounded(8.0).border(1.0,k.c.border_base)
             .focusable(true).role("group").label("Diagram canvas")
-            .description("Drag background to pan. Wheel or pinch to zoom. Arrow keys pan, plus and minus zoom, zero fits, one sets actual size.")
+            .description("Drag background to pan. Wheel or pinch to zoom. Canvas arrow keys pan. Tab enters cards; Up and Down browse them. Plus and minus zoom, zero fits, one sets actual size.")
             .on_layout_tx(move |s: &mut S, [_,_,w,h], tx| {
                 let state=get(s);
                 let changed = (state.viewport[0]-w).abs() > 0.5 || (state.viewport[1]-h).abs() > 0.5;
@@ -230,7 +242,8 @@ impl<'a, S: 'static> Diagram<'a, S> {
             .on_magnify(move |s: &mut S, e, _| {
                 initialize(s); get(s).manual_view = true; get(s).camera.zoom((1.0+e.delta).max(0.01), [e.x,e.y], [e.x,e.y]); true
             })
-            .on_key(move |s: &mut S, e, _| {
+            .on_key(move |s: &mut S, e, tx| {
+                if tx.focused().is_some_and(|key| key.starts_with(&node_prefix)) && matches!(e.key, Key::Left | Key::Right | Key::Up | Key::Down | Key::Home | Key::End) { return false; }
                 initialize(s); let state=get(s); let was_manual = state.manual_view; state.manual_view = true;
                 match &e.key {
                     Key::Left => state.camera.pan(40.0,0.0), Key::Right => state.camera.pan(-40.0,0.0),
@@ -241,7 +254,14 @@ impl<'a, S: 'static> Diagram<'a, S> {
                     Key::Text(t) if t=="1" => state.zoom(1.0 / state.camera.scale), _ => { state.manual_view = was_manual; return false; },
                 } true
             }).child(canvas(grid).absolute(0.0,0.0).size(w.max(1.0),h.max(1.0))).child(world);
-        if let Some([fx, fy, fw, fh]) = focus {
+        let active_card = self
+            .state
+            .selected
+            .as_deref()
+            .and_then(|id| self.graph.nodes.iter().find(|n| n.id == id))
+            .map(|n| n.rect)
+            .or(focus);
+        if let Some([fx, fy, fw, fh]) = active_card {
             let visible_x = fx * cam.scale + cam.x;
             let top = fy * cam.scale + cam.y;
             let bottom = (fy + fh) * cam.scale + cam.y;
@@ -299,7 +319,7 @@ impl<'a, S: 'static> Diagram<'a, S> {
             .child(viewport)
             .child(
                 label(
-                    "Drag / arrows to pan · Scroll to zoom · 0 Fit · 1 Actual size",
+                    "Drag to pan · ↑↓ browse cards · Scroll to zoom · 0 Fit · 1 Actual size",
                     11.0,
                     k.c.text_muted,
                 )
@@ -314,10 +334,19 @@ impl<'a, S: 'static> Diagram<'a, S> {
 pub struct DiagramCard<'a> {
     key: &'a str,
     node: &'a Node,
+    tab_selected: Option<bool>,
 }
 impl<'a> DiagramCard<'a> {
     pub fn new(key: &'a str, node: &'a Node) -> Self {
-        Self { key, node }
+        Self {
+            key,
+            node,
+            tab_selected: None,
+        }
+    }
+    fn tab_selected(mut self, selected: bool) -> Self {
+        self.tab_selected = Some(selected);
+        self
     }
     pub fn build<S: 'static>(
         &self,
@@ -355,14 +384,27 @@ impl<'a> DiagramCard<'a> {
             k.c.border_strong
         };
         let id = n.id.clone();
+        let rect = n.rect;
+        let in_diagram = self.tab_selected.is_some();
         let heading = col()
             .gap(if content_card { 5.0 } else { 7.0 })
             .w_full()
             .focusable(true)
-            .role("button")
+            .focus_selected(self.tab_selected.unwrap_or(selected))
+            .role(if self.tab_selected.is_some() {
+                "radio"
+            } else {
+                "button"
+            })
             .label(format!("Select {}", n.title))
             .key(format!("{}:select", self.key))
-            .on_press(move |s: &mut S| get(s).selected = Some(id.clone()))
+            .on_press(move |s: &mut S| {
+                let state = get(s);
+                state.selected = Some(id.clone());
+                if in_diagram {
+                    state.reveal(rect);
+                }
+            })
             .child(
                 text(&n.kind)
                     .font(TextStyle::new(12.0, 500.0).mono())
@@ -376,12 +418,18 @@ impl<'a> DiagramCard<'a> {
                     ))
                     .color(k.c.text_base),
             );
+        let heading = if in_diagram {
+            heading.checked(selected)
+        } else {
+            heading
+        };
         let body = match &n.body {
             NodeBody::Result(result) => result.build(
                 self.key,
                 &state.content,
                 move |s: &mut S| &mut get(s).content,
                 k,
+                self.tab_selected.unwrap_or(true),
             ),
             NodeBody::Text(t) => col()
                 .grow(1.0)
@@ -395,17 +443,14 @@ impl<'a> DiagramCard<'a> {
                         .wrap_anywhere()
                         .selectable(true),
                 ),
-            NodeBody::Json(v) => DiagramContent::new(self.key, v.as_ref()).build(
-                &state.content,
-                move |s: &mut S| &mut get(s).content,
-                k,
-            ),
-            NodeBody::Probabilities { values, selected } => ProbabilityBars::new(
-                self.key,
-                values,
-                selected.as_deref(),
-            )
-            .build(&state.content, move |s: &mut S| &mut get(s).content, k),
+            NodeBody::Json(v) => DiagramContent::new(self.key, v.as_ref())
+                .keyboard(self.tab_selected.unwrap_or(true))
+                .build(&state.content, move |s: &mut S| &mut get(s).content, k),
+            NodeBody::Probabilities { values, selected } => {
+                ProbabilityBars::new(self.key, values, selected.as_deref())
+                    .keyboard(self.tab_selected.unwrap_or(true))
+                    .build(&state.content, move |s: &mut S| &mut get(s).content, k)
+            }
         };
         col()
             .key(self.key)
@@ -440,6 +485,7 @@ pub struct ProbabilityBars<'a> {
     key: &'a str,
     values: &'a [(String, f64)],
     selected: Option<&'a str>,
+    keyboard: bool,
 }
 impl<'a> ProbabilityBars<'a> {
     pub fn new(key: &'a str, values: &'a [(String, f64)], selected: Option<&'a str>) -> Self {
@@ -447,7 +493,12 @@ impl<'a> ProbabilityBars<'a> {
             key,
             values,
             selected,
+            keyboard: true,
         }
+    }
+    pub(crate) fn keyboard(mut self, enabled: bool) -> Self {
+        self.keyboard = enabled;
+        self
     }
     pub fn build<S: 'static>(
         &self,
@@ -524,6 +575,7 @@ impl<'a> ProbabilityBars<'a> {
                 .variant(ButtonVariant::Ghost)
                 .on_press(move |s: &mut S| get(s).more(key.clone()))
                 .build(k)
+                .focusable(self.keyboard)
                 .key(format!("{}:more", self.key)),
             );
         }

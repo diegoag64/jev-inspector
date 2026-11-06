@@ -210,4 +210,19 @@ impl DiagramState {
         let center = [self.viewport[0] / 2.0, self.viewport[1] / 2.0];
         self.camera.zoom(factor, center, center);
     }
+    /// Reveal a card without changing zoom; tall cards start at their heading.
+    /// Call before Tab traversal if the surrounding app can enter the diagram
+    /// from another pane after a manual pan.
+    pub fn reveal(&mut self, rect: [f32; 4]) {
+        let [x, y, w, h] = rect.map(|v| v * self.camera.scale);
+        let [vw, vh] = self.viewport;
+        let target_h = h.min((vh - 16.0).max(1.0));
+        if x + self.camera.x < 8.0 || x + w + self.camera.x > vw - 8.0 {
+            self.camera.x = (vw - w) / 2.0 - x;
+        }
+        if y + self.camera.y < 8.0 || y + target_h + self.camera.y > vh - 8.0 {
+            self.camera.y = 8.0 - y;
+        }
+        self.manual_view = true;
+    }
 }

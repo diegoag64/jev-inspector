@@ -70,6 +70,8 @@ CASES["example-unicode-scrolled"] = ["--fixture", "example-unicode", "--size", "
 CASES["example-many-choices-bottom"] = ["--fixture", "example-many-choices", "--size", "1100x700", "--script", "tests/inspector-diagram-bottom.script.json"]
 CASES["example-many-choices-top"] = ["--fixture", "example-many-choices", "--size", "1100x700", "--script", "tests/inspector-diagram-top.script.json"]
 CASES["example-choice-expanded"] = ["--fixture", "example-support-routing", "--size", "1100x700", "--script", "tests/inspector-diagram-expanded.script.json"]
+CASES["example-diagram-keyboard"] = ["--fixture", "example-many-choices", "--size", "1100x700", "--script", "tests/inspector-diagram-keyboard.script.json"]
+CASES["example-diagram-keyboard-state"] = ["--fixture", "example-many-choices", "--size", "1100x700", "--script", "tests/inspector-diagram-keyboard-state.script.json"]
 
 
 def verify_state(name: str, tree_path: Path) -> list[str]:
@@ -98,6 +100,16 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
             errors.append(f"Tall-card navigation did not reach {expected}")
     if name == "example-choice-expanded" and "requests" in keyed:
         errors.append("Expected expanded diagram")
+    if name in ("example-diagram-keyboard", "example-diagram-keyboard-state"):
+        target = "5:state" if name.endswith("-state") else "6:answer"
+        control = keyed.get(f"request-diagram:node:{target}:select", {})
+        if "focused" not in control.get("states", []):
+            errors.append(f"Expected keyboard focus on {target}")
+        r, v = control.get("bounds"), keyed.get("request-diagram:viewport", {}).get("bounds")
+        if not r or not v or not (r[0] >= v[0] and r[1] >= v[1] and r[0]+r[2] <= v[0]+v[2]+0.5 and r[1]+r[3] <= v[1]+v[3]+0.5):
+            errors.append("Keyboard focus is outside the visible diagram canvas")
+        if name.endswith("-state") and "request-diagram:card-overflow" in keyed:
+            errors.append("Overflow hint must describe the active card, not a different clipped card")
     selected_tabs = {"overview-dark": 0, "response-small-light": 2, "json-find": 2,
                      "json-tree": 2, "compare": 4, "diagram-expanded": 3,
                      "missing-compare": 4, "long-json-small": 2, "tree-small": 2, "compare-small-split": 4, "compare-small-expanded": 4}

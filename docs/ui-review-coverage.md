@@ -71,6 +71,17 @@ clipped confidence and selected-value rows. Check its bottom edge too. Ordinary
 cards must fit completely at minimum size. Taller cards must expose overflow and
 provide working navigation to both ends; inspect both resulting views.
 
+Keyboard inspection must verify visible focus, not just a focused flag or a
+reachable key. Walk Tab and Shift+Tab after manual panning, then browse every card
+and its controls with arrows. Keep the focused bounds inside the canvas and
+verify that navigating to a disclosure does not activate it. The card selection
+group now reveals the active card without changing zoom.
+
+Measure selected-row foreground/background pairs in both themes and row
+densities. The contrast regression reads actual Runtime element colors for
+metadata, timing, status and selection surfaces, including pending and error
+rows. It requires at least 4.5:1 for each text element; it is not a full WCAG audit.
+
 Find and Copy tests navigate between requests during unfinished transitions, with
 and without reduced motion. They check that the current search field owns focus,
 receives typing, and copies exactly the current JSON. This caught a focus loss

@@ -85,6 +85,13 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
         );
     let mut root = col()
         .key("workspace")
+        .on_key(|s: &mut State, event, _| {
+            if event.key == rune::Key::Tab && s.tab == 3 && !s.workspace.help && !s.workspace.export
+            {
+                diagram::reveal_keyboard_card(s);
+            }
+            false
+        })
         .on_layout_tx(|s: &mut State, r, tx| {
             s.workspace.window_width = r[2];
             s.workspace.window_height = r[3];
@@ -597,6 +604,10 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
     style.header_height = 33.0;
     style.cell_pad = 9.0;
     style.rule = k.c.border_base;
+    // Opaque selection surfaces keep supporting text and semantic status readable.
+    style.selected = rune::color::hex(if k.dark { "#303030" } else { "#ededed" }).unwrap();
+    style.muted = rune::color::hex(if k.dark { "#b8b8b8" } else { "#5c5c5c" }).unwrap();
+    let supporting = style.muted;
     let table_kit = k.clone();
     Table::new(
         |s: &State| &s.table,
@@ -678,7 +689,7 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                             clip(r.model.as_deref().unwrap_or("Model unavailable"), 23)
                         ),
                         10.0,
-                        k.c.text_muted,
+                        supporting,
                     )),
             ),
             "request" => Cell::text(format!("#{:03} {}", r.id, r.path)),

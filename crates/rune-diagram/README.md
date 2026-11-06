@@ -23,7 +23,15 @@ Drag the background to pan. Use the mouse wheel, trackpad pinch, or +/− button
 to zoom. Fit restores the overview. With the canvas focused, arrow keys pan,
 +/− zoom, and 0 fits. Click card headings to select a node. Nested JSON objects
 expand inside their own scrollable cards; scrolling inside a card scrolls its
-content instead of zooming the canvas.
+content instead of zooming the canvas. Tab enters the card selection group. Arrow
+keys browse cards and the active card's controls; Space activates a disclosure.
+Selecting a card reveals it without changing zoom. Other cards remain available
+through arrow navigation, pointer input, and their accessibility actions.
+
+If the app can enter the diagram from another pane after a manual pan, call
+`DiagramState::reveal(active_node.rect)` in its root Tab key handler before Rune
+performs traversal. The inspector uses this to support forward and backward Tab
+entry while preserving the current zoom.
 
 ## Component API
 

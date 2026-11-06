@@ -1,0 +1,8 @@
+[
+  {"t": 0.1, "type": "tap", "key": "request-diagram:zoom-out"},
+  {"t": 0.3, "type": "tap", "key": "request-diagram:zoom-in"},
+  {"t": 0.5, "type": "key", "name": "Tab"},
+  {"t": 0.6, "type": "key", "name": "Tab"},
+  {"t": 0.7, "type": "key", "name": "Tab"},
+  {"t": 0.8, "type": "key", "name": "Tab"}
+]
