@@ -168,6 +168,8 @@ impl JsonDocument {
                         doc.search_open = !doc.search_open;
                         if !doc.search_open {
                             doc.search = rune::TextEdit::default();
+                        } else {
+                            doc.search.focused = true;
                         }
                     })
                     .build(k)

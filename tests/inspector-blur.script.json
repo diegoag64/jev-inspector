@@ -1,0 +1,223 @@
+[
+  {
+    "t": 0.293,
+    "type": "tap",
+    "key": "request-diagram:node:6:answer:select"
+  },
+  {
+    "t": 0.423,
+    "type": "tap",
+    "key": "request-diagram:viewport"
+  },
+  {
+    "t": 0.52,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.533,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.546,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.559,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.572,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.585,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.598,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.611,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.624,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.637,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.65,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.663,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.676,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.689,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.702,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.715,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.728,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.741,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.754,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.767,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.78,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.793,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.806,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.819,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.832,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.845,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.858,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.871,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.884,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.897,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.91,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.923,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.936,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.949,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.962,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.975,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 0.988,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 1.001,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 1.014,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 1.027,
+    "type": "key",
+    "name": "Right"
+  },
+  {
+    "t": 1.105,
+    "type": "tap",
+    "key": "showcase-tour"
+  },
+  {
+    "t": 1.203,
+    "type": "key",
+    "name": "Tab",
+    "shift": true
+  }
+]

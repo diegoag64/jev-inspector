@@ -1,4 +1,4 @@
-use rune::{El, ScrollSpec, TextStyle, col, text};
+use rune::{El, Key, ScrollPos, ScrollSpec, TextStyle, col, el, text};
 use rune_kit::{Button, ButtonVariant, Kit};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
@@ -8,6 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub struct ContentState {
     expanded: BTreeSet<String>,
     pages: BTreeMap<String, usize>,
+    scroll: BTreeMap<String, [f32; 4]>,
 }
 impl ContentState {
     pub fn toggle(&mut self, path: String) {
@@ -61,17 +62,92 @@ impl<'a> DiagramContent<'a> {
             Some(v) => value::<S>(v, self.key, state, get, k, 0, &mut budget, self.keyboard),
             None => copy("Not captured", k),
         };
-        col()
-            .key(format!("{}:content", self.key))
+        let key = format!("{}:content", self.key);
+        let watch_key = key.clone();
+        let input_key = key.clone();
+        let rows_key = format!("{}:rows", self.key);
+        let mut pos = ScrollPos::default();
+        if let (Some(v), Some(r)) = (state.scroll.get(&key), state.scroll.get(&rows_key)) {
+            pos.viewport = [v[2], v[3]];
+            pos.max[1] = (r[3] - v[3]).max(0.0);
+            pos.offset[1] = (v[1] - r[1]).clamp(0.0, pos.max[1]);
+        }
+        let overflow = pos.max[1] > 0.5;
+        let viewport = col()
+            .key(key.clone())
             .w_full()
             .grow(1.0)
             .min_h(0.0)
             .scroll(ScrollSpec {
                 stick_bottom: false,
             })
-            .child(content)
+            .on_layout(move |s: &mut S, rect| {
+                let state = get(s);
+                if state.scroll.len() >= 256 && !state.scroll.contains_key(&watch_key) {
+                    state.scroll.clear();
+                }
+                state.scroll.insert(watch_key.clone(), rect);
+            })
+            .focusable(self.keyboard && overflow)
+            .on_key(move |_: &mut S, event, tx| {
+                match event.key {
+                    Key::PageDown => tx.scroll_page(input_key.clone(), 1),
+                    Key::PageUp => tx.scroll_page(input_key.clone(), -1),
+                    Key::Home => tx.scroll_to_y(input_key.clone(), 0.0),
+                    Key::End => tx.scroll_to_bottom(input_key.clone()),
+                    _ => return false,
+                }
+                true
+            })
+            .child(content.on_layout(move |s: &mut S, rect| {
+                get(s).scroll.insert(rows_key.clone(), rect);
+            }))
             .role("region")
             .label("Captured properties")
+            .help("Page Up / Page Down scroll properties; Home / End jump to the first or last property");
+        let mut area = col().grow(1.0).min_h(0.0).w_full().pr(12.0).child(viewport);
+        if overflow {
+            let track = (pos.viewport[1] - 4.0).max(1.0);
+            let height = (track * pos.viewport[1] / (pos.viewport[1] + pos.max[1]))
+                .clamp(16.0_f32.min(track), track);
+            let travel = track - height;
+            let top = 2.0 + travel * pos.offset[1] / pos.max[1];
+            let page_key = key.clone();
+            area = area.child(
+                el().key(format!("{}:scrollbar", self.key))
+                    .pin(None, Some(0.0), Some(0.0), Some(0.0))
+                    .w(10.0)
+                    .fill(k.c.layer_02)
+                    .a11y_hidden()
+                    .on_drag(move |_: &mut S, d, tx| {
+                        if d.phase == rune::Phase::Down {
+                            tx.scroll_page(page_key.clone(), if d.y < top { -1 } else { 1 });
+                        }
+                    })
+                    .child(
+                        el().key(format!("{}:scroll-thumb", self.key))
+                            .absolute(2.0, top)
+                            .size(6.0, height)
+                            .radius(3.0)
+                            .fill(k.c.text_faint)
+                            .hover(k.c.text_muted)
+                            .on_drag(move |_: &mut S, d, tx| {
+                                if d.cancelled() || travel <= 0.0 {
+                                    return;
+                                }
+                                if d.phase == rune::Phase::Down {
+                                    d.data = pos.offset[1];
+                                }
+                                tx.scroll_to_instant(
+                                    key.clone(),
+                                    0.0,
+                                    (d.data + d.dy * pos.max[1] / travel).clamp(0.0, pos.max[1]),
+                                );
+                            }),
+                    ),
+            );
+        }
+        area
     }
 }
 

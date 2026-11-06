@@ -159,6 +159,11 @@ pub fn view(s: &State, request: bool, k: &Kit, cx: &Cx<State>) -> El {
                         })
                         .style(style)
                         .build(s, k)
+                        .label(if request {
+                            "Request JSON properties"
+                        } else {
+                            "Response JSON properties"
+                        })
                         .grow(1.0)
                         .min_h(0.0),
                 )

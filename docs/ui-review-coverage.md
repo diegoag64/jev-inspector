@@ -77,6 +77,13 @@ and its controls with arrows. Keep the focused bounds inside the canvas and
 verify that navigating to a disclosure does not activate it. The card selection
 group now reveals the active card without changing zoom.
 
+Also start the tour after panning away, then Shift+Tab from its cleared-focus
+state. Element-level handlers cannot see that first key. Inspect overflow inside
+each card independently of the outer frame: scalar-only properties must expose a
+resting thumb and accept Page Up/Down and Home/End through their focused viewport.
+Test Find by clicking its icon and typing immediately, as well as by shortcut.
+Check accessible names on the tree widget itself, not only its named rows.
+
 Measure selected-row foreground/background pairs in both themes and row
 densities. The contrast regression reads actual Runtime element colors for
 metadata, timing, status and selection surfaces, including pending and error

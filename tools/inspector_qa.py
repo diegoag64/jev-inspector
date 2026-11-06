@@ -73,6 +73,11 @@ CASES["example-choice-expanded"] = ["--fixture", "example-support-routing", "--s
 CASES["example-diagram-keyboard"] = ["--fixture", "example-many-choices", "--size", "1100x700", "--script", "tests/inspector-diagram-keyboard.script.json"]
 CASES["example-diagram-keyboard-state"] = ["--fixture", "example-many-choices", "--size", "1100x700", "--script", "tests/inspector-diagram-keyboard-state.script.json"]
 
+CASES["example-diagram-blur"] = ["--fixture", "example-support-routing", "--size", "1100x700", "--script", "tests/inspector-blur.script.json"]
+CASES["example-properties-top"] = ["--fixture", "example-support-routing", "--size", "1100x700", "--script", "tests/inspector-properties-top.script.json"]
+CASES["example-properties-bottom"] = ["--fixture", "example-support-routing", "--size", "1100x700", "--script", "tests/inspector-properties-bottom.script.json"]
+CASES["example-find-click"] = ["--fixture", "example-models", "--size", "1100x700", "--script", "tests/inspector-find-click.script.json"]
+
 
 def verify_state(name: str, tree_path: Path) -> list[str]:
     """A rendered PNG is not enough: verify the scripted workflow reached its destination."""
@@ -100,7 +105,7 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
             errors.append(f"Tall-card navigation did not reach {expected}")
     if name == "example-choice-expanded" and "requests" in keyed:
         errors.append("Expected expanded diagram")
-    if name in ("example-diagram-keyboard", "example-diagram-keyboard-state"):
+    if name in ("example-diagram-keyboard", "example-diagram-keyboard-state", "example-diagram-blur"):
         target = "5:state" if name.endswith("-state") else "6:answer"
         control = keyed.get(f"request-diagram:node:{target}:select", {})
         if "focused" not in control.get("states", []):
@@ -110,6 +115,20 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
             errors.append("Keyboard focus is outside the visible diagram canvas")
         if name.endswith("-state") and "request-diagram:card-overflow" in keyed:
             errors.append("Overflow hint must describe the active card, not a different clipped card")
+    if name.startswith("example-properties-"):
+        control = keyed.get("request-diagram:node:5:state:content", {})
+        if "focused" not in control.get("states", []):
+            errors.append("Properties viewport does not own keyboard focus")
+        if name.endswith("-bottom"):
+            message = next((n for n in nodes if n.get("name") == "My invoice was charged twice."), {})
+            r, v = message.get("bounds"), control.get("bounds")
+            if not r or not v or not (r[1] >= v[1] and r[1]+r[3] <= v[1]+v[3]+0.5):
+                errors.append("Final scalar property is clipped after keyboard scrolling")
+    if name == "example-find-click" and "ZZZ-unmatched" not in json.dumps(tree):
+        errors.append("Click-open Find did not accept immediate typing")
+    if name in ("json-tree", "tree-small", "example-inventory-expanded"):
+        if not any(n.get("role") == "tree" and n.get("name") in ("Request JSON properties", "Response JSON properties") for n in nodes):
+            errors.append("JSON property tree lacks its document name")
     selected_tabs = {"overview-dark": 0, "response-small-light": 2, "json-find": 2,
                      "json-tree": 2, "compare": 4, "diagram-expanded": 3,
                      "missing-compare": 4, "long-json-small": 2, "tree-small": 2, "compare-small-split": 4, "compare-small-expanded": 4}

@@ -248,6 +248,11 @@ impl State {
     }
 }
 pub fn on_key(s: &mut State, event: &rune::KeyEvent, tx: &mut Tx) -> bool {
+    // Element handlers cannot receive Tab after an action clears focus.
+    if event.key == rune::Key::Tab && s.tab == 3 && !s.workspace.help && !s.workspace.export {
+        diagram::reveal_keyboard_card(s);
+        return false;
+    }
     if event.is_command('k') || (event.is_command('f') && !matches!(s.tab, 1 | 2)) {
         s.request_text.search.focused = false;
         s.response_text.search.focused = false;

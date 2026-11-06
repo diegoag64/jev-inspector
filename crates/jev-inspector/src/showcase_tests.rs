@@ -18,6 +18,141 @@ fn runtime() -> rune::Runtime<State> {
     rt
 }
 
+fn press(rt: &mut rune::Runtime<State>, key: rune::Key, shift: bool) {
+    rt.key(rune::KeyEvent {
+        key,
+        mods: rune::Mods {
+            shift,
+            ..Default::default()
+        },
+    });
+    rt.frame(0.3);
+}
+
+fn click(rt: &mut rune::Runtime<State>, key: &str) {
+    rt.frame(0.3);
+    rt.frame(0.3);
+    let (x, y) = rt.find(key).unwrap();
+    rt.pointer_down(x, y);
+    rt.pointer_up(x, y);
+    rt.frame(0.3);
+}
+
+#[test]
+fn find_icon_accepts_immediate_typing_and_property_trees_are_named() {
+    let mut rt = runtime();
+    for (tab, prefix, label) in [
+        (1, "request-json", "Request JSON properties"),
+        (2, "response-json", "Response JSON properties"),
+    ] {
+        rt.update(|s, _| {
+            showcase::select_example(s, "support-routing").unwrap();
+            s.tab = tab;
+        });
+        rt.frame(0.3);
+        click(&mut rt, &format!("{prefix}:find"));
+        press(&mut rt, rune::Key::Text("invoice".into()), false);
+        let doc = if tab == 1 {
+            &rt.state.request_text
+        } else {
+            &rt.state.response_text
+        };
+        assert_eq!(doc.search.text, "invoice");
+        click(&mut rt, &format!("{prefix}:find"));
+        click(&mut rt, &format!("{prefix}:find"));
+        press(&mut rt, rune::Key::Text("again".into()), false);
+        let doc = if tab == 1 {
+            &rt.state.request_text
+        } else {
+            &rt.state.response_text
+        };
+        assert_eq!(doc.search.text, "again");
+        click(&mut rt, &format!("{prefix}:tree"));
+        fn named_tree(v: &serde_json::Value, label: &str) -> bool {
+            (v["role"] == "tree" && v["name"] == label)
+                || v["children"]
+                    .as_array()
+                    .is_some_and(|items| items.iter().any(|v| named_tree(v, label)))
+        }
+        assert!(named_tree(&rt.accessibility_json(), label), "{label}");
+    }
+}
+
+#[test]
+fn diagram_backward_entry_after_tour_blur_reveals_heading() {
+    let mut rt = runtime();
+    rt.update(|s, _| showcase::select_example(s, "support-routing").unwrap());
+    rt.frame(0.3);
+    click(&mut rt, "request-diagram:node:6:answer:select");
+    rt.update(|s, _| s.diagram.camera.pan(-2000.0, -1000.0));
+    rt.frame(0.3);
+    let zoom = rt.state.diagram.camera.scale;
+    click(&mut rt, "showcase-tour");
+    assert!(
+        !rt.elements().iter().any(|e| e.focused),
+        "tour start clears focus"
+    );
+    press(&mut rt, rune::Key::Tab, true);
+    let e = rt.elements().into_iter().find(|e| e.focused).unwrap();
+    let (r, _) = rt.presented(e.key.as_deref().unwrap()).unwrap();
+    let (v, _) = rt.presented("request-diagram:viewport").unwrap();
+    assert!(
+        r[0] >= v[0]
+            && r[1] >= v[1]
+            && r[0] + r[2] <= v[0] + v[2] + 0.5
+            && r[1] + r[3] <= v[1] + v[3] + 0.5,
+        "{r:?} in {v:?}"
+    );
+    assert_eq!(rt.state.diagram.camera.scale, zoom);
+}
+
+#[test]
+fn scalar_diagram_properties_scroll_with_keyboard_and_expose_thumb() {
+    for scale in [1.0, 1.5] {
+        let mut rt = runtime();
+        rt.set_viewport((1100.0, 700.0), scale);
+        rt.update(|s, _| showcase::select_example(s, "support-routing").unwrap());
+        rt.frame(0.3);
+        click(&mut rt, "request-diagram:node:6:answer:select");
+        press(&mut rt, rune::Key::Home, false);
+        rt.frame(0.3);
+        let zoom = rt.state.diagram.camera.scale;
+        assert!(
+            rt.find("request-diagram:node:5:state:scroll-thumb")
+                .is_some()
+        );
+        press(&mut rt, rune::Key::Down, false);
+        let focused = rt.elements().into_iter().find(|e| e.focused).unwrap();
+        assert_eq!(
+            focused.key.as_deref(),
+            Some("request-diagram:node:5:state:content")
+        );
+        press(&mut rt, rune::Key::PageDown, false);
+        rt.frame(0.3);
+        let message = rt
+            .elements()
+            .into_iter()
+            .find(|e| e.text.as_deref() == Some("My invoice was charged twice."))
+            .unwrap();
+        let v = rt
+            .elements()
+            .into_iter()
+            .find(|e| e.key.as_deref() == Some("request-diagram:node:5:state:content"))
+            .unwrap()
+            .rect;
+        let r = message.rect;
+        assert!(
+            r[1] >= v[1] && r[1] + r[3] <= v[1] + v[3] + 0.5,
+            "message {r:?} in {v:?}"
+        );
+        press(&mut rt, rune::Key::Home, false);
+        assert_eq!(rt.state.diagram.selected.as_deref(), Some("state"));
+        press(&mut rt, rune::Key::End, false);
+        assert_eq!(rt.state.diagram.selected.as_deref(), Some("state"));
+        assert_eq!(rt.state.diagram.camera.scale, zoom);
+    }
+}
+
 fn wait_job(rt: &mut rune::Runtime<State>) {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
     while rt.state.workspace.job.is_some() {

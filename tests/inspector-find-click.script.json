@@ -1,0 +1,1 @@
+[{"type": "tap", "key": "response-json:find", "t": 0.5}, {"type": "type", "text": "ZZZ-unmatched", "every": 0.01, "t": 0.7}]
