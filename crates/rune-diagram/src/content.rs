@@ -1,0 +1,224 @@
+use rune::{El, ScrollSpec, TextStyle, col, text};
+use rune_kit::{Button, ButtonVariant, Kit};
+use serde_json::Value;
+use std::collections::{BTreeMap, BTreeSet};
+
+/// Bounded disclosure state. Reuse a stable key for each independent card.
+#[derive(Default)]
+pub struct ContentState {
+    expanded: BTreeSet<String>,
+    pages: BTreeMap<String, usize>,
+}
+impl ContentState {
+    pub fn toggle(&mut self, path: String) {
+        if !self.expanded.remove(&path) && self.expanded.len() < 256 {
+            self.expanded.insert(path);
+        }
+    }
+    pub fn expanded(&self, path: &str) -> bool {
+        self.expanded.contains(path)
+    }
+    pub fn visible(&self, path: &str) -> usize {
+        self.pages.get(path).copied().unwrap_or(12)
+    }
+    pub fn more(&mut self, path: String) {
+        self.more_by(path, 12);
+    }
+    pub fn more_by(&mut self, path: String, step: usize) {
+        if self.pages.contains_key(&path) || self.pages.len() < 256 {
+            let n = self.pages.entry(path).or_insert(12);
+            *n = n.saturating_add(step).min(2048);
+        }
+    }
+}
+
+/// Lazily expanded JSON, with bounded text, depth and mounted rows.
+pub struct DiagramContent<'a> {
+    key: &'a str,
+    value: Option<&'a Value>,
+}
+impl<'a> DiagramContent<'a> {
+    pub fn new(key: &'a str, value: Option<&'a Value>) -> Self {
+        Self { key, value }
+    }
+    pub fn build<S: 'static>(
+        &self,
+        state: &ContentState,
+        get: impl Fn(&mut S) -> &mut ContentState + Copy + 'static,
+        k: &Kit,
+    ) -> El {
+        let mut budget = 160;
+        let content = match self.value {
+            Some(v) => value::<S>(v, self.key, state, get, k, 0, &mut budget),
+            None => copy("Not captured", k),
+        };
+        col()
+            .key(format!("{}:content", self.key))
+            .w_full()
+            .grow(1.0)
+            .min_h(0.0)
+            .scroll(ScrollSpec {
+                stick_bottom: false,
+            })
+            .child(content)
+            .role("region")
+            .label("Captured properties")
+    }
+}
+
+fn copy(value: impl Into<String>, k: &Kit) -> El {
+    text(value)
+        .w_full()
+        .wrap_anywhere()
+        .font(TextStyle::new(12.0, 400.0))
+        .color(k.c.text_base)
+        .selectable(true)
+}
+
+// JSON Pointer escaping keeps a key containing '/' distinct from nested properties.
+fn child_path(parent: &str, key: &str) -> String {
+    format!("{parent}/{}", key.replace('~', "~0").replace('/', "~1"))
+}
+
+fn value<S: 'static>(
+    v: &Value,
+    path: &str,
+    state: &ContentState,
+    get: impl Fn(&mut S) -> &mut ContentState + Copy + 'static,
+    k: &Kit,
+    depth: usize,
+    budget: &mut usize,
+) -> El {
+    if *budget == 0 || depth > 8 {
+        return copy("Preview limit reached", k);
+    }
+    *budget -= 1;
+    let mut out = col().w_full().gap(6.0);
+    if v.is_object() || v.is_array() {
+        let count = v
+            .as_object()
+            .map(|o| o.len())
+            .or_else(|| v.as_array().map(|a| a.len()))
+            .unwrap_or(0);
+        if count == 0 {
+            return copy(
+                if v.is_array() {
+                    "[] Empty array"
+                } else {
+                    "{} Empty object"
+                },
+                k,
+            );
+        }
+        let limit = state.visible(path).min(count);
+        // Enumerate only the visible page; unopened subtrees are never rendered.
+        let entries: Box<dyn Iterator<Item = (String, &Value)> + '_> = match v {
+            Value::Object(o) => Box::new(o.iter().take(limit).map(|(n, v)| (n.clone(), v))),
+            Value::Array(a) => Box::new(
+                a.iter()
+                    .take(limit)
+                    .enumerate()
+                    .map(|(i, v)| (i.to_string(), v)),
+            ),
+            _ => unreachable!(),
+        };
+        for (name, child) in entries {
+            if *budget == 0 {
+                out = out.child(copy("Preview limit reached", k));
+                break;
+            }
+            let child_key = child_path(path, &name);
+            let label = if name.is_empty() { "\"\"" } else { &name };
+            if child.is_object() || child.is_array() {
+                let expanded = state.expanded(&child_key);
+                let count = child
+                    .as_object()
+                    .map(|o| o.len())
+                    .or_else(|| child.as_array().map(|a| a.len()))
+                    .unwrap_or(0);
+                let button_key = format!("{child_key}:toggle");
+                let action = child_key.clone();
+                out = out.child(
+                    Button::new(format!(
+                        "{} {} ({count})",
+                        if expanded { "−" } else { "+" },
+                        label
+                    ))
+                    .variant(ButtonVariant::Ghost)
+                    .on_press(move |s: &mut S| get(s).toggle(action.clone()))
+                    .build(k)
+                    .expanded(expanded)
+                    .key(button_key),
+                );
+                *budget -= 1;
+                if expanded {
+                    out = out.child(
+                        value::<S>(child, &child_key, state, get, k, depth + 1, budget).pl(10.0),
+                    );
+                }
+            } else {
+                out = out
+                    .child(
+                        text(label)
+                            .font(TextStyle::new(12.0, 400.0).mono())
+                            .color(k.c.text_muted),
+                    )
+                    .child(value::<S>(
+                        child,
+                        &child_key,
+                        state,
+                        get,
+                        k,
+                        depth + 1,
+                        budget,
+                    ));
+            }
+        }
+        if count > limit {
+            let action = path.to_string();
+            out = out.child(
+                Button::new(format!("Show more ({} remaining)", count - limit))
+                    .variant(ButtonVariant::Ghost)
+                    .on_press(move |s: &mut S| get(s).more(action.clone()))
+                    .build(k)
+                    .key(format!("{path}:more")),
+            );
+        }
+    } else {
+        let raw = match v {
+            Value::String(s) if s.is_empty() => "Empty string".into(),
+            Value::String(s) => s.clone(),
+            _ => v.to_string(),
+        };
+        let expanded = state.expanded(path);
+        let limit = if expanded { 4000 } else { 140 };
+        let preview: String = raw.chars().take(limit).collect();
+        let long = raw.chars().count() > 140;
+        out = out.child(copy(
+            format!(
+                "{preview}{}",
+                if raw.chars().count() > limit {
+                    "…"
+                } else {
+                    ""
+                }
+            ),
+            k,
+        ));
+        if long {
+            let action = path.to_string();
+            out = out.child(
+                Button::new(if expanded {
+                    "Less text"
+                } else {
+                    "More text (up to 4,000 characters)"
+                })
+                .variant(ButtonVariant::Ghost)
+                .on_press(move |s: &mut S| get(s).toggle(action.clone()))
+                .build(k)
+                .key(format!("{path}:text")),
+            );
+        }
+    }
+    out
+}

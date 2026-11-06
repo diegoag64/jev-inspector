@@ -1,0 +1,11 @@
+[package]
+name = "rune-diagram"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Interactive diagram cards, connections and camera controls for Rune"
+
+[dependencies]
+rune.workspace = true
+rune-kit.workspace = true
+serde_json = "1"

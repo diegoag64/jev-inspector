@@ -1,0 +1,4 @@
+[
+  {"t": 0.1, "type": "tap", "key": "diagram-expand"},
+  {"t": 0.3, "type": "tap", "key": "request-diagram:fit"}
+]

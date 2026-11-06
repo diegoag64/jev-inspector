@@ -1,0 +1,118 @@
+{
+  "format": "jev-inspector-session",
+  "version": 1,
+  "snapshot": {
+    "version": 1,
+    "instance_id": "native-qa-fixture",
+    "revision": 1,
+    "relay_url": "Offline synthetic fixture",
+    "upstream": "No upstream calls",
+    "capture_bodies": true,
+    "history_limit": 100,
+    "total_requests": 2,
+    "evicted": 0,
+    "capture_dropped": 0,
+    "requests": [
+      {
+        "id": 2,
+        "started_at_ms": 1793980802000,
+        "method": "POST",
+        "path": "/v1/systemone",
+        "status": 200,
+        "outcome": "complete",
+        "duration_ms": 125.0,
+        "upstream_headers_ms": 120.0,
+        "request_id": "native-qa-summary-only",
+        "model": "synthetic-native-qa",
+        "request_bytes": 0,
+        "response_bytes": 0,
+        "note": null
+      },
+      {
+        "id": 1,
+        "started_at_ms": 1793980801000,
+        "method": "POST",
+        "path": "/v1/systemone",
+        "status": 200,
+        "outcome": "complete",
+        "duration_ms": 125.0,
+        "upstream_headers_ms": 120.0,
+        "request_id": "native-qa-with-body",
+        "model": "synthetic-native-qa",
+        "request_bytes": 190,
+        "response_bytes": 156,
+        "note": null
+      }
+    ]
+  },
+  "exchanges": {
+    "1": {
+      "summary": {
+        "id": 1,
+        "started_at_ms": 1793980801000,
+        "method": "POST",
+        "path": "/v1/systemone",
+        "status": 200,
+        "outcome": "complete",
+        "duration_ms": 125.0,
+        "upstream_headers_ms": 120.0,
+        "request_id": "native-qa-with-body",
+        "model": "synthetic-native-qa",
+        "request_bytes": 190,
+        "response_bytes": 156,
+        "note": null
+      },
+      "request": {
+        "content_type": "application/json",
+        "encoding": "",
+        "wire_bytes": 190,
+        "captured_bytes": 190,
+        "complete": true,
+        "json": {
+          "model": "synthetic-native-qa",
+          "state": {
+            "message": "Synthetic native integration check"
+          },
+          "questions": {
+            "department": {
+              "type": "choice",
+              "criteria": {
+                "billing": "Billing",
+                "technical": "Technical"
+              }
+            }
+          }
+        },
+        "notes": []
+      },
+      "response": {
+        "content_type": "application/json",
+        "encoding": "",
+        "wire_bytes": 156,
+        "captured_bytes": 156,
+        "complete": true,
+        "json": {
+          "answers": {
+            "department": {
+              "type": "choice",
+              "choice": "billing",
+              "probabilities": {
+                "billing": 1.0,
+                "technical": 0.0
+              }
+            }
+          },
+          "message": "native clipboard check",
+          "ok": true
+        },
+        "notes": []
+      }
+    }
+  },
+  "starred": [
+    1
+  ],
+  "missing": [
+    2
+  ]
+}

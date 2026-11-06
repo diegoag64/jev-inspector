@@ -1,0 +1,11 @@
+.upstream/
+artifacts/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+/target/
+/.jev/
+.env
+.env.*
+!.env.example

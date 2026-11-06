@@ -1,0 +1,33 @@
+[workspace]
+members = ["crates/jev-protocol", "crates/jev-bridge", "crates/jev-inspector", "crates/rune-diagram"]
+default-members = ["crates/jev-bridge", "crates/jev-inspector"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[workspace.dependencies]
+rune-diagram = { path = "crates/rune-diagram" }
+jev-protocol = { path = "crates/jev-protocol" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "=0.13.5", default-features = false, features = ["rustls", "http2", "stream", "json"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time"] }
+rune = { git = "https://github.com/anomalyco/rune", rev = "781e2b6d87cd5f32d6f4365956fad4baaf24ee50", default-features = false, features = ["accessibility", "embedded-fonts", "metal-backend", "native-file-dialog"] }
+rune-kit = { git = "https://github.com/anomalyco/rune", rev = "781e2b6d87cd5f32d6f4365956fad4baaf24ee50" }
+
+[profile.dev]
+debug = 0
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.perf]
+inherits = "release"
+opt-level = 3
+codegen-units = 16
+lto = false
+debug = false
+incremental = false

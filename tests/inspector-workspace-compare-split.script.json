@@ -1,0 +1,6 @@
+[
+  {"t":0.1,"type":"tap","key":"tab-4"},
+  {"t":0.3,"type":"tap","key":"set-baseline"},
+  {"t":0.5,"type":"tap","key":"errors-filter"},
+  {"t":0.7,"type":"tap","key":"diff-mode"}
+]

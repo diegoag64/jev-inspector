@@ -1,0 +1,81 @@
+# Use the local Rune diagram components
+
+The tracked implementation is `crates/rune-diagram`. The inspector depends on it
+as a Rust library. A copy is installed into `.upstream/rune/crates/rune-diagram`
+and registered in that local Rune workspace, so other local Rune apps can use it.
+This is a local extension; no upstream commit, push, or publication is required.
+
+## Open a captured request diagram
+
+Build and open the offline inspector fixture:
+
+```sh
+cargo build --workspace --locked
+cargo run -p jev-inspector -- --demo --diagram
+```
+
+For live capture, open the inspector normally and select **Diagram** beside
+Overview, Request, and Response. Select a question to see its captured context,
+question definition, returned answer, and probability distribution.
+Use `python dev.py demo --diagram` to start the synthetic traffic demo on that tab.
+**Expand diagram** hides the request list and counters to give the canvas more
+space. Choice results have separate returned-choice and alternative cards; Noul
+results show P(True) and its explicitly labeled complement, P(False). Neither
+branch implies that a backend condition was executed. Large choice distributions
+start with three leading categories plus the returned choice, and expand by three.
+The diagram caps this preview at 120 leading categories plus the returned choice;
+the Response tab retains the available captured JSON.
+
+The diagram displays one HTTP exchange. Its connections show which captured data
+belongs to that question. They do not represent internal model reasoning or a
+multi-request backend workflow. Errors and missing capture data remain explicit.
+
+## Open a workflow example
+
+```sh
+cargo run -p rune-diagram --example flow
+```
+
+This separate example demonstrates branching cards using an application-supplied
+graph. It uses synthetic data and makes no requests.
+
+## Update the copy in the local Rune checkout
+
+After changing the tracked crate, run:
+
+```sh
+python tools/install_rune_diagram.py
+```
+
+On this Windows machine, use `.venv\Scripts\python.exe` if Python is not on PATH.
+The script requires an existing Rune checkout. `--checkout PATH` selects another
+local checkout. It copies the source and license, translates dependencies to
+local Rune paths, registers the workspace member, and adds a changelog entry.
+It refuses to overwrite files edited in the installed copy. Move those changes
+back into the tracked crate before reinstalling.
+
+Inside the Rune checkout, run:
+
+```sh
+cargo test -p rune-diagram
+cargo run -p rune-diagram --example flow
+```
+
+An app in that checkout can depend on the installed crate using a Cargo path
+dependency. See [the component API](../crates/rune-diagram/README.md) and
+[the workflow example](../crates/rune-diagram/examples/flow.rs).
+
+## Verify changes
+
+```sh
+cargo test --workspace --locked
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo run -p jev-inspector -- --demo --diagram --frames 3 --snap artifacts/inspector/diagram.png
+```
+
+Runtime tests cover camera fit/zoom, selection, JSON disclosure, wheel input, and
+graph validation. The inspector adapter tests missing capture data, returned choice
+versus alternative branches, Noul complements, and compact category expansion.
+macOS native input still needs verification.
+Agent launches on Windows must use the normal desktop outside the execution
+sandbox; a sandbox process can create a window invisible to the user.
