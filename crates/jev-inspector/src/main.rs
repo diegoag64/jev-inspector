@@ -1,5 +1,4 @@
 mod answer_value;
-mod ascii_fx;
 mod capture_context;
 mod compare;
 mod demo;
@@ -371,7 +370,6 @@ fn main() {
     })
     .init(move || state)
     .args(rune_args)
-    .compositor(ascii_fx::AsciiCompositor::default())
     .tab_visits_controls(true)
     .chrome(rune::Chrome {
         full_size_content: false,

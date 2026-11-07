@@ -13,11 +13,17 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
         .px(22.0)
         .gap(12.0)
         .center_y()
-        .child(ascii_fx::mark(s.dark).size(34.0, 34.0))
+        .child(
+            el().size(32.0, 32.0)
+                .center()
+                .radius(8.0)
+                .fill(k.alpha(k.c.text_base, 0.08))
+                .child(label("j", 25.0, k.c.text_base)),
+        )
         .child(label("jev", 23.0, k.c.text_base))
         .child(label("/", 21.0, k.c.text_faint))
         .child(label("inspector", 17.0, k.c.text_muted))
-        .child(ascii_fx::header_flow(s.dark).grow(1.0).min_w(0.0).h(44.0))
+        .child(el().grow(1.0))
         .child(ui::badge(
             if s.workspace.session_name.is_some() {
                 "SAVED SESSION"
@@ -780,7 +786,6 @@ fn empty(s: &State, k: &Kit) -> El {
     let mut body = col()
         .padding(24.0)
         .gap(10.0)
-        .child(ascii_fx::field(s.dark).w_full().h(72.0))
         .child(
             label(
                 if cleared {

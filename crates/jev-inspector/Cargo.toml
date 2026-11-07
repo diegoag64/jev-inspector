@@ -12,5 +12,3 @@ reqwest = { workspace = true, features = ["blocking"] }
 rune.workspace = true
 rune-kit.workspace = true
 rune-diagram.workspace = true
-wgpu = { version = "~30.0.1", default-features = false, features = ["wgsl"] }
-bytemuck = "1.25"

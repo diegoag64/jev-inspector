@@ -170,25 +170,28 @@ pub fn guide(s: &State, k: &Kit) -> El {
 }
 
 pub fn panel(s: &State, k: &Kit, cx: &Cx<State>) -> El {
-    request_scroll::area(
-        cx,
-        k,
-        "setup-scroll",
-        "setup-content",
-        col()
-            .key("setup-scroll")
-            .grow(1.0)
-            .min_h(0.0)
-            .padding(20.0)
-            .scroll(rune::ScrollSpec {
-                stick_bottom: false,
-            })
-            .focusable(true)
-            .role("region")
-            .label("Connection setup")
-            .child(guide(s, k).key("setup-content")),
-        false,
-    )
+    col()
+        .grow(1.0)
+        .min_h(0.0)
+        .padding(20.0)
+        .child(request_scroll::area(
+            cx,
+            k,
+            "setup-scroll",
+            "setup-content",
+            col()
+                .key("setup-scroll")
+                .grow(1.0)
+                .min_h(0.0)
+                .scroll(rune::ScrollSpec {
+                    stick_bottom: false,
+                })
+                .focusable(true)
+                .role("region")
+                .label("Connection setup")
+                .child(guide(s, k).key("setup-content")),
+            false,
+        ))
 }
 
 #[cfg(test)]
