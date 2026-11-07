@@ -103,10 +103,16 @@ impl<'a, S: 'static> Diagram<'a, S> {
                         get(s).zoom(1.0 / 1.2);
                     })
                     .build(k)
+                    .w(34.0)
                     .key(format!("{}:zoom-out", self.key))
                     .label("Zoom diagram out"),
             )
-            .child(label(format!("{:.0}%", cam.scale * 100.0), 12.0, k.c.text_muted).w(45.0))
+            .child(
+                row().w(45.0).center().child(
+                    label(format!("{:.0}%", cam.scale * 100.0), 12.0, k.c.text_muted)
+                        .key(format!("{}:zoom-value", self.key)),
+                ),
+            )
             .child(
                 Button::new("+")
                     .on_press(move |s: &mut S| {
@@ -114,6 +120,7 @@ impl<'a, S: 'static> Diagram<'a, S> {
                         get(s).zoom(1.2);
                     })
                     .build(k)
+                    .w(34.0)
                     .key(format!("{}:zoom-in", self.key))
                     .label("Zoom diagram in"),
             )
