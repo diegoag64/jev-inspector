@@ -290,7 +290,7 @@ fn content(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> El {
     if s.tab == 3 {
         return motion::detail(
             s,
-            with_partial_response_note(s, detail, k, diagram::view(s, detail, k, layers))
+            with_partial_response_note(s, detail, k, diagram::view(s, detail, k, cx, layers))
                 .grow(1.0)
                 .min_h(0.0)
                 .role("tabpanel")

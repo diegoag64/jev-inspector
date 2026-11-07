@@ -1,0 +1,5 @@
+[
+  {"t": 0.1, "type": "tap", "key": "theme-toggle"},
+  {"t": 0.2, "type": "tap", "key": "tab-3"},
+  {"t": 0.3, "type": "tap", "key": "diagram-question-trigger"}
+]

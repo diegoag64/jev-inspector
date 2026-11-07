@@ -21,6 +21,9 @@ Overview, Request, and Response. Select a question to see its captured context,
 question definition, returned answer, and probability distribution. The question
 selector scrolls through long lists without reducing the canvas height; End and
 Enter select its final option.
+The field and menu size to the question labels. Short lists stay compact; long
+names get a wider menu within the available space. Hover a shortened label to
+read its full name.
 Use `python dev.py demo --diagram` to start the synthetic traffic demo on that tab.
 Graphs start fitted to the available canvas. **Actual size** restores 100% zoom;
 **Fit graph** returns to the full graph. Manual pan and zoom survive resizing.

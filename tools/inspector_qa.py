@@ -115,6 +115,8 @@ for name, fixture, script in [
 for fixture in ["unicode-find", "shared-prefix-questions", "setup-custom"]:
     CASES[fixture] = ["--fixture", fixture, "--size", "1100x700"]
 CASES["shared-prefix-menu"] = ["--fixture", "shared-prefix-questions", "--size", "1100x700", "--script", "tests/inspector-questions-menu.script.json"]
+CASES["short-question-menu"] = ["--fixture", "example-return-review", "--size", "1100x700", "--script", "tests/inspector-questions-menu.script.json"]
+CASES["short-question-menu-light"] = ["--fixture", "example-return-review", "--size", "1100x700", "--script", "tests/inspector-questions-menu-light.script.json"]
 CASES["unicode-find-light"] = ["--fixture", "unicode-find", "--size", "1100x700", "--script", "tests/inspector-theme-light.script.json"]
 for fixture in ["saved-pending", "saved-partial", "disconnected-pending"]:
     CASES[fixture + "-overview"] = ["--fixture", fixture, "--size", "1100x700", "--script", "tests/inspector-overview.script.json"]

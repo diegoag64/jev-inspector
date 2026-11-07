@@ -527,7 +527,10 @@ fn question_menu_preserves_canvas_and_reaches_every_question() {
                 check(&rt);
                 tap(&mut rt, "diagram-question-trigger");
                 assert!(rt.state.diagram_questions_open);
-                assert!(rt.presented("diagram-question-content").unwrap().0[2] >= 480.0);
+                let (menu, _) = rt.presented("diagram-question-content").unwrap();
+                let (trigger, _) = rt.presented("diagram-question-trigger").unwrap();
+                assert!(menu[2] > trigger[2] && menu[2] <= 480.0);
+                assert!(menu[0] >= trigger[0] - 0.5 && menu[0] + menu[2] <= 1076.5);
                 rt.key(rune::KeyEvent {
                     key: rune::Key::End,
                     mods: Default::default(),
@@ -555,6 +558,82 @@ fn question_menu_preserves_canvas_and_reaches_every_question() {
                 check(&rt);
                 tap(&mut rt, "diagram-expand");
                 check(&rt);
+            }
+        }
+    }
+}
+
+#[test]
+fn question_dropdown_sizes_to_text_and_keeps_short_choices_compact() {
+    for size in [(1100.0, 700.0), (1440.0, 900.0)] {
+        for dark in [false, true] {
+            for scale in [1.0, 1.5] {
+                for names in [
+                    vec![
+                        "action".to_owned(),
+                        "condition".to_owned(),
+                        "eligible".to_owned(),
+                    ],
+                    vec!["W".repeat(30), "i".repeat(30)],
+                    vec![
+                        "注文の配送状況と返金についての確認".to_owned(),
+                        "résolution_du_problème".to_owned(),
+                    ],
+                ] {
+                    let mut rt = runtime("example-return-review", dark, scale);
+                    rt.set_viewport(size, scale);
+                    rt.update(|s, _| {
+                        let mut detail = s.detail.clone().unwrap();
+                        let questions: serde_json::Map<String, serde_json::Value> = names
+                            .iter()
+                            .map(|name| (name.clone(), serde_json::json!({"type":"choice"})))
+                            .collect();
+                        detail.request.json.as_mut().unwrap()["questions"] =
+                            serde_json::Value::Object(questions);
+                        s.set_detail(detail);
+                        s.tab = 3;
+                    });
+                    settle(&mut rt);
+                    let (trigger, _) = rt.presented("diagram-question-trigger").unwrap();
+                    tap(&mut rt, "diagram-question-trigger");
+                    let (menu, _) = rt.presented("diagram-question-content").unwrap();
+                    let k = ui::kit(dark);
+                    let text_width = names
+                        .iter()
+                        .map(|name| rune::text::measure(name, &[], k.ty.ui_compact, None).0)
+                        .fold(0.0_f32, f32::max);
+                    assert!(
+                        menu[2] + 0.5
+                            >= (text_width + 48.0)
+                                .min(480.0)
+                                .min(size.0 - trigger[0] - 24.0),
+                        "{names:?} at {size:?}/{scale}: {menu:?}, text {text_width}"
+                    );
+                    assert!(menu[0] >= trigger[0] - 0.5 && menu[0] + menu[2] <= size.0 - 23.5);
+                    assert!(trigger[2] <= 260.5);
+                    if names[0] == "action" {
+                        assert!(
+                            menu[2] <= 160.0 && (trigger[2] - menu[2]).abs() < 0.5,
+                            "short labels must not inherit the long-label menu width"
+                        );
+                    }
+                    rt.key(rune::KeyEvent {
+                        key: rune::Key::End,
+                        mods: Default::default(),
+                    });
+                    rt.key(rune::KeyEvent {
+                        key: rune::Key::Enter,
+                        mods: Default::default(),
+                    });
+                    settle(&mut rt);
+                    assert_eq!(&rt.state.diagram_question, names.iter().max().unwrap());
+                    assert!(!rt.state.diagram_questions_open);
+                    let (after, _) = rt.presented("diagram-question-trigger").unwrap();
+                    assert!(
+                        (after[2] - trigger[2]).abs() < 0.5,
+                        "selection must not resize the field"
+                    );
+                }
             }
         }
     }

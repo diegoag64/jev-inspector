@@ -1,6 +1,6 @@
 use crate::{State, label};
 use jev_protocol::Exchange;
-use rune::{El, col, row};
+use rune::{Cx, El, col, row};
 use rune_diagram::{Diagram, Edge, Graph, Node, NodeBody, NodeStatus, ResultContent, percent};
 use rune_kit::{Button, ButtonVariant, Kit};
 use serde_json::Value;
@@ -29,7 +29,7 @@ pub fn reveal_keyboard_card(s: &mut State) {
     }
 }
 
-pub fn view(s: &State, detail: &Exchange, k: &Kit, layers: &mut Vec<El>) -> El {
+pub fn view(s: &State, detail: &Exchange, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> El {
     let questions = detail
         .request
         .json
@@ -44,11 +44,25 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit, layers: &mut Vec<El>) -> El {
         .map(|q| q.keys().map(String::as_str).collect())
         .unwrap_or_default();
     let mut question_layers = Vec::new();
+    // Measure with the same font as Rune's options, including room for padding,
+    // the selection check and the list's scrollbar. Keep the trigger stable
+    // across selections by sizing from all options rather than the current one.
+    let label_width = names
+        .iter()
+        .map(|name| rune::text::measure(name, &[], k.ty.ui_compact, None).0)
+        .fold(0.0_f32, f32::max);
+    let desired_width = (label_width + 54.0).clamp(140.0, 480.0);
+    let menu_width = cx
+        .window_layout("diagram-question-trigger")
+        .map_or(desired_width, |r| {
+            desired_width.min((s.workspace.window_width - r[0] - 24.0).max(1.0))
+        });
     let selector = rune_kit::Select::new("diagram-question", &names)
         .label(format!("Question ({} total)", names.len()))
         .current(selected.map(|(name, _)| name.as_str()))
         .placeholder("No questions")
-        .width(280.0)
+        .width(desired_width.min(260.0))
+        .placement(rune_kit::Placement::BottomStart)
         .appearance(rune_kit::SelectAppearance::Field)
         .disabled(names.is_empty())
         .open(s.diagram_questions_open)
@@ -60,13 +74,12 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit, layers: &mut Vec<El>) -> El {
             s.diagram.reset();
         })
         .build(k, &mut question_layers);
-    // Rune's default 160-point menu hides most descriptive question names.
-    // Keep its modal and keyboard behavior while giving its surface room to read.
+    // Preserve Rune's selection, scrolling and keyboard behavior; only replace
+    // its fixed menu bounds with the content width calculated above.
     if s.diagram_questions_open
         && let Some(menu) = question_layers.pop()
     {
-        let width = 520.0_f32.min((s.workspace.window_width - 32.0).max(160.0));
-        question_layers.push(menu.w(width).min_w(width).max_w(width));
+        question_layers.push(menu.w(menu_width).min_w(menu_width).max_w(menu_width));
     }
     layers.extend(question_layers);
     let toolbar = row()
