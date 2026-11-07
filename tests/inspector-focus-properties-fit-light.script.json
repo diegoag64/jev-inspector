@@ -1,0 +1,23 @@
+[
+  {
+    "t": 0.02,
+    "type": "tap",
+    "key": "theme-toggle"
+  },
+  {
+    "t": 0.2,
+    "type": "tap",
+    "key": "request-diagram:fit"
+  },
+  {
+    "t": 0.6,
+    "type": "tap",
+    "x": 713.33,
+    "y": 443.56
+  },
+  {
+    "t": 1.0,
+    "type": "key",
+    "name": "Home"
+  }
+]

@@ -108,6 +108,8 @@ impl<'a> DiagramContent<'a> {
                 state.scroll.insert(watch_key.clone(), rect);
             })
             .focusable(self.keyboard && overflow)
+            // Keep keyboard focus legible even when Fit shrinks the card.
+            .focus_ring(2.0 / drawn_scale.min(1.0), 0.0, k.c.text_base)
             .on_drawn_layout(move |s: &mut S, rect| {
                 get(s).scroll.insert(watch_drawn_key.clone(), rect);
             })

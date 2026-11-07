@@ -212,6 +212,52 @@ fn requested_control_focus_respects_modal_scope_and_last_request() {
 }
 
 #[test]
+fn later_blur_cancels_focus_across_pending_updates() {
+    for initially_focused in [false, true] {
+        let mut rt = runtime();
+        if initially_focused {
+            rt.update(|_, tx| tx.focus_control("help"));
+            settle(&mut rt);
+        }
+        rt.update(|_, tx| tx.focus_control("help"));
+        rt.update(|_, tx| tx.blur());
+        assert!(!rt.elements().iter().any(|e| e.focused));
+        settle(&mut rt);
+        assert!(!rt.elements().iter().any(|e| e.focused));
+
+        // A later focus request still wins, including updates that do not change state.
+        rt.update_if(|_, tx| {
+            tx.focus_control("help");
+            false
+        });
+        rt.update_if(|_, tx| {
+            tx.blur();
+            false
+        });
+        rt.update_if(|_, tx| {
+            tx.focus_control("help");
+            false
+        });
+        settle(&mut rt);
+        assert!(
+            rt.elements()
+                .iter()
+                .any(|e| e.focused && e.key.as_deref() == Some("help"))
+        );
+        rt.update_if(|_, tx| {
+            tx.focus_control("help");
+            false
+        });
+        rt.update_if(|_, tx| {
+            tx.blur();
+            false
+        });
+        settle(&mut rt);
+        assert!(!rt.elements().iter().any(|e| e.focused));
+    }
+}
+
+#[test]
 fn inactive_properties_drag_and_track_activate_owner_before_keyboard_input() {
     for renderer_scale in [1.0, 1.5] {
         for track_click in [false, true] {

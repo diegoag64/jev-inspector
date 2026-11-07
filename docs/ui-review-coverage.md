@@ -97,6 +97,23 @@ key queued before a frame, not only settled input sequences. Activation must
 preserve the camera and Traffic offset, and switching cards must remove the old
 properties from keyboard traversal.
 
+Measure rendered keyboard focus outlines independently of selected-card borders
+and text contrast. Check headings and properties in both themes, at Fit and
+working zoom, and at renderer scales 1 and 1.5. Preserve keyboard-only visibility.
+Run `python tools/inspector_focus_contrast.py --packet <main-packet> --packet
+<dpi-packet> --out <report.json>` after rendering the eight focus cases at both
+scales. It samples actual stroke and neighboring background pixels and requires
+at least 3:1 contrast; it does not establish native or complete accessibility.
+Also batch separate host updates before a frame: a later blur must cancel an
+earlier pending focus request, while a subsequent focus request must still work.
+
+Each review round must revisit complete user workflows, rather than only the last
+reported defect. Independently identify missing states, unnecessary steps,
+unclear terminology, hierarchy problems, and recovery paths outside the supplied
+packet. Rank improvements by user impact and distinguish product defects from
+unverified native behavior. Reviewers with different scopes should still report
+coverage limits and independent scores; an aggregate score cannot hide a weak area.
+
 Measure selected-row foreground/background pairs in both themes and row
 densities. The contrast regression reads actual Runtime element colors for
 metadata, timing, status and selection surfaces, including pending and error

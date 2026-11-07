@@ -217,7 +217,7 @@ impl<'a, S: 'static> Diagram<'a, S> {
         }
         let mut viewport = el().key(format!("{}:viewport", self.key)).w_full().grow(1.0).min_h(0.0)
             .fill(k.c.layer_01).radius(8.0).clip_rounded(8.0).border(1.0,k.c.border_base)
-            .focusable(true).role("group").label("Diagram canvas")
+            .focusable(true).focus_ring(2.0, -2.0, k.c.text_base).role("group").label("Diagram canvas")
             .description("Drag background to pan. Wheel or pinch to zoom. Canvas arrow keys pan. Tab enters cards; Up and Down browse them. Plus and minus zoom, zero fits, one sets actual size.")
             .on_layout_tx(move |s: &mut S, [_,_,w,h], tx| {
                 let state=get(s);
@@ -390,6 +390,7 @@ impl<'a> DiagramCard<'a> {
             .gap(if content_card { 5.0 } else { 7.0 })
             .w_full()
             .focusable(true)
+            .focus_ring(2.0 / state.camera.scale.clamp(0.1, 1.0), 0.0, k.c.text_base)
             .focus_selected(self.tab_selected.unwrap_or(selected))
             .role(if self.tab_selected.is_some() {
                 "radio"

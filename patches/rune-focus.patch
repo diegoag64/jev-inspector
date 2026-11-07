@@ -37,7 +37,16 @@
      /// The [`El::selectable`] text selection as this event arrived: the texts it covers with
 --- a/crates/rune/src/runtime/frame.rs
 +++ b/crates/rune/src/runtime/frame.rs
-@@ -483,6 +483,7 @@
+@@ -197,6 +197,8 @@
+         if let Some(srgb) = tx.srgb_blend.take() { self.set_srgb_blend(srgb); }
+         if let Some(rewind) = tx.rewind.take() { self.rewind = rewind; }
+         if std::mem::take(&mut tx.blur) {
++            // A later host update cancels focus deferred by an earlier update.
++            self.pending.focus_request = None;
+             if self.focused.is_some() {
+                 self.set_focus(None, self.keyboard_focus);
+                 self.dirty = true;
+@@ -483,6 +485,7 @@
                      }
                  }
              }
@@ -45,7 +54,7 @@
              // A selection an earlier handler asked for is what this key copies.
              if matches!(action, Action::Key { .. } | Action::Physical(..)) && let Some(request) = tx.select.take() {
                  let from_change = std::mem::take(&mut tx.select_from_change);
-@@ -559,6 +560,7 @@
+@@ -559,6 +562,7 @@
          }
          #[cfg(debug_assertions)]
          { self.live_check = None; }

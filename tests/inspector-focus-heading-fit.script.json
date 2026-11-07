@@ -1,0 +1,17 @@
+[
+  {
+    "t": 0.2,
+    "type": "tap",
+    "key": "request-diagram:fit"
+  },
+  {
+    "t": 0.4,
+    "type": "tap",
+    "key": "request-diagram:node:6:answer:select"
+  },
+  {
+    "t": 0.6,
+    "type": "key",
+    "name": "Home"
+  }
+]

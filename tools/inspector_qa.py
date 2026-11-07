@@ -84,6 +84,11 @@ CASES["nested-properties-end"] = ["--fixture", "nested-properties", "--size", "1
 CASES["inactive-properties-drag"] = ["--fixture", "example-support-routing", "--size", "1100x700", "--script", "tests/inspector-inactive-drag.script.json"]
 CASES["inactive-properties-track"] = ["--fixture", "example-support-routing", "--size", "1100x700", "--script", "tests/inspector-inactive-track.script.json"]
 
+for name, fixture in [("focus-heading-fit", "support-routing"), ("focus-heading-fit-light", "support-routing"),
+                      ("focus-heading-light", "many-choices"), ("focus-properties-light", "support-routing"),
+                      ("focus-properties-fit-light", "support-routing")]:
+    CASES[name] = ["--fixture", "example-" + fixture, "--size", "1100x700", "--script", "tests/inspector-" + name + ".script.json"]
+
 
 def verify_state(name: str, tree_path: Path) -> list[str]:
     """A rendered PNG is not enough: verify the scripted workflow reached its destination."""
@@ -140,6 +145,12 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
         r, v = control.get("bounds"), keyed.get("request-diagram:viewport", {}).get("bounds")
         if "focused" not in control.get("states", []) or not r or not v or not (r[0] >= v[0] and r[1] >= v[1] and r[0]+r[2] <= v[0]+v[2]+0.5 and r[1]+r[3] <= v[1]+v[3]+0.5):
             errors.append("Properties must retain visible focus after scrolling")
+    if name.startswith("focus-"):
+        key = ("request-diagram:node:5:state:content" if "properties" in name else
+               "request-diagram:node:5:state:select" if "fit" in name else
+               "request-diagram:node:6:answer:select")
+        if "focused" not in keyed.get(key, {}).get("states", []):
+            errors.append("Expected keyboard focus on " + key)
     selected_tabs = {"overview-dark": 0, "response-small-light": 2, "json-find": 2,
                      "json-tree": 2, "compare": 4, "diagram-expanded": 3,
                      "missing-compare": 4, "long-json-small": 2, "tree-small": 2, "compare-small-split": 4, "compare-small-expanded": 4}

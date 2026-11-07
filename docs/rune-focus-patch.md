@@ -25,7 +25,9 @@ before the next queued keyboard event. A control enabled or mounted by the same
 interaction can receive focus. It uses
 Rune's existing focus eligibility checks, respects modal boundaries, and does
 not activate the target or scroll a different pane. Missing or unreachable
-targets leave focus unchanged. The last focus or blur request wins. The existing
+targets leave focus unchanged. The last focus or blur request wins, including
+separate host updates queued before a frame. A later blur cancels pending focus.
+The existing
 keyboard-versus-pointer focus-ring behavior is preserved.
 
 The inspector uses this API when paging would hide a focused property, and when
