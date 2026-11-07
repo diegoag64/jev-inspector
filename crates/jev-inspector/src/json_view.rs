@@ -438,6 +438,7 @@ impl JsonDocument {
                     .min_h(0.0)
                     .scroll_xy()
                     .focusable(true)
+                    .focus_ring(1.0, -1.0, k.c.text_faint)
                     .label("JSON code")
                     .child(reveal)
                     .child(code),

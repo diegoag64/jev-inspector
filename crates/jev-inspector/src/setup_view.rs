@@ -187,6 +187,7 @@ pub fn panel(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                     stick_bottom: false,
                 })
                 .focusable(true)
+                .focus_ring(1.0, -1.0, k.c.text_faint)
                 .role("region")
                 .label("Connection setup")
                 .child(guide(s, k).key("setup-content")),

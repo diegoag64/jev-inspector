@@ -159,6 +159,7 @@ pub fn view(s: &State, request: bool, k: &Kit, cx: &Cx<State>) -> El {
                         })
                         .style(style)
                         .build(s, k)
+                        .focus_ring(1.0, -1.0, k.c.text_faint)
                         .label(if request {
                             "Request JSON properties"
                         } else {

@@ -1,6 +1,8 @@
 use super::*;
 use rune_kit::{ControlSize, IconButton, IconButtonVariant, PaletteFocus, PaletteSeed};
 
+// Kit controls use Ink focus. Bare focusable regions must also set an explicit
+// focus_ring: use text_faint for pane boundaries. Rune's fallback uses the system accent.
 pub fn kit(dark: bool) -> Kit {
     let color = |d, l| rune::color::hex(if dark { d } else { l }).unwrap();
     let mut k = Kit::from_palette_focus(

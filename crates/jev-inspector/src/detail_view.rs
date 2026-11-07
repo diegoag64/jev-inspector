@@ -391,6 +391,7 @@ fn scroll_overview(s: &State, body: El, k: &Kit, cx: &Cx<State>) -> El {
                     stick_bottom: false,
                 })
                 .focusable(true)
+                .focus_ring(1.0, -1.0, k.c.text_faint)
                 .child(body.key("overview-content")),
             false,
         ),

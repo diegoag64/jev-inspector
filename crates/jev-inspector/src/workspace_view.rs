@@ -265,6 +265,7 @@ fn splitter(k: &Kit) -> El {
         .hover(k.alpha(k.c.text_accent, 0.3))
         .cursor(rune::Cursor::ResizeColumn)
         .focusable(true)
+        .focus_ring(1.0, -1.0, k.c.text_faint)
         .role("separator")
         .label("Resize request list")
         .help("Drag to resize · double-click to reset · Left/Right when focused")
@@ -776,6 +777,7 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
     .style(style)
     .name("Captured requests")
     .build(s, k)
+    .focus_ring(1.0, -1.0, k.c.text_faint)
     .pr(16.0)
     .child(request_scroll::view(cx, k, style.header_height))
 }
@@ -1013,6 +1015,7 @@ fn dialogs(s: &State, k: &Kit, layers: &mut Vec<El>) {
                 .h_full()
                 .min_h(0.0)
                 .focusable(true)
+                .focus_ring(1.0, -1.0, k.c.text_faint)
                 .role("region")
                 .label("Help content")
                 .scroll(rune::ScrollSpec {
