@@ -49,31 +49,33 @@ fn encode(x: f32) -> f32 {
         let scan = exp(-pow((q.y / 11.0 - phase) * 5.0, 2.0));
         alpha = select(0.0, (0.64 + energy * scan * 0.36) * inset, stem || dot || hook);
     } else if u.signal.z > 1.5 {
-        // Three interwoven streams. Work in points so widening the header adds
-        // more glyphs and bends, rather than stretching the existing characters.
+        // The grid and flow silhouette stay fixed. Only the character occupying
+        // each cell changes; no time-dependent offset moves the field sideways.
         let cell_size = vec2f(7.0, 8.0);
         let cell = floor(local / cell_size);
         let center = (cell + 0.5) * cell_size;
         let x = center.x / 160.0;
         let y = center.y / size.y;
-        // A full cycle ends at the resting shape, with zero velocity at either
-        // end. Bright packets travel left to right along the same curved lanes.
-        let travel = smoothstep(0.0, 1.0, phase) * 6.2831853;
         var density = 0.0;
         for (var lane = 0u; lane < 3u; lane += 1u) {
             let offset = f32(lane) * 2.0943951;
-            let curve = 0.5 + 0.24 * sin(x * 2.4 - travel + offset);
+            let curve = 0.5 + 0.24 * sin(x * 2.4 + offset);
             let ribbon = exp(-pow((y - curve) * 10.0, 2.0));
-            let packet = pow(0.5 + 0.5 * cos(x * 4.8 - travel * 2.0 + offset), 5.0);
-            density = max(density, ribbon * (0.32 + packet * 0.68));
+            density = max(density, ribbon);
         }
         let edge = smoothstep(0.0, 28.0, center.x)
             * smoothstep(0.0, 28.0, size.x - center.x);
-        let level = clamp(density * 4.0, 0.0, 4.0);
+        // Stagger character substitutions by cell, not by horizontal position.
+        // This reads as an evolving ASCII texture rather than a scrolling wave.
+        let seed = fract(sin(dot(cell, vec2f(127.1, 311.7))) * 43758.5453);
+        let clock = phase * 6.2831853;
+        let change = sin(clock * 2.0 + seed * 6.2831853);
+        let level = clamp(1.0 + density * 2.0 + seed * 0.6
+            + energy * energy * change * 1.9, 0.0, 4.0);
         let pixel = vec2u(floor(local - cell * cell_size));
         // Crossfade neighboring glyphs instead of popping at density thresholds.
         let ink = mix(glyph(u32(level), pixel), glyph(min(u32(level) + 1u, 4u), pixel), fract(level));
-        alpha = ink * (0.035 + density * 0.62) * edge;
+        alpha = ink * (0.025 + density * 0.42) * edge;
     } else {
         let cell = floor(local / vec2f(8.0, 11.0));
         let grid = max(size / vec2f(8.0, 11.0), vec2f(1.0));

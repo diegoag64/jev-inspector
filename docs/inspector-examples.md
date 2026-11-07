@@ -80,9 +80,10 @@ The header's pixel-built mark, flowing ASCII ribbon, and empty traffic panel use
 through Rune's effect-slot compositor. Loading indicators use the same mark.
 The field is monochrome in both themes and never sits behind request or response
 text. Its glyphs are procedural, so no font atlas or image asset is required.
-The header ribbon fills the space between the title and controls. Three curved
-streams carry brighter glyphs from left to right, with soft fades at both ends.
-Glyph size stays fixed as the window widens; only the visible flow grows.
+The header ribbon fills the space between the title and controls. Its grid and
+curved silhouette stay fixed while characters change in place at staggered
+intervals. The pattern does not scroll sideways. Glyph size stays fixed as the
+window widens; only the visible field grows.
 
 Startup, request selection, tab changes, and new traffic trigger a 1.8-second
 signal sweep. The sweep settles into a static image and stops requesting frames.

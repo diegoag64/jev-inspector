@@ -46,7 +46,7 @@ def main() -> None:
         if not moving or not settled:
             raise RuntimeError(f"{theme}: shader moved={moving}, settled={settled}")
         results.append({"theme": theme, "shader_pixels_changed": moving, "settled_pixels_identical": settled})
-        print(f"PASS {theme}: ASCII pixels move, then settle", flush=True)
+        print(f"PASS {theme}: ASCII characters change, then settle", flush=True)
     (out / "report.json").write_text(json.dumps({
         "binary_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
         "measurement": "Headless rendered pixels at virtual times. Not native GPU timing or OS reduced-motion certification.",
