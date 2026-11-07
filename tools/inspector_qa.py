@@ -149,8 +149,10 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
     names = "\n".join(n.get("name", "") for n in nodes)
     errors = []
     if name.startswith("example-"):
-        if "showcase-tour" not in keyed:
+        if "EXAMPLES" not in names:
             errors.append("Example did not reach the offline showcase")
+        if "showcase-tour" in keyed:
+            errors.append("Removed Tour control is still visible")
         slug = CASES[name][1].removeprefix("example-")
         example_id = next(i + 1 for i, case in enumerate(EXAMPLES) if case["id"] == slug)
         if f"Exchange #{example_id:03}" not in names:

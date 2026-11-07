@@ -2,7 +2,7 @@
   {
     "t": 0.1,
     "type": "tap",
-    "key": "request-diagram:zoom-in"
+    "key": "request-diagram:actual-size"
   },
   {
     "t": 0.4,

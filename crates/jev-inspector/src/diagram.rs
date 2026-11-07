@@ -141,7 +141,7 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit, layers: &mut Vec<El>) -> El {
         Diagram::new("request-diagram", &graph, &s.diagram, |s: &mut State| {
             &mut s.diagram
         })
-        .readable_focus("answer")
+        .entry_card("answer")
         .compact(s.workspace.window_height < 800.0)
         .build(k),
     )

@@ -38,11 +38,11 @@ fn surface(k: &Kit) -> El {
         .border(1.0, k.c.border_base)
 }
 
-fn progress(title: &str, note: &str, k: &Kit) -> El {
+fn progress(s: &State, title: &str, note: &str, k: &Kit) -> El {
     row()
         .gap(12.0)
         .center_y()
-        .child(rune_kit::Loader::new().size(18.0).build(k).a11y_hidden())
+        .child(crate::ascii_fx::mark(s.dark).size(34.0, 34.0))
         .child(
             col()
                 .gap(4.0)
@@ -227,6 +227,7 @@ pub fn loading(s: &State, k: &Kit) -> El {
     panel(s)
         .key("detail-loading")
         .child(progress(
+            s,
             "Loading request details",
             "Fetching the captured exchange from the local relay.",
             k,
@@ -261,7 +262,7 @@ pub fn waiting_response(s: &State, k: &Kit) -> El {
             .child(label("The response was pending when the relay disconnected. Its current status cannot be checked until the connection returns.", 13.0, k.c.text_muted).wrap()));
     }
     panel(s).key("response-pending").child(surface(k)
-        .child(progress("Waiting for response", "The upstream request is still in flight.", k))
+        .child(progress(s, "Waiting for response", "The upstream request is still in flight.", k))
         .child(ui::rule(k))
         .child(label("The response body is not complete yet. You can inspect the request while you wait.", 13.0, k.c.text_muted).wrap()))
 }

@@ -65,7 +65,8 @@ fixtures with `python tools/inspector_qa.py`. See the
 [workspace guide](docs/inspector-workspace.md) and
 [motion checks](docs/inspector-examples.md) for options. Inspect the resulting
 images; a passing state assertion does not establish that a layout is readable.
-Use the [component QA guide](docs/component-qa.md) for upstream gallery work.
+For shader changes, also run `python tools/inspector_effects.py` to check rendered
+motion and settling in both themes. Use the [component QA guide](docs/component-qa.md) for upstream gallery work.
 
 Add regression coverage for changed behavior and reproduced bugs. Do not add
 tests that only repeat a constant or mirror an implementation. Record what you

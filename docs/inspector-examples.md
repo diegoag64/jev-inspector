@@ -10,10 +10,9 @@ showcase and Python mock server read the same catalog.
 cargo run -p jev-inspector -- --showcase
 ```
 
-Click **Play tour** to switch requests and detail tabs every 3.2 seconds. Click
-**Pause tour**, select a request, or switch a detail tab to stop playback. Opening
-Help or Export also stops it. Starting the tour restores all example rows if you
-filtered or cleared the list. `--tour` starts playback when the window opens.
+Select a request to inspect it. There is no Tour control in the app. The `--tour`
+flag remains available for scripted animation checks; selecting a request or tab,
+or opening Help or Export, stops playback.
 
 The catalog covers choice probabilities, likelihoods, numeric scores, normalized
 bounding boxes, mixed questions, twelve categories, a large nested inventory,
@@ -74,3 +73,25 @@ reduced motion, and loading cleanup. The Python integration test sends all catal
 cases through the actual local relay and checks response bytes and captured data.
 Native clipboard, file-picker, keyboard-delivery, and screen-reader checks remain
 separate from this renderer/runtime evidence.
+
+## ASCII effects
+
+The header's pixel-built mark, small signal field, and empty traffic panel use a custom WGSL shader
+through Rune's effect-slot compositor. Loading indicators use the same mark.
+The field is monochrome in both themes and never sits behind request or response
+text. Its glyphs are procedural, so no font atlas or image asset is required.
+
+Startup, request selection, tab changes, and new traffic trigger a 1.8-second
+signal sweep. The sweep settles into a static image and stops requesting frames.
+Rune's system reduced-motion preference makes it static immediately. Existing
+loading placeholders keep their separate, reduced-motion-aware opacity loop.
+
+The compositor caches pipelines by render-target format and resets GPU resources
+when Rune changes devices. Each draw has its own reused uniform buffer, including
+slots that overlap during transitions. Headless screenshots exercise the shader
+through the same compositor as the native window; they do not measure native
+GPU frame time.
+
+Run `python tools/inspector_effects.py` after building to capture the shader in
+both themes. It checks that its pixels change during the sweep and match after
+it settles. Results go to `artifacts/inspector-effects`; Pillow is required.

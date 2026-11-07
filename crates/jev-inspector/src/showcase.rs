@@ -13,7 +13,6 @@ struct Catalog {
 #[derive(Deserialize)]
 struct Example {
     id: String,
-    title: String,
     method: String,
     path: String,
     request: Option<Value>,
@@ -27,7 +26,6 @@ struct Example {
 struct Item {
     id: u64,
     slug: String,
-    title: String,
     tab: u8,
 }
 
@@ -116,7 +114,6 @@ pub fn populate(s: &mut State) {
         items.push(Item {
             id,
             slug: example.id,
-            title: example.title,
             tab,
         });
         summaries.push(summary.clone());
@@ -228,31 +225,4 @@ pub fn tick(s: &mut State, now: f64, tx: &mut Tx) -> bool {
     }
     s.showcase = Some(playback);
     changed
-}
-
-pub fn controls(s: &State, k: &Kit) -> El {
-    if s.workspace.session_name.is_some() {
-        return el();
-    }
-    let Some(playback) = &s.showcase else {
-        return el();
-    };
-    row().gap(12.0).center_y()
-        .child(label(playback.items.iter().find(|i| Some(i.id) == s.selected).map_or("14 examples", |i| i.title.as_str()), 12.0, k.c.text_muted).max_w(180.0).truncate())
-        .child(Button::new(if playback.playing { "Pause tour" } else { "Play tour" })
-            .icon(if playback.playing { &icons::PAUSE } else { &icons::PLAY })
-            .variant(ButtonVariant::Ghost)
-            .help("Cycle through example layouts every 3 seconds. Selecting a request stops the tour.")
-            .on_press_tx(|s: &mut State, tx| {
-                let playing = s.showcase.as_ref().is_some_and(|p| p.playing);
-                if !playing {
-                    s.workspace.clear_before = 0;
-                    s.reset_filters();
-                    s.request_text.search.focused = false;
-                    s.response_text.search.focused = false;
-                    tx.blur();
-                }
-                if let Some(p) = &mut s.showcase { p.playing = !playing; p.next_at = None; }
-                tx.wake_after(Duration::ZERO);
-            }).build(k).key("showcase-tour"))
 }

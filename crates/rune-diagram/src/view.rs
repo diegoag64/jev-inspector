@@ -17,6 +17,7 @@ pub struct Diagram<'a, S> {
     get: fn(&mut S) -> &mut DiagramState,
     minimum_size: [f32; 2],
     readable_focus: Option<&'a str>,
+    entry_card: Option<&'a str>,
     compact: bool,
 }
 impl<'a, S: 'static> Diagram<'a, S> {
@@ -33,6 +34,7 @@ impl<'a, S: 'static> Diagram<'a, S> {
             get,
             minimum_size: [0.0, 0.0],
             readable_focus: None,
+            entry_card: None,
             compact: false,
         }
     }
@@ -56,6 +58,11 @@ impl<'a, S: 'static> Diagram<'a, S> {
     /// Taller cards get explicit top/bottom navigation. Fit shows the whole graph.
     pub fn readable_focus(mut self, node: &'a str) -> Self {
         self.readable_focus = Some(node);
+        self
+    }
+    /// Choose the keyboard entry card without changing the initial fit camera.
+    pub fn entry_card(mut self, node: &'a str) -> Self {
+        self.entry_card = Some(node);
         self
     }
     pub fn build(self, k: &Kit) -> El {
@@ -195,6 +202,7 @@ impl<'a, S: 'static> Diagram<'a, S> {
                         self.state
                             .selected
                             .as_deref()
+                            .or(self.entry_card)
                             .or(self.readable_focus)
                             .unwrap_or(&self.graph.nodes[0].id)
                             == node.id,
@@ -267,6 +275,7 @@ impl<'a, S: 'static> Diagram<'a, S> {
             .state
             .selected
             .as_deref()
+            .or(self.entry_card)
             .and_then(|id| self.graph.nodes.iter().find(|n| n.id == id))
             .map(|n| n.rect)
             .or(focus);

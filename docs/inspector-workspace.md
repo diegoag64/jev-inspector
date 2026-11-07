@@ -57,6 +57,9 @@ the divider to reset it. **Expand** gives the selected exchange the full workspa
 **Compact** reduces row height. The live app remembers theme, density, and the
 divider width after a drag. Static `--demo` fixtures keep preferences in memory.
 Short windows use a compact metrics strip to leave more room for captured bodies.
+Diagrams fit the whole graph on first open. Manual pan and zoom stay in place
+until you choose **Fit graph** or switch exchanges.
+
 Diagram **Actual size** restores readable actual size; **Fit graph** shows the whole graph.
 On the focused canvas, arrow keys pan, `+` and `-` zoom, `0` fits, and `1` restores
 actual size.

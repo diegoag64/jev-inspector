@@ -40,7 +40,7 @@ responses so the error filter has data. The catalog also includes mixed answer
 types, nested and multilingual input, an empty response, non-JSON output, and a
 slow request. It sends one batch of 14 requests, then stops generating traffic.
 Add `--continuous` to keep generating requests. For offline layout playback, see
-[the example tour](inspector-examples.md).
+[the offline examples](inspector-examples.md).
 
 Select a row, open its Request and Response tabs, search for `429`, and switch
 between light and dark themes. The Overview tab shows returned answer types,

@@ -69,7 +69,9 @@ resizing. Fit recalculates the camera for the settled viewport.
 Use `Diagram::readable_focus("node-id")` to frame a specific card at 80–100% scale
 when fitting the entire graph would shrink it below 75%. Ordinary cards fit fully;
 taller cards expose Show bottom / Show top controls without shrinking text further.
-Fit still shows the whole graph. The inspector uses this option for answer cards.
+Fit graph still shows the whole graph. The inspector fits the graph by default and
+uses `Diagram::entry_card("answer")` to keep keyboard entry on the answer without
+changing that initial camera.
 
 `NodeBody::Json(None)` displays “Not captured.” `Some(Value::Null)` displays the
 captured value `null`. Active edges and selected probability categories are

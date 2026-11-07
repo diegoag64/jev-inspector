@@ -22,6 +22,8 @@ question definition, returned answer, and probability distribution. The question
 selector scrolls through long lists without reducing the canvas height; End and
 Enter select its final option.
 Use `python dev.py demo --diagram` to start the synthetic traffic demo on that tab.
+Graphs start fitted to the available canvas. **Actual size** restores 100% zoom;
+**Fit graph** returns to the full graph. Manual pan and zoom survive resizing.
 **Expand** hides the request list and counters to give the canvas more
 space. Choice results have separate returned-choice and alternative cards; Noul
 results show P(True) and its explicitly labeled complement, P(False). Neither

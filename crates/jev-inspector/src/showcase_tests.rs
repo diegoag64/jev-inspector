@@ -79,7 +79,7 @@ fn find_icon_accepts_immediate_typing_and_property_trees_are_named() {
 }
 
 #[test]
-fn diagram_backward_entry_after_tour_blur_reveals_heading() {
+fn diagram_backward_entry_after_blur_reveals_heading() {
     let mut rt = runtime();
     rt.update(|s, _| showcase::select_example(s, "support-routing").unwrap());
     rt.frame(0.3);
@@ -87,10 +87,11 @@ fn diagram_backward_entry_after_tour_blur_reveals_heading() {
     rt.update(|s, _| s.diagram.camera.pan(-2000.0, -1000.0));
     rt.frame(0.3);
     let zoom = rt.state.diagram.camera.scale;
-    click(&mut rt, "showcase-tour");
+    rt.update(|_, tx| tx.blur());
+    rt.frame(0.1);
     assert!(
         !rt.elements().iter().any(|e| e.focused),
-        "tour start clears focus"
+        "explicit blur clears focus"
     );
     press(&mut rt, rune::Key::Tab, true);
     let e = rt.elements().into_iter().find(|e| e.focused).unwrap();
@@ -396,7 +397,7 @@ fn mixed_layout_transition_settles_and_rapid_selection_keeps_only_current_conten
 }
 
 #[test]
-fn reduced_motion_removes_detail_travel_and_tour_restart_restores_filtered_examples() {
+fn reduced_motion_removes_detail_travel_and_examples_have_no_tour_control() {
     let mut rt = runtime();
     rt.set_system_reduced_motion(true);
     rt.update(|s, tx| {
@@ -415,14 +416,9 @@ fn reduced_motion_removes_detail_travel_and_tour_restart_restores_filtered_examp
             "reduced motion has no lift"
         );
     }
-    rt.update(|s, _| s.clear_view());
-    rt.frame(2.0);
-    let (x, y) = rt.find("showcase-tour").unwrap();
-    rt.pointer_down(x, y);
-    rt.pointer_up(x, y);
-    rt.frame(2.1);
+    assert!(rt.find("showcase-tour").is_none());
     assert_eq!(rt.state.visible.len(), 14);
-    assert!(rt.state.showcase.as_ref().unwrap().playing);
+    assert!(!rt.state.showcase.as_ref().unwrap().playing);
 }
 
 #[test]
@@ -455,7 +451,7 @@ fn expanded_inventory_scrollbar_moves_content_without_changing_the_exchange() {
 }
 
 #[test]
-fn compact_diagrams_open_on_readable_answer_and_fit_uses_the_settled_viewport() {
+fn compact_diagrams_open_fitted_and_fit_uses_the_settled_viewport() {
     let mut rt = runtime();
     for slug in [
         "support-routing",
@@ -468,48 +464,28 @@ fn compact_diagrams_open_on_readable_answer_and_fit_uses_the_settled_viewport() 
         });
         rt.frame(0.1);
         rt.frame(0.3);
-        assert!(
-            (0.8..=1.0).contains(&rt.state.diagram.camera.scale),
-            "readable initial scale for {slug}"
-        );
         let (v, _) = rt.presented("request-diagram:viewport").unwrap();
-        let (a, _) = rt.presented("request-diagram:node:6:answer").unwrap();
-        assert!(a[0] >= v[0] && a[0] + a[2] <= v[0] + v[2] + 0.1);
-        assert!(a[1] >= v[1] && a[1] < v[1] + 40.0);
-        if a[3] > v[3] {
-            let (x, y) = rt
-                .find("request-diagram:card-reveal")
-                .expect("tall answer has explicit overflow navigation");
-            rt.pointer_down(x, y);
-            rt.pointer_up(x, y);
-            rt.frame(0.3);
-            rt.frame(0.1);
-            let (a, _) = rt.presented("request-diagram:node:6:answer").unwrap();
+        for node in rt.elements().iter().filter(|e| {
+            e.key.as_deref().is_some_and(|key| {
+                key.starts_with("request-diagram:node:") && !key.ends_with(":select")
+            })
+        }) {
+            let (r, _) = rt.presented(node.key.as_deref().unwrap()).unwrap();
             assert!(
-                a[1] + a[3] <= v[1] + v[3] + 0.5,
-                "answer bottom is reachable"
+                r[0] >= v[0] - 0.5
+                    && r[1] >= v[1] - 0.5
+                    && r[0] + r[2] <= v[0] + v[2] + 0.5
+                    && r[1] + r[3] <= v[1] + v[3] + 0.5,
+                "all graph cards fit for {slug}: {r:?} in {v:?}"
             );
-            let (x, y) = rt
-                .find("request-diagram:card-reveal")
-                .expect("return-to-top affordance");
-            rt.pointer_down(x, y);
-            rt.pointer_up(x, y);
-            rt.frame(0.3);
-            rt.frame(0.1);
-            let (a, _) = rt.presented("request-diagram:node:6:answer").unwrap();
-            assert!(a[1] >= v[1], "answer top is reachable");
-        } else {
-            assert!(
-                a[1] + a[3] <= v[1] + v[3] + 0.5,
-                "ordinary answer fully visible: {slug}: {a:?} in {v:?}"
-            );
-            assert!(rt.find("request-diagram:card-overflow").is_none());
         }
+        let initial = rt.state.diagram.camera;
         let (x, y) = rt.find("request-diagram:fit").unwrap();
         rt.pointer_down(x, y);
         rt.pointer_up(x, y);
         rt.frame(0.3);
         let first_fit = rt.state.diagram.camera;
+        assert_eq!(initial, first_fit, "first open uses Fit graph framing");
         rt.frame(0.2);
         let (x, y) = rt.find("request-diagram:fit").unwrap();
         rt.pointer_down(x, y);

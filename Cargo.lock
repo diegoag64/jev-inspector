@@ -1717,6 +1717,7 @@ dependencies = [
 name = "jev-inspector"
 version = "0.1.0"
 dependencies = [
+ "bytemuck",
  "jev-protocol",
  "reqwest",
  "rune",
@@ -1724,6 +1725,7 @@ dependencies = [
  "rune-kit",
  "serde",
  "serde_json",
+ "wgpu",
 ]
 
 [[package]]
