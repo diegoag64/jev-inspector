@@ -1,0 +1,12 @@
+[
+  {
+    "t": 0.1,
+    "type": "tap",
+    "key": "theme-toggle"
+  },
+  {
+    "t": 0.2,
+    "type": "tap",
+    "key": "tab-0"
+  }
+]

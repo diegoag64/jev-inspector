@@ -180,3 +180,30 @@ does not establish correct Overview wording.
 When layout changes make an old overflow fixture fit, exercise overflow at a
 larger zoom. Keep the ordinary-size fit check too. Derive pointer coordinates
 from the newly rendered scrollbar bounds before rerunning track-click checks.
+
+## Audit corresponding views together
+
+The recovery reviews found repeated concepts implemented in separate views.
+Overview's probability disclosure was correct while Diagram's count was not.
+Diagram kept full question names while Overview discarded their suffixes.
+Timing described saved and disconnected requests correctly while headers,
+filters, and absent-answer messages still implied live progress.
+
+For each finding, inventory every place that displays or acts on the same data:
+
+- Check answer identity in Overview, the question menu, diagram headings, hover
+  help, and accessible names. Use identical prefixes with distinct suffixes.
+- Check pending state in all tabs, headers, aggregate counts, filters, and saved
+  partial results. Confirm that useful captured results remain scrollable.
+- Count actual additions in both probability disclosures, including an already
+  visible returned category and singular button wording.
+- Exercise global shortcuts while Help, Export, and the question menu are open.
+  Escape must close the current modal and restore ordinary navigation.
+- Navigate from a selection excluded by nonempty filters in both window layouts.
+- Save with a missing connection file, a known outage, and a connection lost
+  during refresh. Reopen and resave the fallback snapshot. Confirm provenance,
+  stars, missing bodies, captured values, and protection against relay restarts.
+- Inspect setup commands with custom upstream, listener, history, and connection
+  path together. Connected setup must lead with the remaining routing task.
+- Cross match 1,000 in both directions and wrap at the actual final match. Include
+  Unicode and dense repeated patterns that overlap preview boundaries.

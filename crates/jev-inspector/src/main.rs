@@ -1,4 +1,5 @@
 mod answer_value;
+mod capture_context;
 mod compare;
 mod demo;
 mod detail_states;
@@ -8,6 +9,7 @@ mod detail_view;
 mod diagram;
 mod feed;
 mod icons;
+mod json_search;
 mod json_tree;
 mod json_view;
 mod motion;

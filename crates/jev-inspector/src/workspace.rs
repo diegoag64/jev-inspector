@@ -27,6 +27,7 @@ pub struct Workspace {
     pub compact: bool,
     pub detail_expanded: bool,
     pub session_name: Option<String>,
+    pub last_received: bool,
     pub waker: Option<rune::Waker>,
     pub job: Option<Arc<session::Job>>,
     pub prefs: rune::prefs::Prefs,
@@ -55,6 +56,7 @@ impl Default for Workspace {
             compact: false,
             detail_expanded: false,
             session_name: None,
+            last_received: false,
             waker: None,
             job: None,
             prefs: rune::prefs::Prefs::memory(),
@@ -151,16 +153,24 @@ impl State {
         }
     }
     pub fn navigate(&mut self, delta: isize, tx: &mut Tx) {
-        let Some(index) = self
+        let index = self
             .visible
             .iter()
-            .position(|r| Some(r.id) == self.selected)
-        else {
-            return;
-        };
-        let next = index
-            .saturating_add_signed(delta)
-            .min(self.visible.len().saturating_sub(1));
+            .position(|r| Some(r.id) == self.selected);
+        let next = index.map_or_else(
+            || {
+                if delta < 0 {
+                    self.visible.len().saturating_sub(1)
+                } else {
+                    0
+                }
+            },
+            |index| {
+                index
+                    .saturating_add_signed(delta)
+                    .min(self.visible.len().saturating_sub(1))
+            },
+        );
         if let Some(id) = self.visible.get(next).map(|r| r.id) {
             self.workspace.follow = false;
             self.select(id);
@@ -190,10 +200,15 @@ impl State {
         };
         self.workspace.job = None;
         match result {
-            Ok(session::ResultValue::Saved(path, missing)) => {
+            Ok(session::ResultValue::Saved(path, missing, last_received)) => {
                 self.workspace.notice = Some((
                     format!(
-                        "Saved {}{}",
+                        "Saved {}{}{}",
+                        if last_received {
+                            "last-received snapshot: "
+                        } else {
+                            ""
+                        },
                         path.display(),
                         if missing > 0 {
                             format!(
@@ -207,6 +222,7 @@ impl State {
                 ));
             }
             Ok(session::ResultValue::Loaded(session, path)) => {
+                self.workspace.last_received = session.last_received;
                 self.workspace.comparison = compare::Comparison::default();
                 self.workspace.probability_limits.clear();
                 self.workspace.pending = None;
@@ -229,7 +245,12 @@ impl State {
                 self.reset_filters();
                 self.workspace.notice = Some((
                     format!(
-                        "Opened {} requests · {} summaries without captures",
+                        "Opened {}{} requests · {} summaries without captures",
+                        if session.last_received {
+                            "last-received snapshot: "
+                        } else {
+                            ""
+                        },
                         self.snapshot.requests.len(),
                         session.missing.len()
                     ),
@@ -248,6 +269,7 @@ impl State {
         self.workspace.comparison = compare::Comparison::default();
         self.workspace.probability_limits.clear();
         self.workspace.session_name = None;
+        self.workspace.last_received = false;
         self.workspace.cache.clear();
         self.workspace.starred.clear();
         self.workspace.clear_before = 0;
@@ -268,6 +290,11 @@ impl State {
     }
 }
 pub fn on_key(s: &mut State, event: &rune::KeyEvent, tx: &mut Tx) -> bool {
+    // Dialogs and the question menu own keyboard input until they close.
+    // Returning false preserves their local Escape and navigation handlers.
+    if s.workspace.help || s.workspace.export || s.diagram_questions_open {
+        return false;
+    }
     // Element handlers cannot receive Tab after an action clears focus.
     if event.key == rune::Key::Tab && s.tab == 3 && !s.workspace.help && !s.workspace.export {
         diagram::reveal_keyboard_card(s);

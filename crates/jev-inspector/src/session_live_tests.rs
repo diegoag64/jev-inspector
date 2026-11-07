@@ -1,12 +1,15 @@
 use super::*;
 use std::{net::TcpListener, time::Instant};
 
-fn exercise(restart: bool) {
+fn exercise(restart: bool, unavailable: bool) {
     let mut state = State::default();
     crate::demo::populate(&mut state);
     state.errors_only = true;
     state.filter_rows();
     state.demo = false;
+    if unavailable {
+        state.workspace.cache.insert(7, crate::demo::exchange(7));
+    }
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     listener.set_nonblocking(true).unwrap();
     let address = listener.local_addr().unwrap();
@@ -55,7 +58,11 @@ fn exercise(restart: bool) {
                     if restart && snapshots > 1 {
                         current.instance_id = "new-relay".into();
                     }
-                    (200, serde_json::to_vec(&current).unwrap())
+                    if unavailable && snapshots > 1 {
+                        (503, b"{}".to_vec())
+                    } else {
+                        (200, serde_json::to_vec(&current).unwrap())
+                    }
                 }
                 "/api/requests/7" => {
                     let mut exchange = crate::demo::exchange(7);
@@ -69,8 +76,10 @@ fn exercise(restart: bool) {
             stream.write_all(&body).unwrap();
         }
     });
-    let root =
-        std::env::temp_dir().join(format!("jev-export-test-{}-{restart}", std::process::id()));
+    let root = std::env::temp_dir().join(format!(
+        "jev-export-test-{}-{restart}-{unavailable}",
+        std::process::id()
+    ));
     std::fs::create_dir_all(&root).unwrap();
     let config = root.join("connection.json");
     let output = root.join("session.json");
@@ -111,10 +120,27 @@ fn exercise(restart: bool) {
         let saved = read(&output).unwrap();
         assert_eq!(saved.missing, vec![4]);
         assert_eq!(saved.snapshot.requests.len(), 2);
-        assert_eq!(
-            saved.exchanges[&7].response.json.as_ref().unwrap()["fresh_capture"],
-            true
-        );
+        assert_eq!(saved.last_received, unavailable);
+        if unavailable {
+            assert_eq!(
+                saved.exchanges[&7].response.json,
+                crate::demo::exchange(7).response.json
+            );
+            assert!(
+                state
+                    .workspace
+                    .notice
+                    .as_ref()
+                    .unwrap()
+                    .0
+                    .contains("last-received")
+            );
+        } else {
+            assert_eq!(
+                saved.exchanges[&7].response.json.as_ref().unwrap()["fresh_capture"],
+                true
+            );
+        }
     }
     std::fs::remove_file(config).unwrap();
     std::fs::remove_file(output).unwrap();
@@ -122,9 +148,84 @@ fn exercise(restart: bool) {
 }
 #[test]
 fn live_export_fetches_fresh_details_and_marks_evicted_captures() {
-    exercise(false);
+    exercise(false, false);
 }
 #[test]
 fn live_export_aborts_on_relay_restart_without_overwriting_destination() {
-    exercise(true);
+    exercise(true, false);
+}
+
+#[test]
+fn lost_connection_during_export_preserves_original_cached_snapshot() {
+    exercise(false, true);
+}
+
+#[test]
+fn disconnected_cached_sessions_save_reopen_and_resave_with_provenance() {
+    for known_disconnection in [false, true] {
+        let mut state = State::default();
+        crate::demo::populate(&mut state);
+        state.demo = false;
+        state.connection_file = std::env::temp_dir().join(format!(
+            "jev-missing-connection-{}-{known_disconnection}.json",
+            std::process::id()
+        ));
+        assert!(!state.connection_file.exists());
+        state.connection_error = known_disconnection.then(|| "Relay unavailable".into());
+        state.workspace.cache.insert(7, crate::demo::exchange(7));
+        state.workspace.starred.insert(7);
+        let output = std::env::temp_dir().join(format!(
+            "jev-cached-session-{}-{known_disconnection}.json",
+            std::process::id()
+        ));
+        start_save(&mut state, output.clone(), 0);
+        let until = Instant::now() + Duration::from_secs(5);
+        while state.workspace.job.is_some() && Instant::now() < until {
+            state.poll_job();
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        assert!(state.workspace.job.is_none());
+        let saved = read(&output).unwrap();
+        assert!(saved.last_received);
+        assert_eq!(saved.exchanges.len(), 2);
+        assert_eq!(saved.missing.len(), 10);
+        assert!(saved.starred.contains(&7));
+        assert_eq!(
+            saved.exchanges[&7].response.json,
+            crate::demo::exchange(7).response.json
+        );
+        assert!(
+            state
+                .workspace
+                .notice
+                .as_ref()
+                .unwrap()
+                .0
+                .contains("last-received snapshot")
+        );
+        let job = Arc::new(Job::default());
+        *job.result.lock().unwrap() =
+            Some(Ok(ResultValue::Loaded(Box::new(saved), output.clone())));
+        state.workspace.job = Some(job);
+        state.poll_job();
+        assert!(state.workspace.last_received);
+        assert!(
+            state
+                .workspace
+                .notice
+                .as_ref()
+                .unwrap()
+                .0
+                .contains("last-received snapshot")
+        );
+        start_save(&mut state, output.clone(), 0);
+        let until = Instant::now() + Duration::from_secs(5);
+        while state.workspace.job.is_some() && Instant::now() < until {
+            state.poll_job();
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        assert!(state.workspace.job.is_none());
+        assert!(read(&output).unwrap().last_received);
+        std::fs::remove_file(output).unwrap();
+    }
 }

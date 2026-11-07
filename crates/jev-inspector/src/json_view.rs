@@ -20,7 +20,7 @@ pub struct JsonDocument {
     source: Option<String>,
     start: usize,
     end: usize,
-    matches: Vec<std::ops::Range<usize>>,
+    matches: crate::json_search::SearchIndex,
     reveal_version: u64,
     reveal_pending: bool,
     pub copied: bool,
@@ -54,6 +54,7 @@ impl JsonDocument {
             .unwrap_or_default();
         self.source = source;
         self.set_window(0);
+        self.matches.clear();
         self.refresh_matches();
         self.reveal_match();
         self.schedule_reveal();
@@ -80,23 +81,17 @@ impl JsonDocument {
             .is_some_and(|s| self.start > 0 || s.len() > self.end)
     }
     fn refresh_matches(&mut self) {
-        self.matches = if self.search.text.is_empty() {
-            vec![]
-        } else {
-            self.source
-                .as_deref()
-                .unwrap_or("")
-                .match_indices(&self.search.text)
-                .take(1001)
-                .map(|(i, s)| i..i + s.len())
-                .collect()
-        };
-        self.match_index = self
-            .match_index
-            .min(self.matches.len().min(1000).saturating_sub(1));
+        if self.matches.query() == self.search.text {
+            return;
+        }
+        self.matches
+            .rebuild(self.source.as_deref().unwrap_or(""), &self.search.text);
+        self.match_index = 0;
     }
     fn reveal_match(&mut self) {
-        if let Some(range) = self.matches.get(self.match_index)
+        if let Some(range) = self
+            .matches
+            .range(self.source.as_deref().unwrap_or(""), self.match_index)
             && (range.start < self.start || range.end > self.end)
         {
             self.set_window(range.start.saturating_sub(2048));
@@ -108,10 +103,13 @@ impl JsonDocument {
             self.match_index = 0;
             return;
         }
-        self.match_index = (self.match_index as isize + delta)
-            .rem_euclid(self.matches.len().min(1000) as isize) as usize;
+        self.match_index =
+            (self.match_index as isize + delta).rem_euclid(self.matches.len() as isize) as usize;
         self.reveal_match();
-        let range = self.matches[self.match_index].clone();
+        let range = self
+            .matches
+            .range(self.source.as_deref().unwrap_or(""), self.match_index)
+            .unwrap();
         let local_start = range.start - self.start;
         let line = self.preview()[..local_start]
             .bytes()
@@ -170,7 +168,7 @@ impl JsonDocument {
         let matches = &self.matches;
         let mut spans =
             SyntaxTheme::from_kit(k).spans(&syntax::highlight(Some("json"), preview), 0);
-        for (i, range) in matches.iter().enumerate() {
+        for (i, range) in matches.visible(source, self.start, self.end) {
             if range.end <= self.start || range.start >= self.end {
                 continue;
             }
@@ -360,10 +358,9 @@ impl JsonDocument {
                         "0 matches".into()
                     } else {
                         format!(
-                            "{} / {}{}",
+                            "{} / {}",
                             self.match_index.min(matches.len() - 1) + 1,
-                            matches.len().min(1000),
-                            if matches.len() > 1000 { "+" } else { "" }
+                            matches.len(),
                         )
                     },
                     11.0,
@@ -373,12 +370,17 @@ impl JsonDocument {
                 (&crate::icons::UP, "Previous match", -1),
                 (&crate::icons::DOWN, "Next match", 1),
             ] {
+                let action_key = format!(
+                    "{key}:{}-match",
+                    if delta < 0 { "previous" } else { "next" }
+                );
                 let key = key.to_string();
                 controls = controls.child(
                     crate::ui::action(glyph, title, false)
                         .disabled(matches.is_empty())
                         .on_press_tx(move |s: &mut State, tx| get(s).find(&key, delta, tx))
                         .build(k)
+                        .key(action_key)
                         .help(if delta < 0 {
                             "Previous match · Shift+Enter"
                         } else {
@@ -497,6 +499,49 @@ impl JsonDocument {
 mod tests {
     use super::*;
     use serde_json::json;
+    #[test]
+    fn find_crosses_one_thousand_and_wraps_at_the_actual_final_match() {
+        let mut doc = JsonDocument::default();
+        doc.update(&Capture {
+            json: Some(json!({"rows": (0..2001).map(|i| format!("\u{754c}\u{1f680} billing row-{i:04}")).collect::<Vec<_>>()})),
+            ..Default::default()
+        });
+        doc.search = rune::TextEdit::new("billing");
+        let mut tx = rune::Tx::default();
+        doc.find("response-json", -1, &mut tx);
+        assert_eq!(doc.matches.len(), 2001);
+        assert_eq!(doc.match_index, 2000);
+        assert!(doc.start > 16_000 && doc.preview().contains("row-2000"));
+        doc.find("response-json", 1, &mut tx);
+        assert_eq!(doc.match_index, 0);
+        doc.find("response-json", 999, &mut tx);
+        assert_eq!(doc.match_index, 999);
+        doc.find("response-json", 1, &mut tx);
+        assert_eq!(doc.match_index, 1000);
+        doc.find("response-json", 1, &mut tx);
+        assert_eq!(doc.match_index, 1001);
+        doc.find("response-json", -1, &mut tx);
+        assert_eq!(doc.match_index, 1000);
+        let range = doc
+            .matches
+            .range(doc.source.as_deref().unwrap(), 1000)
+            .unwrap();
+        assert!(range.start >= doc.start && range.end <= doc.end);
+        doc.update(&Capture {
+            json: Some(json!({"line":"billing"})),
+            ..Default::default()
+        });
+        assert_eq!(doc.matches.len(), 1);
+        assert_eq!(doc.match_index, 0);
+        doc.matches.clear();
+        doc.find("response-json", 0, &mut tx);
+        assert_eq!(
+            doc.matches.len(),
+            1,
+            "reopening the same query rebuilds a cleared index"
+        );
+    }
+
     #[test]
     fn full_capture_search_reveals_tail_and_pages_at_unicode_boundaries() {
         let mut doc = JsonDocument::default();

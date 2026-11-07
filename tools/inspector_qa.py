@@ -110,6 +110,22 @@ for fixture in ["saved-pending", "saved-partial", "disconnected-pending"]:
     CASES[fixture + "-overview"] = ["--fixture", fixture, "--size", "1100x700", "--script", "tests/inspector-overview.script.json"]
 
 
+for name, fixture, script in [
+    ("shared-overview", "shared-prefix-questions", "overview"),
+    ("shared-overview-light", "shared-prefix-questions", "shared-overview-light"),
+    ("typed-partial-overview", "saved-typed-partial", "overview"),
+    ("typed-partial-diagram", "saved-typed-partial", "tab-diagram"),
+    ("typed-partial-compare", "saved-typed-partial", "tab-compare"),
+    ("diagram-disclosure-after", "diagram-disclosure", "diagram-more"),
+    ("find-final-match", "long-json", "find-final-match"),
+    ("filtered-next", "compare-unset", "filtered-next"),
+    ("diagram-help", "example-support-routing", "diagram-help"),
+]:
+    CASES[name] = ["--fixture", fixture, "--size", "1100x700", "--script", "tests/inspector-" + script + ".script.json"]
+for fixture in ["diagram-disclosure", "cached-session", "setup-custom-upstream"]:
+    CASES[fixture] = ["--fixture", fixture, "--size", "1100x700"]
+
+
 def verify_state(name: str, tree_path: Path) -> list[str]:
     """A rendered PNG is not enough: verify the scripted workflow reached its destination."""
     document = json.loads(tree_path.read_text(encoding="utf-8"))
@@ -241,6 +257,24 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
     if name == "shared-prefix-menu":
         if "diagram-question-content" not in keyed or "question_00" not in names:
             errors.append("Shared-prefix selector did not expose named options")
+    if name.startswith("shared-overview") and not all(f"question_{i:02}" in names for i in range(24)):
+        errors.append("Overview lost distinct answer identifiers")
+    if name.startswith("typed-partial-") and "partial-response-note" not in keyed:
+        errors.append("Partial captured results lost their snapshot notice")
+    if name == "find-final-match" and "2000 / 2000" not in names:
+        errors.append("Find did not navigate to the actual final match")
+    if name == "cached-session" and "Last-received snapshot" not in names:
+        errors.append("Cached-session provenance is missing")
+    if name == "setup-custom-upstream" and ("--upstream" not in names or "8901" not in names or "--history 150" not in names):
+        errors.append("Restart instructions dropped active settings")
+    if name == "filtered-next" and "Exchange #007" not in names:
+        errors.append("Navigation failed to enter the filtered requests")
+    if name == "diagram-help" and "Canvas arrow keys pan" not in names:
+        errors.append("Diagram help did not expose its controls")
+    if name in ("diagram-disclosure", "diagram-disclosure-after"):
+        expected = "Show 2 more categories (3 remaining)" if name == "diagram-disclosure" else "Show 1 more category (1 remaining)"
+        if keyed.get("diagram-more-categories", {}).get("name") != expected:
+            errors.append("Diagram disclosure promised the wrong number of additions")
     return errors
 
 

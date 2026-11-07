@@ -1,5 +1,39 @@
 use super::*;
 
+fn with_partial_response_note(s: &State, detail: &Exchange, k: &Kit, content: El) -> El {
+    if detail.summary.outcome != Outcome::Pending
+        || detail.response.complete
+        || detail.response.json.is_none()
+    {
+        return content;
+    }
+    if s.tab == 0
+        && detail
+            .response
+            .json
+            .as_ref()
+            .and_then(|v| v.get("answers"))
+            .and_then(serde_json::Value::as_object)
+            .is_none()
+    {
+        return content;
+    }
+    col()
+        .w_full()
+        .gap(6.0)
+        .child(
+            label(
+                crate::capture_context::pending(s).partial_notice(),
+                11.0,
+                k.c.warning.fg,
+            )
+            .wrap()
+            .role("status")
+            .key("partial-response-note"),
+        )
+        .child(content)
+}
+
 fn compact_header(s: &State, summary: Option<&Summary>, id: u64, k: &Kit) -> El {
     let mut title = col()
         .grow(1.0)
@@ -18,11 +52,7 @@ fn compact_header(s: &State, summary: Option<&Summary>, id: u64, k: &Kit) -> El 
     let mut header = row().center_y().gap(4.0).child(title);
     if let Some(r) = summary {
         header = header.child(ui::badge(
-            if s.workspace.session_name.is_some() && r.outcome == Outcome::Pending {
-                "Pending when saved".into()
-            } else {
-                status(r)
-            },
+            crate::capture_context::status(s, r),
             ui::status_color(r, k),
             k,
         ));
@@ -145,13 +175,7 @@ pub fn detail_view(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> 
                 .child(label(format!("Exchange #{id:03}"), 20.0, k.c.text_base).grow(1.0))
                 .child(ui::badge(
                     summary
-                        .map(|r| {
-                            if s.workspace.session_name.is_some() && r.outcome == Outcome::Pending {
-                                "Pending when saved".into()
-                            } else {
-                                status(r)
-                            }
-                        })
+                        .map(|r| crate::capture_context::status(s, r))
                         .unwrap_or_else(|| "Evicted".into()),
                     summary
                         .map(|r| ui::status_color(r, k))
@@ -355,7 +379,9 @@ fn content(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> El {
     if s.tab == 3 {
         return motion::detail(
             s,
-            diagram::view(s, detail, k, layers)
+            with_partial_response_note(s, detail, k, diagram::view(s, detail, k, layers))
+                .grow(1.0)
+                .min_h(0.0)
                 .role("tabpanel")
                 .label("Diagram"),
         );
@@ -363,7 +389,9 @@ fn content(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> El {
     if s.tab == 4 {
         return motion::detail(
             s,
-            compare::view(s, detail, k, cx)
+            with_partial_response_note(s, detail, k, compare::view(s, detail, k, cx))
+                .grow(1.0)
+                .min_h(0.0)
                 .role("tabpanel")
                 .label("Compare"),
         );
@@ -376,7 +404,7 @@ fn content(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> El {
         })
         .w_full();
     if s.tab == 0 {
-        body = crate::overview::view(s, detail, k);
+        body = with_partial_response_note(s, detail, k, crate::overview::view(s, detail, k));
     } else {
         let (capture, preview) = if s.tab == 1 {
             (&detail.request, &s.request_text)

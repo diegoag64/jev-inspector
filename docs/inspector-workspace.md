@@ -105,6 +105,12 @@ replays inference calls. If a detail was evicted, it uses an already-loaded copy
 when available, or marks the exchange as summary-only. If the relay restarts during
 export, the app reports an error and leaves the destination unchanged.
 
+If the relay is unavailable, Save session preserves the summaries and captures
+already received. The file, save confirmation, and reopened session identify this
+as a **last-received snapshot**. Unavailable bodies remain summary-only. If a
+refresh fails partway through saving, the app uses the cache from the start of
+the save, rather than mixing it with partially refreshed data.
+
 File operations run in the background. **Cancel** stops export before the final
 write. Native file-dialog cancellation leaves the current view unchanged. Exports
 write to a temporary file beside the destination before replacing it.
@@ -150,8 +156,9 @@ Equality checks use the complete captured JSON. Matching prefixes with different
 tails are labeled as different beyond the preview, never unchanged.
 
 Sessions accept at most 200 exchanges and 64 MB per file. A saved capture is limited
-to 512 KB in its serialized representation. Search highlights at most 1,000 matches
-across the complete captured JSON. The app does not automatically persist traffic.
+to 512 KB in its serialized representation. Find counts and navigates every match
+across the complete captured JSON. It renders highlights only in the visible
+preview window. The app does not automatically persist traffic.
 
 ## Repeat the visual checks
 
@@ -201,6 +208,8 @@ Filters keep the selected exchange open even when it leaves the result list.
 **Show selected** clears the filters to reveal it. An incomplete query keeps the
 last valid results until you finish editing. Clear view still works during editing.
 Relay restarts and eviction of the selected exchange display a notice.
+When selection is outside the filtered list, **Next request** enters its first
+row and **Previous request** enters its last row. Alt+Down and Alt+Up do the same.
 
 Saved pending exchanges are static snapshots labeled **Incomplete when saved**.
 Summary-only sessions retain their timing, model, request ID, and size metadata.
@@ -213,6 +222,9 @@ Open **Help > Connection setup** for copyable relay, inspector, and backend
 base URL commands. The same guide appears when a live session has no requests.
 The commands share the inspector's connection file and relay port, including
 custom paths. When a relay is connected, the guide labels its command for restart.
+Connected setup starts with routing the backend and sending one request. The
+restart command preserves a custom upstream and history limit. Reapply any custom
+timeout before restarting.
 
 Find reveals the matching text after you switch exchanges or return to Code.
 It measures Unicode text with the same font used to render the JSON. Manual
@@ -221,3 +233,8 @@ scrolling remains available after the initial reveal.
 Comparisons with differences outside the preview offer **Open current** and
 **Copy baseline**. Copy baseline includes the complete captured JSON, even if the
 original exchange has left retained history.
+
+Help, Export, and the question menu contain keyboard input while open. Global
+investigation shortcuts resume after you close them. Diagram's help button opens
+its controls first. Probability labels use up to two decimal places; tiny values
+and values close to 100% use bounds so rounding does not imply an exact endpoint.

@@ -75,6 +75,10 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit, layers: &mut Vec<El>) -> El {
         .child(label("Question", 11.0, k.c.text_muted))
         .child(selector.min_w(0.0))
         .child(rune::el().grow(1.0))
+        .child(crate::ui::action(&crate::icons::HELP, "Diagram controls", false)
+            .on_press(|s: &mut State| {s.workspace.setup_help=false; s.workspace.help=true;})
+            .build(k).key("diagram-help")
+            .help("Drag to pan. Wheel to zoom. Tab enters cards; Up/Down browse them. Open Help for keyboard controls."))
         .child(
             Button::new(if s.workspace.detail_expanded {
                 "Restore"
@@ -95,10 +99,17 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit, layers: &mut Vec<El>) -> El {
     let (graph, remaining) = graph(detail, selected, extra);
     let mut root = col().w_full().grow(1.0).min_h(0.0).gap(10.0).child(toolbar);
     if remaining > 0 && extra < 117 {
+        let (_, next_remaining) = self::graph(detail, selected, extra + 3);
+        let additions = remaining.saturating_sub(next_remaining);
         root = root.child(
             Button::new(format!(
-                "Show {} more categories ({remaining} remaining)",
-                remaining.min(3)
+                "Show {} more {} ({remaining} remaining)",
+                additions,
+                if additions == 1 {
+                    "category"
+                } else {
+                    "categories"
+                }
             ))
             .on_press(|s: &mut State| s.diagram.content.more_by("categories".into(), 3))
             .build(k)
@@ -152,7 +163,11 @@ struct Output {
     active: bool,
 }
 
-fn graph(detail: &Exchange, selected: Option<(&String, &Value)>, extra: usize) -> (Graph, usize) {
+pub(super) fn graph(
+    detail: &Exchange,
+    selected: Option<(&String, &Value)>,
+    extra: usize,
+) -> (Graph, usize) {
     let request = detail.request.json.as_ref();
     let response = detail.response.json.as_ref();
     let answer = selected.and_then(|(key, _)| response?.get("answers")?.get(key));

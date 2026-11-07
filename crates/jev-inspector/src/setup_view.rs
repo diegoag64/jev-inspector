@@ -63,6 +63,21 @@ pub(super) fn commands(s: &State) -> (String, String, String, String) {
     let custom_path = s.connection_file != std::path::Path::new(".jev/connection.json");
     let custom_listen = listen.to_string() != "127.0.0.1:8787";
     let mut bridge = "cargo run -p jev-bridge -- --capture-bodies".to_owned();
+    if s.snapshot.history_limit > 0 && s.snapshot.history_limit != 100 {
+        bridge.push_str(&format!(" --history {}", s.snapshot.history_limit));
+    }
+    if let Ok(upstream) = reqwest::Url::parse(&s.snapshot.upstream)
+        && matches!(upstream.scheme(), "http" | "https")
+        && upstream.host_str().is_some()
+        && upstream.username().is_empty()
+        && upstream.password().is_none()
+        && upstream.as_str().trim_end_matches('/') != "https://api.typesafe.ai"
+    {
+        bridge.push_str(&format!(
+            " --upstream {}",
+            quote(upstream.as_str(), windows)
+        ));
+    }
     if custom_path {
         bridge.push_str(&format!(" --connection-file {path}"));
     }
@@ -87,22 +102,65 @@ pub(super) fn commands(s: &State) -> (String, String, String, String) {
 
 pub fn guide(s: &State, k: &Kit) -> El {
     let (bridge, inspector, route, relay) = commands(s);
-    col().w_full().gap(12.0)
-        .child(label(if s.connected { "Relay connected — route your backend" } else { "Connect your backend" }, 20.0, k.c.text_base).wrap())
-        .child(label("Run these commands from this repository. Your backend keeps its existing API key and makes requests when you choose.", 13.0, k.c.text_muted).wrap())
-        .child(if s.connected {
-            col().gap(8.0)
-                .child(label("Relay connected. Keep it running. Use this command only after stopping it if you need to change capture settings.", 12.0, k.c.text_muted).wrap())
-                .child(command("1. Relay restart command", bridge, "setup-relay", k))
-        } else {
-            command("1. Start the relay in a terminal", bridge, "setup-relay", k)
-        })
-        .child(label("Body capture enables JSON, answers, and diagrams. Omit --capture-bodies for metadata only.", 12.0, k.c.text_muted).wrap())
-        .child(command("2. Inspector connection command", inspector, "setup-inspector", k))
-        .child(command("3. Set the URL in your backend's terminal", route, "setup-route", k))
-        .child(label("Then start your backend with its usual command. If your SDK configures baseUrl or baseURL explicitly, set that option to this relay origin instead. Do not append /v1.", 12.0, k.c.text_muted).wrap())
+    let mut guide = col().w_full().gap(12.0)
+        .child(label(if s.connected { "Route your backend" } else { "Connect your backend" }, 20.0, k.c.text_base).wrap())
+        .child(label(if s.connected { "The relay is connected. Keep it running and send a request from your backend." } else { "Run these commands from this repository. Your backend keeps its existing API key." }, 13.0, k.c.text_muted).wrap());
+    let routing = label("Start your backend with its usual command. If your SDK configures baseUrl or baseURL explicitly, set that option to this relay origin instead. Do not append /v1.", 12.0, k.c.text_muted).wrap();
+    let send = label("Send one normal request from your backend. It should appear in Traffic; select it to inspect the exchange.", 12.0, k.c.text_muted).wrap();
+    if s.connected {
+        guide = guide
+            .child(command(
+                "1. Set the URL in your backend's terminal",
+                route,
+                "setup-route",
+                k,
+            ))
+            .child(routing)
+            .child(label("2. Send a request", 13.0, k.c.text_base))
+            .child(send)
+            .child(ui::rule(k))
+            .child(label("Connection tools", 14.0, k.c.text_base))
+            .child(command(
+                "Inspector connection command",
+                inspector,
+                "setup-inspector",
+                k,
+            ))
+            .child(
+                label(
+                    "Stop the relay before using this command. It preserves the upstream, listener, and history limit; reapply any custom timeout before restarting.",
+                    12.0,
+                    k.c.text_muted,
+                )
+                .wrap(),
+            )
+            .child(command("Relay restart command", bridge, "setup-relay", k));
+    } else {
+        guide = guide
+            .child(command(
+                "1. Start the relay in a terminal",
+                bridge,
+                "setup-relay",
+                k,
+            ))
+            .child(command(
+                "2. Inspector connection command",
+                inspector,
+                "setup-inspector",
+                k,
+            ))
+            .child(command(
+                "3. Set the URL in your backend's terminal",
+                route,
+                "setup-route",
+                k,
+            ))
+            .child(routing)
+            .child(send);
+    }
+    guide.child(label("Body capture enables JSON, answers, and diagrams. Omit --capture-bodies for metadata only.", 12.0, k.c.text_muted).wrap())
         .child(label(format!("Relay: {relay}\nConnection file: {}", s.connection_file.display()), 12.0, k.c.text_muted).wrap_anywhere().selectable(true))
-        .child(label("Send one normal request from your backend. It should appear in Traffic; select it to inspect the exchange. Additional setup and SDK examples are in docs/bridge-quickstart.md.", 12.0, k.c.text_muted).wrap())
+        .child(label("Additional setup and SDK examples are in docs/bridge-quickstart.md.", 12.0, k.c.text_muted).wrap())
 }
 
 pub fn panel(s: &State, k: &Kit, cx: &Cx<State>) -> El {

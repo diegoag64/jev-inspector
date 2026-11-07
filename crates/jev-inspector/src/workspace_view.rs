@@ -111,11 +111,22 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
                 .gap(12.0)
                 .fill(k.c.layer_02)
                 .child(
-                    label(format!("Offline session · {name}"), 12.0, k.c.text_accent)
-                        .grow(1.0)
-                        .min_w(0.0)
-                        .truncate_middle()
-                        .help(name),
+                    label(
+                        format!(
+                            "{} · {name}",
+                            if s.workspace.last_received {
+                                "Last-received snapshot"
+                            } else {
+                                "Offline session"
+                            }
+                        ),
+                        12.0,
+                        k.c.text_accent,
+                    )
+                    .grow(1.0)
+                    .min_w(0.0)
+                    .truncate_middle()
+                    .help(name),
                 )
                 .child(ui::button(
                     if s.demo {
@@ -312,11 +323,7 @@ fn metrics(s: &State, k: &Kit) -> El {
             },
         ),
         (
-            if s.workspace.session_name.is_some() {
-                "INCOMPLETE"
-            } else {
-                "IN FLIGHT"
-            },
+            crate::capture_context::pending(s).count_label(),
             pending.to_string(),
             "visible requests",
             k.c.warning.fg,
@@ -518,11 +525,7 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                 },
             ))
             .child(ui::button(
-                if s.workspace.session_name.is_some() {
-                    "Incomplete"
-                } else {
-                    "In flight"
-                },
+                crate::capture_context::pending(s).filter_label(),
                 "pending-filter",
                 s.workspace.filter == Filter::Pending,
                 k,
@@ -899,6 +902,11 @@ fn footer(s: &State, k: &Kit) -> El {
 }
 fn dialogs(s: &State, k: &Kit, layers: &mut Vec<El>) {
     let mut help = col().gap(13.0).padding(20.0);
+    if s.tab == 3 {
+        help = help.child(label("Diagram controls", 14.0, k.c.text_base))
+            .child(label("Drag the background to pan. Wheel or pinch to zoom. Tab enters cards; Up and Down browse them. Canvas arrow keys pan, + and - zoom, 0 fits, and 1 restores actual size. Focus a card's properties to scroll them with Page Up, Page Down, Home, or End.", 12.0, k.c.text_muted).wrap())
+            .child(ui::rule(k));
+    }
     for (title, body) in [
         (
             "Find an exchange",

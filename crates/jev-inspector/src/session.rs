@@ -24,9 +24,11 @@ pub struct Session {
     pub exchanges: BTreeMap<u64, Exchange>,
     pub starred: BTreeSet<u64>,
     pub missing: Vec<u64>,
+    #[serde(default)]
+    pub last_received: bool,
 }
 pub enum ResultValue {
-    Saved(PathBuf, usize),
+    Saved(PathBuf, usize, bool),
     Loaded(Box<Session>, PathBuf),
     Cancelled,
 }
@@ -244,6 +246,8 @@ fn start_save(s: &mut State, path: PathBuf, kind: u8) {
         .copied()
         .collect();
     let offline = s.demo || s.offline_fixture || s.workspace.session_name.is_some();
+    let disconnected = s.connection_error.is_some();
+    let mut last_received = s.workspace.last_received || (!offline && disconnected);
     if s.demo && s.showcase.is_none() && s.workspace.session_name.is_none() {
         // Legacy fixtures generate uncached captures on demand. Preserve captured
         // values already in the cache, and never use that generator for the catalog.
@@ -267,55 +271,85 @@ fn start_save(s: &mut State, path: PathBuf, kind: u8) {
                 2 => serde_json::to_vec_pretty(&detail.ok_or("No exchange selected.")?)
                     .map_err(|e| e.to_string())?,
                 _ => {
-                    if !offline {
-                        let connection = feed::connection(&connection_path)?;
-                        let client = reqwest::blocking::Client::builder()
-                            .no_proxy()
-                            .redirect(reqwest::redirect::Policy::none())
-                            .retry(reqwest::retry::never())
-                            .timeout(Duration::from_secs(2))
-                            .build()
-                            .map_err(|e| e.to_string())?;
-                        let current: Snapshot = feed::get(&client, &connection, "/api/requests")?;
-                        if current.instance_id != snapshot.instance_id {
-                            return Err(
-                                "Relay restarted. Refresh before saving this session.".into()
-                            );
+                    if !offline && !disconnected {
+                        enum RefreshFailure {
+                            Unavailable,
+                            Restarted,
+                            Cancelled,
                         }
-                        for (i, row) in snapshot.requests.iter().enumerate() {
-                            if job.cancel.load(Ordering::Relaxed) {
-                                return Ok(ResultValue::Cancelled);
+                        let cached = exchanges.clone();
+                        let refresh = (|| -> Result<(), RefreshFailure> {
+                            let connection = feed::connection(&connection_path)
+                                .map_err(|_| RefreshFailure::Unavailable)?;
+                            let client = reqwest::blocking::Client::builder()
+                                .no_proxy()
+                                .redirect(reqwest::redirect::Policy::none())
+                                .retry(reqwest::retry::never())
+                                .timeout(Duration::from_secs(2))
+                                .build()
+                                .map_err(|_| RefreshFailure::Unavailable)?;
+                            let current: Snapshot =
+                                feed::get(&client, &connection, "/api/requests")
+                                    .map_err(|_| RefreshFailure::Unavailable)?;
+                            if current.instance_id != snapshot.instance_id {
+                                return Err(RefreshFailure::Restarted);
                             }
-                            match feed::get::<Exchange>(
-                                &client,
-                                &connection,
-                                &format!("/api/requests/{}", row.id),
-                            ) {
-                                Ok(exchange) => {
-                                    exchanges.insert(row.id, exchange);
+                            for (i, row) in snapshot.requests.iter().enumerate() {
+                                if job.cancel.load(Ordering::Relaxed) {
+                                    return Err(RefreshFailure::Cancelled);
                                 }
-                                Err(_) if !exchanges.contains_key(&row.id) => missing.push(row.id),
-                                Err(_) => {}
+                                match feed::get::<Exchange>(
+                                    &client,
+                                    &connection,
+                                    &format!("/api/requests/{}", row.id),
+                                ) {
+                                    Ok(exchange) => {
+                                        exchanges.insert(row.id, exchange);
+                                    }
+                                    Err(_) => {
+                                        // Distinguish one evicted body from an outage before
+                                        // spending another timeout on every retained exchange.
+                                        let current: Snapshot =
+                                            feed::get(&client, &connection, "/api/requests")
+                                                .map_err(|_| RefreshFailure::Unavailable)?;
+                                        if current.instance_id != snapshot.instance_id {
+                                            return Err(RefreshFailure::Restarted);
+                                        }
+                                    }
+                                }
+                                job.done.store(i + 1, Ordering::Relaxed);
+                                if let Some(wake) = &waker {
+                                    wake();
+                                }
                             }
-                            job.done.store(i + 1, Ordering::Relaxed);
-                            if let Some(wake) = &waker {
-                                wake();
+                            let current: Snapshot =
+                                feed::get(&client, &connection, "/api/requests")
+                                    .map_err(|_| RefreshFailure::Unavailable)?;
+                            if current.instance_id != snapshot.instance_id {
+                                return Err(RefreshFailure::Restarted);
+                            }
+                            Ok(())
+                        })();
+                        match refresh {
+                            Ok(()) => {}
+                            Err(RefreshFailure::Cancelled) => return Ok(ResultValue::Cancelled),
+                            Err(RefreshFailure::Restarted) => {
+                                return Err(
+                                    "Relay restarted during export. No session was written.".into(),
+                                );
+                            }
+                            Err(RefreshFailure::Unavailable) => {
+                                exchanges = cached;
+                                last_received = true;
                             }
                         }
-                        let current: Snapshot = feed::get(&client, &connection, "/api/requests")?;
-                        if current.instance_id != snapshot.instance_id {
-                            return Err(
-                                "Relay restarted during export. No session was written.".into()
-                            );
-                        }
-                    } else {
-                        missing = snapshot
-                            .requests
-                            .iter()
-                            .filter(|r| !exchanges.contains_key(&r.id))
-                            .map(|r| r.id)
-                            .collect();
                     }
+                    missing = snapshot
+                        .requests
+                        .iter()
+                        .filter(|r| !exchanges.contains_key(&r.id))
+                        .map(|r| r.id)
+                        .collect();
                     // Pair each saved summary with the version of its saved body.
                     for r in &mut snapshot.requests {
                         if let Some(e) = exchanges.get(&r.id) {
@@ -329,6 +363,7 @@ fn start_save(s: &mut State, path: PathBuf, kind: u8) {
                         exchanges,
                         starred,
                         missing: missing.clone(),
+                        last_received,
                     };
                     validate(&session)?;
                     serde_json::to_vec_pretty(&session).map_err(|e| e.to_string())?
@@ -338,7 +373,11 @@ fn start_save(s: &mut State, path: PathBuf, kind: u8) {
                 return Ok(ResultValue::Cancelled);
             }
             write(&path, &bytes)?;
-            Ok(ResultValue::Saved(path, missing.len()))
+            Ok(ResultValue::Saved(
+                path,
+                missing.len(),
+                kind == 0 && last_received,
+            ))
         })();
         *job.result.lock().unwrap() = Some(result);
         if let Some(wake) = waker {
@@ -361,6 +400,7 @@ mod tests {
             exchanges: [(12, crate::demo::exchange(12))].into(),
             starred: [12].into(),
             missing: vec![],
+            last_received: false,
         };
         let bytes = serde_json::to_vec(&s).unwrap();
         validate(&serde_json::from_slice(&bytes).unwrap()).unwrap();

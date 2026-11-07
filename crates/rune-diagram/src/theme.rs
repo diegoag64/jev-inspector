@@ -31,13 +31,13 @@ pub(crate) fn alpha(mut c: Color, a: f32) -> Color {
 /// Compact percent formatting; the underlying probability remains unchanged.
 pub fn percent(value: f64) -> String {
     let value = value * 100.0;
-    let magnitude = if value == 0.0 {
-        0.0
-    } else {
-        value.abs().log10().floor()
-    };
-    let decimals = (5.0 - magnitude).clamp(0.0, 12.0) as usize;
-    let s = format!("{value:.decimals$}");
+    if value > 0.0 && value < 0.01 {
+        return "<0.01%".into();
+    }
+    if value > 99.99 && value < 100.0 {
+        return ">99.99%".into();
+    }
+    let s = format!("{value:.2}");
     format!(
         "{}%",
         if s.contains('.') {
@@ -46,4 +46,22 @@ pub fn percent(value: f64) -> String {
             &s
         }
     )
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn percentages_are_compact_without_turning_small_values_into_endpoints() {
+        for (value, expected) in [
+            (0.0, "0%"),
+            (1.0, "100%"),
+            (1.0 / 13.0, "7.69%"),
+            (1.0 / 7.0, "14.29%"),
+            (0.0000001, "<0.01%"),
+            (0.9999999, ">99.99%"),
+            (0.01, "1%"),
+        ] {
+            assert_eq!(super::percent(value), expected);
+        }
+    }
 }

@@ -159,8 +159,9 @@ pub fn scenario(s: &mut State, name: &str) -> Result<(), String> {
             s.filter_rows();
         }
         "compare-unset" => s.tab = 4,
-        "saved" | "summary-only" => {
+        "saved" | "summary-only" | "cached-session" => {
             s.workspace.session_name = Some("support-investigation.jev.json".into());
+            s.workspace.last_received = name == "cached-session";
             if name == "summary-only" {
                 s.workspace.cache.remove(&12);
                 s.selected = None;
@@ -215,7 +216,7 @@ pub fn scenario(s: &mut State, name: &str) -> Result<(), String> {
             s.set_detail(current);
             s.tab = 0;
         }
-        "saved-pending" | "saved-partial" | "disconnected-pending" => {
+        "saved-pending" | "saved-partial" | "saved-typed-partial" | "disconnected-pending" => {
             scenario(s, "pending-response")?;
             if name == "disconnected-pending" {
                 s.demo = false;
@@ -223,9 +224,14 @@ pub fn scenario(s: &mut State, name: &str) -> Result<(), String> {
                 s.connection_error = Some("The local relay is not responding.".into());
             } else {
                 s.workspace.session_name = Some("incomplete-capture.jev.json".into());
-                if name == "saved-partial" {
+                if name == "saved-partial" || name == "saved-typed-partial" {
                     let mut current = s.detail.clone().unwrap();
-                    current.response.json = Some(json!({"partial": true, "message": "Inspection data available when saved"}));
+                    current.response.json = if name == "saved-typed-partial" { exchange(12).response.json } else { Some(json!({"partial": true, "message": "Inspection data available when saved"})) };
+                    let bytes = serde_json::to_vec(current.response.json.as_ref().unwrap()).unwrap().len();
+                    current.response.captured_bytes = bytes;
+                    current.response.wire_bytes = bytes as u64;
+                    current.summary.response_bytes = bytes as u64;
+                    s.snapshot.requests[0] = current.summary.clone();
                     s.set_detail(current);
                 }
             }
@@ -245,6 +251,13 @@ pub fn scenario(s: &mut State, name: &str) -> Result<(), String> {
             s.workspace.comparison.baseline = s.detail.clone();
             let mut snapshot=s.snapshot.clone(); snapshot.instance_id="restart-example".into(); s.apply_snapshot(snapshot);
         }
+        "setup-custom-upstream" => {
+            scenario(s, "first-use")?;
+            s.snapshot.upstream = "http://127.0.0.1:8901".into();
+            s.snapshot.history_limit = 150;
+            s.snapshot.relay_url = "http://127.0.0.1:9876".into();
+            s.connection_file = "artifacts/custom path/connection.json".into();
+        }
         "setup-disconnected" | "setup-custom" => {
             scenario(s, "first-use")?;
             if name == "setup-custom" {
@@ -253,6 +266,14 @@ pub fn scenario(s: &mut State, name: &str) -> Result<(), String> {
             }
             s.connected = false;
             s.connection_error = Some(format!("No relay connection at {}", s.connection_file.display()));
+        }
+        "diagram-disclosure" => {
+            let mut current = exchange(12);
+            let probabilities: serde_json::Map<String, serde_json::Value> = (0..7).map(|i| (format!("c{i:02}"), json!((7-i) as f64 / 28.0))).collect();
+            current.response.json = Some(json!({"answers":{"department":{"type":"choice","choice":"c04","probabilities":probabilities}}}));
+            s.set_detail(current);
+            s.diagram_question = "department".into();
+            s.tab = 3;
         }
         "unicode-find" => {
             let mut current = exchange(12);

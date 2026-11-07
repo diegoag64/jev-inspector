@@ -156,7 +156,16 @@ pub fn view(s: &State, current: &Exchange, k: &Kit, cx: &Cx<State>) -> El {
                 } else {
                     &icons::EXPAND
                 })
-                .variant(ButtonVariant::Ghost)
+                .variant(
+                    if cmp.diff.mode() == DiffMode::Split
+                        && !s.workspace.detail_expanded
+                        && s.workspace.window_width - s.workspace.list_width < 750.0
+                    {
+                        ButtonVariant::Contrast
+                    } else {
+                        ButtonVariant::Ghost
+                    },
+                )
                 .help("Give the comparison the full workspace width")
                 .on_press(State::toggle_expanded)
                 .build(k)

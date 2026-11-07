@@ -1,0 +1,28 @@
+[
+  {
+    "t": 0.1,
+    "type": "tap",
+    "key": "tab-2"
+  },
+  {
+    "t": 0.3,
+    "type": "tap",
+    "key": "response-json:find"
+  },
+  {
+    "t": 0.5,
+    "type": "tap",
+    "key": "response-json:search"
+  },
+  {
+    "t": 0.7,
+    "type": "type",
+    "text": "billing",
+    "every": 0.01
+  },
+  {
+    "t": 1.2,
+    "type": "tap",
+    "key": "response-json:previous-match"
+  }
+]

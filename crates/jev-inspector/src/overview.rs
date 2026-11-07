@@ -1,22 +1,7 @@
 use super::*;
 
 fn pending_context(s: &State) -> (&'static str, &'static str) {
-    if s.workspace.session_name.is_some() {
-        (
-            "Incomplete when saved",
-            "This snapshot contains only the timing recorded before it was saved. It will not update.",
-        )
-    } else if s.connection_error.is_some() || (!s.connected && !s.demo) {
-        (
-            "Status unknown",
-            "These are the last recorded timings. The current response status is unavailable while the relay is disconnected.",
-        )
-    } else {
-        (
-            "In flight",
-            "Timing becomes available as the exchange progresses.",
-        )
-    }
+    crate::capture_context::pending(s).timing()
 }
 
 fn elapsed(s: &State, r: &Summary) -> String {
@@ -112,9 +97,18 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
                         .center_y()
                         .gap(8.0)
                         .child(
-                            label(clip(name, 100), 12.0, k.c.text_muted)
-                                .wrap()
-                                .grow(1.0),
+                            label(name, 12.0, k.c.text_muted)
+                                .grow(1.0)
+                                .min_w(0.0)
+                                .truncate_middle()
+                                .help_when_truncated(
+                                    name.chars()
+                                        .collect::<Vec<_>>()
+                                        .chunks(48)
+                                        .map(|chunk| chunk.iter().collect::<String>())
+                                        .collect::<Vec<_>>()
+                                        .join("\n"),
+                                ),
                         )
                         .child(ui::badge(kind.to_uppercase(), k.c.text_accent, k)),
                 )
@@ -216,20 +210,17 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
             );
         }
     } else {
-        body = body
-            .child(label(
+        let (heading, explanation) = if r.outcome == Outcome::Pending {
+            crate::capture_context::pending(s).missing_answers()
+        } else {
+            (
                 "No typed answers in this response",
-                14.0,
-                k.c.text_muted,
-            ))
-            .child(
-                label(
-                    "Open Response to inspect the captured payload and any error details.",
-                    12.0,
-                    k.c.text_faint,
-                )
-                .wrap(),
-            );
+                "Open Response to inspect the captured payload and any error details.",
+            )
+        };
+        body = body
+            .child(label(heading, 14.0, k.c.text_muted))
+            .child(label(explanation, 12.0, k.c.text_faint).wrap());
     }
     let mut timing = col()
         .gap(12.0)

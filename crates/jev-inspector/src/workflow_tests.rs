@@ -1,5 +1,296 @@
 use super::*;
 
+#[test]
+fn compact_diagram_help_opens_relevant_instructions_and_returns_focus() {
+    let mut rt = runtime("example-support-routing", true, 1.0);
+    tap(&mut rt, "diagram-help");
+    assert!(rt.state.workspace.help);
+    assert!(
+        rt.accessibility_json()
+            .to_string()
+            .contains("Canvas arrow keys pan")
+    );
+    rt.key(rune::KeyEvent {
+        key: rune::Key::Escape,
+        mods: Default::default(),
+    });
+    settle(&mut rt);
+    assert!(!rt.state.workspace.help);
+    assert!(
+        a11y_node(&rt.accessibility_json(), "diagram-help").unwrap()["states"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|s| s == "focused")
+    );
+}
+
+#[test]
+fn excluded_selection_navigation_enters_filtered_results_in_both_layouts() {
+    for height in [700.0, 900.0] {
+        for direction in [-1, 1] {
+            let mut state = State::default();
+            demo::populate(&mut state);
+            let mut rt = rune::Runtime::new(
+                state,
+                view,
+                (1100.0, height),
+                rune::Env {
+                    system_dark: true,
+                    scale: 1.0,
+                },
+            );
+            rt.on_key = Some(workspace::on_key);
+            settle(&mut rt);
+            rt.update(|s, _| {
+                s.errors_only = true;
+                s.filter_rows();
+            });
+            settle(&mut rt);
+            assert_eq!(rt.state.selected, Some(12));
+            let expected = if direction < 0 { 4 } else { 7 };
+            tap(
+                &mut rt,
+                if direction < 0 {
+                    "previous-request"
+                } else {
+                    "next-request"
+                },
+            );
+            assert_eq!(rt.state.selected, Some(expected));
+            rt.update(|s, _| s.select(12));
+            settle(&mut rt);
+            rt.key(rune::KeyEvent {
+                key: if direction < 0 {
+                    rune::Key::Up
+                } else {
+                    rune::Key::Down
+                },
+                mods: rune::Mods {
+                    alt: true,
+                    ..Default::default()
+                },
+            });
+            settle(&mut rt);
+            assert_eq!(rt.state.selected, Some(expected));
+        }
+    }
+}
+
+#[test]
+fn restart_commands_preserve_custom_upstreams_and_history() {
+    for upstream in [
+        "http://127.0.0.1:8901",
+        "https://custom.example/api",
+        "http://localhost:8901/path?literal=$value",
+    ] {
+        let mut s = State::default();
+        demo::scenario(&mut s, "first-use").unwrap();
+        s.snapshot.upstream = upstream.into();
+        s.snapshot.history_limit = 150;
+        let command = setup_view::commands(&s).0;
+        let normalized = reqwest::Url::parse(upstream).unwrap();
+        assert!(command.contains(&format!("--upstream '{}'", normalized.as_str())));
+        assert!(command.contains("--history 150"));
+    }
+}
+
+#[test]
+fn modal_controls_contain_investigation_shortcuts_and_escape_restores_them() {
+    for modal in ["help", "export-menu", "diagram-question-trigger"] {
+        for key in ['k', 'f', 'p', 'b', 'l', 'e', 'o', '1', '2', '3', '4', '5'] {
+            let mut rt = runtime("shared-prefix-questions", true, 1.0);
+            tap(&mut rt, modal);
+            let selected = rt.state.selected;
+            let tab = rt.state.tab;
+            rt.key(rune::KeyEvent {
+                key: rune::Key::Command(key),
+                mods: rune::Mods {
+                    cmd: true,
+                    ..Default::default()
+                },
+            });
+            settle(&mut rt);
+            assert_eq!(rt.state.selected, selected, "{modal}: {key}");
+            assert_eq!(rt.state.tab, tab, "{modal}: {key}");
+            assert_eq!(rt.state.workspace.clear_before, 0, "{modal}: {key}");
+            assert!(rt.state.workspace.starred.is_empty(), "{modal}: {key}");
+            assert!(
+                !rt.state.workspace.paused && !rt.state.filter.focused,
+                "{modal}: {key}"
+            );
+            assert!(
+                !rt.state.request_text.search_open && !rt.state.response_text.search_open,
+                "{modal}: {key}"
+            );
+            assert!(rt.file_dialog().is_none(), "{modal}: {key}");
+            assert_eq!(rt.state.workspace.help, modal == "help");
+            assert_eq!(rt.state.workspace.export, modal == "export-menu");
+            assert_eq!(
+                rt.state.diagram_questions_open,
+                modal == "diagram-question-trigger"
+            );
+            rt.key(rune::KeyEvent {
+                key: rune::Key::Escape,
+                mods: Default::default(),
+            });
+            settle(&mut rt);
+            assert!(
+                !rt.state.workspace.help
+                    && !rt.state.workspace.export
+                    && !rt.state.diagram_questions_open
+            );
+            rt.key(rune::KeyEvent {
+                key: rune::Key::Command('l'),
+                mods: rune::Mods {
+                    cmd: true,
+                    ..Default::default()
+                },
+            });
+            settle(&mut rt);
+            assert!(rt.state.selected.is_none() && rt.state.visible.is_empty());
+        }
+    }
+}
+
+#[test]
+fn overview_retains_every_shared_prefix_answer_identity() {
+    for dark in [false, true] {
+        let mut rt = runtime("shared-prefix-questions", dark, 1.0);
+        rt.update(|s, _| s.select_tab(0));
+        settle(&mut rt);
+        let tree = rt.accessibility_json().to_string();
+        for name in rt
+            .state
+            .detail
+            .as_ref()
+            .unwrap()
+            .response
+            .json
+            .as_ref()
+            .unwrap()["answers"]
+            .as_object()
+            .unwrap()
+            .keys()
+        {
+            assert!(
+                tree.contains(name),
+                "Missing original answer identity {name}"
+            );
+        }
+    }
+}
+
+#[test]
+fn partial_results_keep_snapshot_context_and_connected_setup_starts_with_routing() {
+    let mut rt = runtime("saved-partial", true, 1.0);
+    rt.update(|s, _| {
+        let mut d = s.detail.clone().unwrap();
+        d.response.json = demo::exchange(12).response.json;
+        s.set_detail(d);
+    });
+    for tab in [0, 3, 4] {
+        rt.update(|s, _| s.select_tab(tab));
+        settle(&mut rt);
+        let note = a11y_node(&rt.accessibility_json(), "partial-response-note").unwrap();
+        assert!(note["name"].as_str().unwrap().contains("will not update"));
+        if tab == 0 {
+            let scroll = a11y_node(&rt.accessibility_json(), "detail-scroll").unwrap();
+            assert!(
+                scroll["scroll"][2].as_f64().unwrap() > 50.0,
+                "Partial overview must retain scrolling to all results and capture metadata"
+            );
+        }
+    }
+    let rt = runtime("first-use", true, 1.0);
+    assert!(rt.state.connected);
+    let route = rt.presented("setup-route").unwrap().0;
+    let inspector = rt.presented("setup-inspector").unwrap().0;
+    let relay = rt.presented("setup-relay").unwrap().0;
+    assert!(route[1] < inspector[1] && route[1] < relay[1]);
+}
+
+#[test]
+fn pending_context_is_consistent_across_overview_headers_filters_and_counts() {
+    for (fixture, expected) in [
+        ("saved-pending", "Response incomplete when saved"),
+        ("saved-partial", "Response incomplete when saved"),
+        ("disconnected-pending", "Response status unknown"),
+        ("pending-response", "Response pending"),
+    ] {
+        let mut rt = runtime(fixture, true, 1.0);
+        rt.update(|s, _| s.select_tab(0));
+        settle(&mut rt);
+        let tree = rt.accessibility_json().to_string();
+        assert!(tree.contains(expected), "{fixture}");
+        assert!(
+            !tree.contains("No typed answers in this response"),
+            "{fixture}"
+        );
+        if fixture != "pending-response" {
+            assert!(
+                !tree.contains("In flight") && !tree.contains("IN FLIGHT"),
+                "{fixture}"
+            );
+        }
+        if fixture == "disconnected-pending" {
+            assert!(
+                tree.contains("LAST KNOWN PENDING")
+                    && tree.contains("Pending (offline)")
+                    && tree.contains("Status unknown")
+            );
+        }
+    }
+}
+
+#[test]
+fn diagram_disclosure_counts_only_categories_added_by_the_next_click() {
+    for count in [7, 8, 10, 121] {
+        for rank in [0, 2, 3, 4, count - 1] {
+            let mut rt = runtime("compare-unset", true, 1.0);
+            rt.update(|s,_| {
+                let mut d = demo::exchange(12);
+                let values: serde_json::Map<String, serde_json::Value> = (0..count).map(|i| (format!("c{i:03}"), serde_json::json!((count-i) as f64 / (count*count) as f64))).collect();
+                d.response.json = Some(serde_json::json!({"answers":{"department":{"type":"choice","choice":format!("c{rank:03}"),"probabilities":values}}}));
+                s.set_detail(d);
+                s.diagram_question = "department".into();
+                s.select_tab(3);
+            });
+            settle(&mut rt);
+            for _ in 0..3 {
+                let Some(button) = a11y_node(&rt.accessibility_json(), "diagram-more-categories")
+                else {
+                    break;
+                };
+                let count_nodes = |s: &State| {
+                    let d = s.detail.as_ref().unwrap();
+                    let q = d.request.json.as_ref().unwrap()["questions"]
+                        .as_object()
+                        .unwrap()
+                        .get_key_value("department");
+                    let extra = s.diagram.content.visible("categories").saturating_sub(12);
+                    diagram::graph(d, q, extra)
+                        .0
+                        .nodes
+                        .iter()
+                        .filter(|n| n.id.starts_with("output-"))
+                        .count()
+                };
+                let before = count_nodes(&rt.state);
+                tap(&mut rt, "diagram-more-categories");
+                let added = count_nodes(&rt.state) - before;
+                assert!(
+                    button["name"].as_str().unwrap().starts_with(&format!(
+                        "Show {added} more {}",
+                        if added == 1 { "category" } else { "categories" }
+                    )),
+                    "count={count} rank={rank}: {button}"
+                );
+            }
+        }
+    }
+}
+
 fn runtime(fixture: &str, dark: bool, scale: f32) -> rune::Runtime<State> {
     let mut s = State::default();
     demo::populate(&mut s);

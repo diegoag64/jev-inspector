@@ -1,0 +1,12 @@
+[
+  {
+    "t": 0.2,
+    "type": "tap",
+    "key": "errors-filter"
+  },
+  {
+    "t": 0.7,
+    "type": "tap",
+    "key": "next-request"
+  }
+]

@@ -244,12 +244,18 @@ pub fn loading(s: &State, k: &Kit) -> El {
 }
 
 pub fn waiting_response(s: &State, k: &Kit) -> El {
-    if s.workspace.session_name.is_some() {
+    if matches!(
+        crate::capture_context::pending(s),
+        crate::capture_context::PendingContext::Saved
+    ) {
         return panel(s).key("response-incomplete-saved").child(surface(k)
             .child(label("Incomplete when saved", 16.0, k.c.text_base).role("status"))
             .child(label("This session was saved before the response completed. It is a historical snapshot and will not update. Request metadata and any captured request JSON remain available.", 13.0, k.c.text_muted).wrap()));
     }
-    if s.connection_error.is_some() || (!s.connected && !s.demo) {
+    if matches!(
+        crate::capture_context::pending(s),
+        crate::capture_context::PendingContext::Disconnected
+    ) {
         return panel(s).key("response-pending-disconnected").child(surface(k)
             .child(label("Response status unknown", 16.0, k.c.text_base).role("status"))
             .child(label("The response was pending when the relay disconnected. Its current status cannot be checked until the connection returns.", 13.0, k.c.text_muted).wrap()));
