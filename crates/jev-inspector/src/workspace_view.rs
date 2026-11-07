@@ -17,8 +17,7 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
         .child(label("jev", 23.0, k.c.text_base))
         .child(label("/", 21.0, k.c.text_faint))
         .child(label("inspector", 17.0, k.c.text_muted))
-        .child(ascii_fx::field(s.dark).size(112.0, 32.0))
-        .child(el().grow(1.0))
+        .child(ascii_fx::header_flow(s.dark).grow(1.0).min_w(0.0).h(44.0))
         .child(ui::badge(
             if s.workspace.session_name.is_some() {
                 "SAVED SESSION"

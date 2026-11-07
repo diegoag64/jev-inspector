@@ -6,6 +6,7 @@ use rune::render::{CLIP_WGSL, EffectSite};
 
 const MARK: u32 = 0x4a455600;
 const FIELD: u32 = MARK + 1;
+const FLOW: u32 = MARK + 2;
 const BURST_SECONDS: f64 = 1.8;
 
 pub fn mark(dark: bool) -> El {
@@ -19,6 +20,13 @@ pub fn field(dark: bool) -> El {
     rune::effect(FIELD)
         .effect_data([1.0, f32::from(dark), 0.0, 0.0])
         .key("ascii-field")
+        .a11y_hidden()
+}
+
+pub fn header_flow(dark: bool) -> El {
+    rune::effect(FLOW)
+        .effect_data([2.0, f32::from(dark), 0.0, 0.0])
+        .key("ascii-header-flow")
         .a11y_hidden()
 }
 
@@ -100,7 +108,7 @@ impl GpuEffects {
         site: &EffectSite<'_>,
         phase: f32,
     ) {
-        if site.mark != MARK && site.mark != FIELD {
+        if site.mark != MARK && site.mark != FIELD && site.mark != FLOW {
             return;
         }
         if !self
@@ -229,6 +237,35 @@ impl Compositor<State> for AsciiCompositor {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn header_flow_uses_available_width_without_overlapping_controls() {
+        let mut previous_width = 0.0;
+        for width in [1100.0, 1440.0, 1900.0] {
+            let mut state = State::default();
+            crate::demo::populate(&mut state);
+            let mut rt = rune::Runtime::new(
+                state,
+                crate::view,
+                (width, 700.0),
+                rune::Env {
+                    system_dark: true,
+                    scale: 1.0,
+                },
+            );
+            rt.frame(0.0);
+            rt.frame(0.3);
+            rt.frame(0.3);
+            let (flow, _) = rt.presented("ascii-header-flow").unwrap();
+            assert!(flow[2] > 250.0 && flow[2] > previous_width);
+            previous_width = flow[2];
+            for key in ["open-session", "export-menu", "help", "theme-toggle"] {
+                let (control, _) = rt.presented(key).unwrap();
+                assert!(flow[0] + flow[2] <= control[0]);
+                assert!(control[0] + control[2] <= width);
+            }
+        }
+    }
 
     #[test]
     fn activity_settles_and_reduced_motion_never_requests_frames() {

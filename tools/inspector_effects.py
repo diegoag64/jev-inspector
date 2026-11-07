@@ -37,7 +37,7 @@ def main() -> None:
             raise RuntimeError(f"Expected 13 frames, found {len(frames)} in {directory}")
         # Only decorative pixels in the fixed 1100x700 fixture. Exclude controls,
         # hover states and text from the motion comparison.
-        region = (22, 8, 380, 46)
+        region = (270, 4, 630, 48)
         def pixels(index):
             with Image.open(frames[index]) as frame:
                 return frame.convert("RGB").crop(region)
