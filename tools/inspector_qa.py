@@ -102,6 +102,14 @@ for name, fixture, script in [
     CASES[name] = ["--fixture", fixture, "--size", "1100x700", "--script", "tests/inspector-" + script + ".script.json"]
 
 
+for fixture in ["unicode-find", "shared-prefix-questions", "setup-custom"]:
+    CASES[fixture] = ["--fixture", fixture, "--size", "1100x700"]
+CASES["shared-prefix-menu"] = ["--fixture", "shared-prefix-questions", "--size", "1100x700", "--script", "tests/inspector-questions-menu.script.json"]
+CASES["unicode-find-light"] = ["--fixture", "unicode-find", "--size", "1100x700", "--script", "tests/inspector-theme-light.script.json"]
+for fixture in ["saved-pending", "saved-partial", "disconnected-pending"]:
+    CASES[fixture + "-overview"] = ["--fixture", fixture, "--size", "1100x700", "--script", "tests/inspector-overview.script.json"]
+
+
 def verify_state(name: str, tree_path: Path) -> list[str]:
     """A rendered PNG is not enough: verify the scripted workflow reached its destination."""
     document = json.loads(tree_path.read_text(encoding="utf-8"))
@@ -217,6 +225,22 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
                      "upstream-error": "429", "export-failed": "Could not save session", "long-labels-small": "SAVED SESSION"}
     if name in required_text and required_text[name] not in names:
         errors.append(f"Missing state text: {required_text[name]}")
+    if name.startswith("unicode-find"):
+        if "1 / 1" not in names:
+            errors.append("Unicode search did not resolve its match")
+        offset = keyed.get("response-json:scroll", {}).get("scroll", [0])[0]
+        if offset < 10_000:
+            errors.append("CJK match did not reveal its shaped horizontal position")
+    if name.endswith("-overview") and name.startswith(("saved-", "disconnected-pending")):
+        detail_names = "\n".join(n.get("name", "") for n in walk(keyed.get("detail-scroll", {})))
+        expected = "Status unknown" if name.startswith("disconnected") else "Incomplete when saved"
+        if expected not in detail_names or "as the exchange progresses" in detail_names or "In flight" in detail_names:
+            errors.append("Historical Overview claims live progress")
+    if name == "setup-custom" and ("9876" not in names or "--connection-file" not in names):
+        errors.append("Custom setup instructions lost connection settings")
+    if name == "shared-prefix-menu":
+        if "diagram-question-content" not in keyed or "question_00" not in names:
+            errors.append("Shared-prefix selector did not expose named options")
     return errors
 
 

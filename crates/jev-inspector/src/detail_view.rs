@@ -1,5 +1,119 @@
 use super::*;
 
+fn compact_header(s: &State, summary: Option<&Summary>, id: u64, k: &Kit) -> El {
+    let mut title = col()
+        .grow(1.0)
+        .min_w(0.0)
+        .gap(4.0)
+        .child(label(format!("Exchange #{id:03}"), 18.0, k.c.text_base).truncate());
+    if let Some(r) = summary {
+        let endpoint = format!("{} {}", r.method, r.path);
+        title = title.child(
+            ui::mono(&endpoint, 11.0, k.c.text_muted)
+                .truncate_middle()
+                .help(endpoint)
+                .selectable(true),
+        );
+    }
+    let mut header = row().center_y().gap(4.0).child(title);
+    if let Some(r) = summary {
+        header = header.child(ui::badge(
+            if s.workspace.session_name.is_some() && r.outcome == Outcome::Pending {
+                "Pending when saved".into()
+            } else {
+                status(r)
+            },
+            ui::status_color(r, k),
+            k,
+        ));
+    }
+    header = header.child(
+        ui::action(
+            if s.workspace.starred.contains(&id) {
+                &rune_kit::glyphs::STAR_FILLED
+            } else {
+                &rune_kit::glyphs::STAR
+            },
+            if s.workspace.starred.contains(&id) {
+                "Unstar exchange"
+            } else {
+                "Star exchange"
+            },
+            s.workspace.starred.contains(&id),
+        )
+        .control_size(rune_kit::ControlSize::Large)
+        .shortcut("cmd+b")
+        .on_press(State::star)
+        .build(k)
+        .key("star-exchange")
+        .checked(s.workspace.starred.contains(&id)),
+    );
+    for (glyph, name, key, direction, disabled) in [
+        (
+            &icons::UP,
+            "Previous request",
+            "previous-request",
+            -1,
+            s.visible.first().is_none_or(|r| r.id == id),
+        ),
+        (
+            &icons::DOWN,
+            "Next request",
+            "next-request",
+            1,
+            s.visible.last().is_none_or(|r| r.id == id),
+        ),
+    ] {
+        header = header.child(
+            ui::action(glyph, name, false)
+                .control_size(rune_kit::ControlSize::Large)
+                .shortcut(if direction < 0 { "Alt+Up" } else { "Alt+Down" })
+                .disabled(disabled)
+                .on_press_tx(move |s: &mut State, tx| s.navigate(direction, tx))
+                .build(k)
+                .key(key),
+        );
+    }
+    header = header.child(
+        ui::action(&rune_kit::glyphs::COPY, "Copy request ID", false)
+            .control_size(rune_kit::ControlSize::Large)
+            .disabled(summary.and_then(|r| r.request_id.as_ref()).is_none())
+            .on_press_tx(|s: &mut State, tx| {
+                if let Some(id) = s
+                    .snapshot
+                    .requests
+                    .iter()
+                    .find(|r| Some(r.id) == s.selected)
+                    .and_then(|r| r.request_id.clone())
+                {
+                    tx.copy(id);
+                    s.workspace.notice = Some(("Request ID copied".into(), false));
+                }
+            })
+            .build(k)
+            .key("copy-id"),
+    );
+    header.child(
+        ui::action(
+            if s.workspace.detail_expanded {
+                &icons::RESTORE
+            } else {
+                &icons::EXPAND
+            },
+            if s.workspace.detail_expanded {
+                "Restore split view"
+            } else {
+                "Expand exchange"
+            },
+            false,
+        )
+        .control_size(rune_kit::ControlSize::Large)
+        .on_press(State::toggle_expanded)
+        .build(k)
+        .key("expand-detail"),
+    )
+}
+
 pub fn detail_view(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> El {
     let Some(id) = s.selected else {
         if s.snapshot.requests.is_empty() && s.workspace.session_name.is_none() {
@@ -21,113 +135,117 @@ pub fn detail_view(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> 
         .padding(if compact { 14.0 } else { 20.0 })
         .gap(if compact { 6.0 } else { 14.0 });
     let summary = s.snapshot.requests.iter().find(|r| r.id == id);
-    pane = pane.child(
-        row()
-            .center_y()
-            .gap(12.0)
-            .child(label(format!("Exchange #{id:03}"), 20.0, k.c.text_base).grow(1.0))
-            .child(ui::badge(
-                summary
-                    .map(|r| {
-                        if s.workspace.session_name.is_some() && r.outcome == Outcome::Pending {
-                            "Pending when saved".into()
-                        } else {
-                            status(r)
-                        }
-                    })
-                    .unwrap_or_else(|| "Evicted".into()),
-                summary
-                    .map(|r| ui::status_color(r, k))
-                    .unwrap_or(k.c.text_muted),
-                k,
-            ))
-            .child(
-                ui::action(
-                    if s.workspace.starred.contains(&id) {
-                        &rune_kit::glyphs::STAR_FILLED
-                    } else {
-                        &rune_kit::glyphs::STAR
-                    },
-                    if s.workspace.starred.contains(&id) {
-                        "Unstar exchange"
-                    } else {
-                        "Star exchange"
-                    },
-                    s.workspace.starred.contains(&id),
-                )
-                .shortcut("cmd+b")
-                .on_press(State::star)
-                .build(k)
-                .key("star-exchange")
-                .checked(s.workspace.starred.contains(&id)),
-            )
-            .child(
-                ui::action(
-                    if s.workspace.detail_expanded {
-                        &icons::RESTORE
-                    } else {
-                        &icons::EXPAND
-                    },
-                    if s.workspace.detail_expanded {
-                        "Restore split view"
-                    } else {
-                        "Expand exchange"
-                    },
-                    false,
-                )
-                .on_press(State::toggle_expanded)
-                .build(k)
-                .key("expand-detail"),
-            ),
-    );
-    if let Some(r) = summary {
+    if compact {
+        pane = pane.child(compact_header(s, summary, id, k));
+    } else {
         pane = pane.child(
             row()
                 .center_y()
-                .gap(8.0)
-                .child(
-                    ui::mono(format!("{} {}", r.method, r.path), 12.0, k.c.text_muted)
-                        .truncate_middle()
-                        .help(format!("{} {}", r.method, r.path))
-                        .grow(1.0)
-                        .min_w(0.0)
-                        .selectable(true),
-                )
-                .child(
-                    ui::action(&icons::UP, "Previous request", false)
-                        .shortcut("Alt+Up")
-                        .disabled(s.visible.first().is_none_or(|r| r.id == id))
-                        .on_press_tx(|s: &mut State, tx| s.navigate(-1, tx))
-                        .build(k)
-                        .key("previous-request"),
-                )
-                .child(
-                    ui::action(&icons::DOWN, "Next request", false)
-                        .shortcut("Alt+Down")
-                        .disabled(s.visible.last().is_none_or(|r| r.id == id))
-                        .on_press_tx(|s: &mut State, tx| s.navigate(1, tx))
-                        .build(k)
-                        .key("next-request"),
-                )
-                .child(
-                    ui::action(&rune_kit::glyphs::COPY, "Copy request ID", false)
-                        .disabled(r.request_id.is_none())
-                        .on_press_tx(|s: &mut State, tx| {
-                            if let Some(id) = s
-                                .snapshot
-                                .requests
-                                .iter()
-                                .find(|r| Some(r.id) == s.selected)
-                                .and_then(|r| r.request_id.clone())
-                            {
-                                tx.copy(id);
-                                s.workspace.notice = Some(("Request ID copied".into(), false));
+                .gap(12.0)
+                .child(label(format!("Exchange #{id:03}"), 20.0, k.c.text_base).grow(1.0))
+                .child(ui::badge(
+                    summary
+                        .map(|r| {
+                            if s.workspace.session_name.is_some() && r.outcome == Outcome::Pending {
+                                "Pending when saved".into()
+                            } else {
+                                status(r)
                             }
                         })
-                        .build(k)
-                        .key("copy-id"),
+                        .unwrap_or_else(|| "Evicted".into()),
+                    summary
+                        .map(|r| ui::status_color(r, k))
+                        .unwrap_or(k.c.text_muted),
+                    k,
+                ))
+                .child(
+                    ui::action(
+                        if s.workspace.starred.contains(&id) {
+                            &rune_kit::glyphs::STAR_FILLED
+                        } else {
+                            &rune_kit::glyphs::STAR
+                        },
+                        if s.workspace.starred.contains(&id) {
+                            "Unstar exchange"
+                        } else {
+                            "Star exchange"
+                        },
+                        s.workspace.starred.contains(&id),
+                    )
+                    .shortcut("cmd+b")
+                    .on_press(State::star)
+                    .build(k)
+                    .key("star-exchange")
+                    .checked(s.workspace.starred.contains(&id)),
+                )
+                .child(
+                    ui::action(
+                        if s.workspace.detail_expanded {
+                            &icons::RESTORE
+                        } else {
+                            &icons::EXPAND
+                        },
+                        if s.workspace.detail_expanded {
+                            "Restore split view"
+                        } else {
+                            "Expand exchange"
+                        },
+                        false,
+                    )
+                    .on_press(State::toggle_expanded)
+                    .build(k)
+                    .key("expand-detail"),
                 ),
         );
+        if let Some(r) = summary {
+            pane = pane.child(
+                row()
+                    .center_y()
+                    .gap(8.0)
+                    .child(
+                        ui::mono(format!("{} {}", r.method, r.path), 12.0, k.c.text_muted)
+                            .truncate_middle()
+                            .help(format!("{} {}", r.method, r.path))
+                            .grow(1.0)
+                            .min_w(0.0)
+                            .selectable(true),
+                    )
+                    .child(
+                        ui::action(&icons::UP, "Previous request", false)
+                            .shortcut("Alt+Up")
+                            .disabled(s.visible.first().is_none_or(|r| r.id == id))
+                            .on_press_tx(|s: &mut State, tx| s.navigate(-1, tx))
+                            .build(k)
+                            .key("previous-request"),
+                    )
+                    .child(
+                        ui::action(&icons::DOWN, "Next request", false)
+                            .shortcut("Alt+Down")
+                            .disabled(s.visible.last().is_none_or(|r| r.id == id))
+                            .on_press_tx(|s: &mut State, tx| s.navigate(1, tx))
+                            .build(k)
+                            .key("next-request"),
+                    )
+                    .child(
+                        ui::action(&rune_kit::glyphs::COPY, "Copy request ID", false)
+                            .disabled(r.request_id.is_none())
+                            .on_press_tx(|s: &mut State, tx| {
+                                if let Some(id) = s
+                                    .snapshot
+                                    .requests
+                                    .iter()
+                                    .find(|r| Some(r.id) == s.selected)
+                                    .and_then(|r| r.request_id.clone())
+                                {
+                                    tx.copy(id);
+                                    s.workspace.notice = Some(("Request ID copied".into(), false));
+                                }
+                            })
+                            .build(k)
+                            .key("copy-id"),
+                    ),
+            );
+        }
     }
     if !s.visible.iter().any(|r| r.id == id) {
         pane = pane.child(
@@ -219,7 +337,7 @@ fn content(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> El {
                     s.mailbox.lock().unwrap().refresh = true;
                 }));
             }
-            return scroll_overview(s, body.child(overview::summary(summary, k)), k, cx);
+            return scroll_overview(s, body.child(overview::summary(s, summary, k)), k, cx);
         }
         return motion::detail(s, detail_states::missing(s, k));
     };
@@ -343,8 +461,7 @@ fn tab(name: &str, value: u8, current: u8, k: &Kit) -> El {
         })
         .on_press(move |s: &mut State| {
             showcase::stop(s);
-            s.tab = value;
-            s.diagram_questions_open = false;
+            s.select_tab(value);
         })
         .build(k)
         .role("tab")

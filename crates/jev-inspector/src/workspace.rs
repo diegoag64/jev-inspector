@@ -19,7 +19,7 @@ pub struct Workspace {
     pub cache: BTreeMap<u64, Exchange>,
     pub query_error: Option<String>,
     pub applied_query: String,
-    pub probability_limits: BTreeMap<String, usize>,
+    pub probability_limits: BTreeMap<(u64, String), usize>,
     pub setup_help: bool,
     pub notice: Option<(String, bool)>,
     pub help: bool,
@@ -86,6 +86,7 @@ impl State {
                 self.workspace.notice = Some(("Relay restarted. Previous stars and comparison baseline were cleared. Save a session to keep an investigation across restarts.".into(), false));
             }
             self.workspace.comparison = compare::Comparison::default();
+            self.workspace.probability_limits.clear();
             self.selected = None;
             self.detail = None;
             self.detail_error = None;
@@ -106,6 +107,9 @@ impl State {
         self.workspace
             .starred
             .retain(|id| snapshot.requests.iter().any(|r| r.id == *id));
+        self.workspace
+            .probability_limits
+            .retain(|(id, _), _| snapshot.requests.iter().any(|r| r.id == *id));
         self.snapshot = snapshot;
         self.filter_rows();
     }
@@ -204,6 +208,7 @@ impl State {
             }
             Ok(session::ResultValue::Loaded(session, path)) => {
                 self.workspace.comparison = compare::Comparison::default();
+                self.workspace.probability_limits.clear();
                 self.workspace.pending = None;
                 self.workspace.paused = false;
                 self.workspace.follow = false;
@@ -241,6 +246,7 @@ impl State {
     }
     pub fn return_live(&mut self) {
         self.workspace.comparison = compare::Comparison::default();
+        self.workspace.probability_limits.clear();
         self.workspace.session_name = None;
         self.workspace.cache.clear();
         self.workspace.starred.clear();
@@ -288,6 +294,7 @@ pub fn on_key(s: &mut State, event: &rune::KeyEvent, tx: &mut Tx) -> bool {
         doc.search_open = true;
         doc.tree = false;
         doc.search.focused = true;
+        doc.schedule_reveal();
         return true;
     }
     if event.is_command('p') {
@@ -313,7 +320,7 @@ pub fn on_key(s: &mut State, event: &rune::KeyEvent, tx: &mut Tx) -> bool {
     for n in 0..5 {
         if event.is_command(char::from(b'1' + n)) {
             showcase::stop(s);
-            s.tab = n;
+            s.select_tab(n);
             tx.blur();
             return true;
         }

@@ -204,9 +204,20 @@ Relay restarts and eviction of the selected exchange display a notice.
 
 Saved pending exchanges are static snapshots labeled **Incomplete when saved**.
 Summary-only sessions retain their timing, model, request ID, and size metadata.
-Overview includes the returned choice among probability rows and offers **Show
-12 more** when more categories are available. Long question lists use a scrollable
-selector above the diagram.
+Overview includes the returned choice among probability rows. Its disclosure
+button counts the additional rows and remembers the expanded count for each
+retained exchange. Long question lists use a scrollable selector above the
+diagram. Truncated names retain their suffix and show the full name on hover.
 
 Open **Help > Connection setup** for copyable relay, inspector, and backend
 base URL commands. The same guide appears when a live session has no requests.
+The commands share the inspector's connection file and relay port, including
+custom paths. When a relay is connected, the guide labels its command for restart.
+
+Find reveals the matching text after you switch exchanges or return to Code.
+It measures Unicode text with the same font used to render the JSON. Manual
+scrolling remains available after the initial reveal.
+
+Comparisons with differences outside the preview offer **Open current** and
+**Copy baseline**. Copy baseline includes the complete captured JSON, even if the
+original exchange has left retained history.

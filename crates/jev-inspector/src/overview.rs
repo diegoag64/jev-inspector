@@ -1,5 +1,40 @@
 use super::*;
 
+fn pending_context(s: &State) -> (&'static str, &'static str) {
+    if s.workspace.session_name.is_some() {
+        (
+            "Incomplete when saved",
+            "This snapshot contains only the timing recorded before it was saved. It will not update.",
+        )
+    } else if s.connection_error.is_some() || (!s.connected && !s.demo) {
+        (
+            "Status unknown",
+            "These are the last recorded timings. The current response status is unavailable while the relay is disconnected.",
+        )
+    } else {
+        (
+            "In flight",
+            "Timing becomes available as the exchange progresses.",
+        )
+    }
+}
+
+fn elapsed(s: &State, r: &Summary) -> String {
+    r.duration_ms
+        .map(|v| ui::duration(Some(v)))
+        .unwrap_or_else(|| {
+            if r.outcome == Outcome::Pending {
+                if s.workspace.session_name.is_some() {
+                    "Not completed".into()
+                } else {
+                    pending_context(s).0.into()
+                }
+            } else {
+                "Not recorded".into()
+            }
+        })
+}
+
 pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
     let r = &detail.summary;
     let mut body = col().w_full().gap(18.0);
@@ -28,7 +63,7 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
     body = body.child(
         row()
             .gap(12.0)
-            .child(tile("Elapsed", ui::duration(r.duration_ms), k))
+            .child(tile("Elapsed", elapsed(s, r), k))
             .child(tile("Sent", ui::bytes(r.request_bytes), k))
             .child(tile("Received", ui::bytes(r.response_bytes), k)),
     );
@@ -85,6 +120,7 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
                 )
                 .child(answer_value::view(kind, value, k));
             let mut probability_shown = 0;
+            let mut probability_more = 0;
             if let Some(probabilities) = answer["probabilities"].as_object() {
                 let mut values: Vec<_> = probabilities
                     .iter()
@@ -94,10 +130,17 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
                 let limit = s
                     .workspace
                     .probability_limits
-                    .get(name)
+                    .get(&(r.id, name.clone()))
                     .copied()
                     .unwrap_or(12);
                 let choice = answer["choice"].as_str();
+                probability_more = values
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, (n, _))| {
+                        *i >= limit && *i < limit + 12 && Some(n.as_str()) != choice
+                    })
+                    .count();
                 for (_, (name, probability)) in values
                     .into_iter()
                     .enumerate()
@@ -141,13 +184,13 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
                 let limit = s
                     .workspace
                     .probability_limits
-                    .get(name)
+                    .get(&(r.id, name.clone()))
                     .copied()
                     .unwrap_or(12);
                 if total > probability_shown {
-                    let action = name.clone();
+                    let action = (r.id, name.clone());
                     card = card.child(label(format!("Showing {probability_shown} of {total} probabilities; returned choice is included."), 11.0, k.c.text_muted).wrap())
-                        .child(Button::new(format!("Show {} more probabilities", (total-limit).min(12)))
+                        .child(Button::new(format!("Show {} more probabilities", probability_more))
                             .variant(ButtonVariant::Ghost)
                             .on_press_tx(move |s: &mut State, tx| { s.workspace.probability_limits.insert(action.clone(), limit + 12); tx.focus_control("detail-scroll"); })
                             .build(k).key(format!("probabilities-more-{name}")));
@@ -199,7 +242,11 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
                 .center_y()
                 .child(label("Request timing", 13.0, k.c.text_base).grow(1.0))
                 .child(ui::badge(
-                    format!("{:?}", r.outcome),
+                    if r.outcome == Outcome::Pending {
+                        pending_context(s).0.into()
+                    } else {
+                        format!("{:?}", r.outcome)
+                    },
                     ui::status_color(r, k),
                     k,
                 )),
@@ -233,9 +280,23 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
                     )),
             );
     } else {
+        if let Some(headers) = r.upstream_headers_ms {
+            timing = timing.child(label(
+                format!("Headers  {headers:.2} ms"),
+                12.0,
+                k.c.text_accent,
+            ));
+        }
+        if let Some(total) = r.duration_ms {
+            timing = timing.child(label(format!("Total  {total:.2} ms"), 12.0, k.c.text_base));
+        }
         timing = timing.child(
             label(
-                "Timing becomes available as the exchange progresses.",
+                if r.outcome == Outcome::Pending {
+                    pending_context(s).1
+                } else {
+                    "Complete timing was not recorded for this exchange."
+                },
                 12.0,
                 k.c.text_muted,
             )
@@ -313,14 +374,14 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
     }
     body
 }
-pub fn summary(r: &Summary, k: &Kit) -> El {
+pub fn summary(s: &State, r: &Summary, k: &Kit) -> El {
     col()
         .w_full()
         .gap(14.0)
         .child(
             row()
                 .gap(10.0)
-                .child(tile("Elapsed", ui::duration(r.duration_ms), k))
+                .child(tile("Elapsed", elapsed(s, r), k))
                 .child(tile("Sent", ui::bytes(r.request_bytes), k))
                 .child(tile("Received", ui::bytes(r.response_bytes), k)),
         )
@@ -353,6 +414,11 @@ pub fn summary(r: &Summary, k: &Kit) -> El {
         ))
 }
 fn tile(name: &str, value: String, k: &Kit) -> El {
+    let size = if value.chars().count() > 10 {
+        14.0
+    } else {
+        20.0
+    };
     col()
         .grow(1.0)
         .min_w(0.0)
@@ -361,7 +427,7 @@ fn tile(name: &str, value: String, k: &Kit) -> El {
         .radius(8.0)
         .fill(k.c.layer_02)
         .child(label(name.to_uppercase(), 10.0, k.c.text_muted))
-        .child(ui::mono(value, 20.0, k.c.text_base))
+        .child(ui::mono(value, size, k.c.text_base).wrap())
 }
 fn fact(name: &str, value: &str, k: &Kit) -> El {
     col()

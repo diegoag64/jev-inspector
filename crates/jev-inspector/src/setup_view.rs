@@ -30,12 +30,27 @@ fn command(title: &str, value: String, key: &'static str, k: &Kit) -> El {
         )
 }
 
-pub fn guide(s: &State, k: &Kit) -> El {
-    let relay = if s.snapshot.relay_url.starts_with("http") {
-        s.snapshot.relay_url.trim_end_matches('/')
+fn quote(value: &str, windows: bool) -> String {
+    if windows {
+        format!("'{}'", value.replace('\'', "''"))
     } else {
-        "http://127.0.0.1:8787"
-    };
+        format!("'{}'", value.replace('\'', "'\"'\"'"))
+    }
+}
+
+pub(super) fn commands(s: &State) -> (String, String, String, String) {
+    let listen = s
+        .snapshot
+        .relay_url
+        .strip_prefix("http://")
+        .and_then(|url| {
+            url.trim_end_matches('/')
+                .parse::<std::net::SocketAddr>()
+                .ok()
+        })
+        .filter(|addr| addr.ip().is_loopback() && addr.port() != 0)
+        .unwrap_or_else(|| "127.0.0.1:8787".parse().unwrap());
+    let relay = format!("http://{listen}");
     let connection = if s.connection_file.is_absolute() {
         s.connection_file.clone()
     } else {
@@ -43,20 +58,50 @@ pub fn guide(s: &State, k: &Kit) -> El {
             .unwrap_or_default()
             .join(&s.connection_file)
     };
-    let route = if cfg!(windows) {
-        format!("$env:TYPESAFE_BASE_URL = \"{relay}\"")
+    let windows = cfg!(windows);
+    let path = quote(&connection.to_string_lossy(), windows);
+    let custom_path = s.connection_file != std::path::Path::new(".jev/connection.json");
+    let custom_listen = listen.to_string() != "127.0.0.1:8787";
+    let mut bridge = "cargo run -p jev-bridge -- --capture-bodies".to_owned();
+    if custom_path {
+        bridge.push_str(&format!(" --connection-file {path}"));
+    }
+    if custom_listen {
+        bridge.push_str(&format!(
+            " --listen {}",
+            quote(&listen.to_string(), windows)
+        ));
+    }
+    if custom_path || custom_listen {
+        // An ephemeral inspection port avoids collisions with an existing relay.
+        bridge.push_str(" --inspector 127.0.0.1:0");
+    }
+    let inspector = format!("cargo run -p jev-inspector -- --connection-file {path}");
+    let route = if windows {
+        format!("$env:TYPESAFE_BASE_URL = {}", quote(&relay, true))
     } else {
-        format!("export TYPESAFE_BASE_URL=\"{relay}\"")
+        format!("export TYPESAFE_BASE_URL={}", quote(&relay, false))
     };
+    (bridge, inspector, route, relay)
+}
+
+pub fn guide(s: &State, k: &Kit) -> El {
+    let (bridge, inspector, route, relay) = commands(s);
     col().w_full().gap(12.0)
         .child(label(if s.connected { "Relay connected — route your backend" } else { "Connect your backend" }, 20.0, k.c.text_base).wrap())
         .child(label("Run these commands from this repository. Your backend keeps its existing API key and makes requests when you choose.", 13.0, k.c.text_muted).wrap())
-        .child(command("1. Start the relay in a terminal", "cargo run -p jev-bridge -- --capture-bodies".into(), "setup-relay", k))
+        .child(if s.connected {
+            col().gap(8.0)
+                .child(label("Relay connected. Keep it running. Use this command only after stopping it if you need to change capture settings.", 12.0, k.c.text_muted).wrap())
+                .child(command("1. Relay restart command", bridge, "setup-relay", k))
+        } else {
+            command("1. Start the relay in a terminal", bridge, "setup-relay", k)
+        })
         .child(label("Body capture enables JSON, answers, and diagrams. Omit --capture-bodies for metadata only.", 12.0, k.c.text_muted).wrap())
-        .child(command("2. Open the inspector in another terminal", format!("cargo run -p jev-inspector -- --connection-file \"{}\"", connection.display()), "setup-inspector", k))
+        .child(command("2. Inspector connection command", inspector, "setup-inspector", k))
         .child(command("3. Set the URL in your backend's terminal", route, "setup-route", k))
         .child(label("Then start your backend with its usual command. If your SDK configures baseUrl or baseURL explicitly, set that option to this relay origin instead. Do not append /v1.", 12.0, k.c.text_muted).wrap())
-        .child(label(format!("Relay: {relay}\nConnection file: {}", connection.display()), 12.0, k.c.text_muted).wrap_anywhere().selectable(true))
+        .child(label(format!("Relay: {relay}\nConnection file: {}", s.connection_file.display()), 12.0, k.c.text_muted).wrap_anywhere().selectable(true))
         .child(label("Send one normal request from your backend. It should appear in Traffic; select it to inspect the exchange. Additional setup and SDK examples are in docs/bridge-quickstart.md.", 12.0, k.c.text_muted).wrap())
 }
 
@@ -80,4 +125,20 @@ pub fn panel(s: &State, k: &Kit, cx: &Cx<State>) -> El {
             .child(guide(s, k).key("setup-content")),
         false,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::quote;
+    #[test]
+    fn command_arguments_are_literal_in_both_supported_shells() {
+        assert_eq!(
+            quote("O'Brien $HOME `literal`", true),
+            "'O''Brien $HOME `literal`'"
+        );
+        assert_eq!(
+            quote("O'Brien $HOME `literal`", false),
+            "'O'\"'\"'Brien $HOME `literal`'"
+        );
+    }
 }

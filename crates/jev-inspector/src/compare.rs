@@ -72,7 +72,7 @@ impl Comparison {
             let (b, limit_b) = body(b);
             self.limited |= limit_a || limit_b;
             if !equal && a == b {
-                self.outside_preview.push(format!("{name}: captured values differ beyond this diff preview. Open the Request or Response tab to search or copy the complete captured JSON."));
+                self.outside_preview.push(name.to_owned());
                 continue;
             }
             inputs.push((name, a, b));
@@ -187,15 +187,90 @@ pub fn view(s: &State, current: &Exchange, k: &Kit, cx: &Cx<State>) -> El {
     for message in &cmp.unavailable {
         panel = panel.child(label(message, 12.0, k.c.warning.fg).wrap().role("status"));
     }
-    for message in &cmp.outside_preview {
+    for name in &cmp.outside_preview {
+        let request = name == "request.json";
         panel = panel.child(
-            label(message, 13.0, k.c.warning.fg)
-                .wrap()
-                .role("status")
-                .key("comparison-outside-preview"),
+            col()
+                .gap(8.0)
+                .padding(12.0)
+                .radius(8.0)
+                .fill(k.c.bg_deep)
+                .border(1.0, k.c.border_base)
+                .key(format!("comparison-outside-preview-{name}"))
+                .child(
+                    row()
+                        .center_y()
+                        .gap(8.0)
+                        .child(label(name, 13.0, k.c.text_base).grow(1.0))
+                        .child(ui::badge("Different beyond preview", k.c.warning.fg, k)),
+                )
+                .child(
+                    label(
+                        "The captured values differ beyond this diff preview.",
+                        12.0,
+                        k.c.text_muted,
+                    )
+                    .wrap()
+                    .role("status"),
+                )
+                .child(
+                    row()
+                        .gap(8.0)
+                        .flex_wrap()
+                        .child(
+                            Button::new("Open current")
+                                .variant(ButtonVariant::Ghost)
+                                .on_press_tx(move |s: &mut State, tx| {
+                                    s.select_tab(if request { 1 } else { 2 });
+                                    tx.blur();
+                                })
+                                .build(k)
+                                .key(format!("compare-open-{name}")),
+                        )
+                        .child(
+                            Button::new("Copy baseline")
+                                .icon(&rune_kit::glyphs::COPY)
+                                .variant(ButtonVariant::Ghost)
+                                .on_press_tx(move |s: &mut State, tx| {
+                                    if let Some(base) = &s.workspace.comparison.baseline {
+                                        let capture = if request {
+                                            &base.request
+                                        } else {
+                                            &base.response
+                                        };
+                                        if let Some(value) = &capture.json {
+                                            tx.copy(serde_json::to_string_pretty(value).unwrap());
+                                            s.workspace.notice = Some((
+                                                format!(
+                                                    "Baseline #{} {} JSON copied",
+                                                    base.summary.id,
+                                                    if request { "request" } else { "response" }
+                                                ),
+                                                false,
+                                            ));
+                                        }
+                                    }
+                                })
+                                .build(k)
+                                .key(format!("compare-copy-{name}")),
+                        ),
+                ),
         );
     }
     if cmp.inputs.is_empty() && !cmp.outside_preview.is_empty() {
+        return panel;
+    }
+    if !cmp.outside_preview.is_empty() && cmp.diff.files().iter().all(|file| file.hunks.is_empty())
+    {
+        for (name, _, _) in &cmp.inputs {
+            panel = panel.child(
+                row()
+                    .center_y()
+                    .padding(12.0)
+                    .child(label(*name, 13.0, k.c.text_base).grow(1.0))
+                    .child(ui::badge("Unchanged", k.c.text_muted, k)),
+            );
+        }
         return panel;
     }
     if cmp.inputs.is_empty() {

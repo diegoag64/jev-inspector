@@ -476,7 +476,7 @@ fn compact_diagrams_open_on_readable_answer_and_fit_uses_the_settled_viewport() 
         let (a, _) = rt.presented("request-diagram:node:6:answer").unwrap();
         assert!(a[0] >= v[0] && a[0] + a[2] <= v[0] + v[2] + 0.1);
         assert!(a[1] >= v[1] && a[1] < v[1] + 40.0);
-        if slug == "many-choices" {
+        if a[3] > v[3] {
             let (x, y) = rt
                 .find("request-diagram:card-reveal")
                 .expect("tall answer has explicit overflow navigation");

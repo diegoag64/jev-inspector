@@ -427,7 +427,18 @@ impl<'a> DiagramCard<'a> {
                         if content_card { 14.0 } else { 16.0 },
                         600.0,
                     ))
-                    .color(k.c.text_base),
+                    .color(k.c.text_base)
+                    .w_full()
+                    .truncate_middle()
+                    .help_when_truncated(
+                        n.title
+                            .chars()
+                            .collect::<Vec<_>>()
+                            .chunks(48)
+                            .map(|line| line.iter().collect::<String>())
+                            .collect::<Vec<_>>()
+                            .join("\n"),
+                    ),
             );
         let heading = if in_diagram {
             heading.checked(selected)

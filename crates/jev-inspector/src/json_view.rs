@@ -8,6 +8,12 @@ use rune_kit::{
 
 const PREVIEW_BYTES: usize = 16_000;
 
+fn code_font() -> TextStyle {
+    let mut font = TextStyle::new(13.0, 400.0).mono();
+    font.line_height = 21.0;
+    font
+}
+
 /// Keep copyable JSON separate from the bounded display and its explanatory text.
 #[derive(Default)]
 pub struct JsonDocument {
@@ -15,6 +21,8 @@ pub struct JsonDocument {
     start: usize,
     end: usize,
     matches: Vec<std::ops::Range<usize>>,
+    reveal_version: u64,
+    reveal_pending: bool,
     pub copied: bool,
     pub search_open: bool,
     pub search: rune::TextEdit,
@@ -24,6 +32,10 @@ pub struct JsonDocument {
     pub(super) outline: rune_kit::TreeModel<crate::json_tree::Property>,
 }
 impl JsonDocument {
+    pub fn schedule_reveal(&mut self) {
+        self.reveal_version = self.reveal_version.wrapping_add(1);
+        self.reveal_pending = true;
+    }
     pub fn update(&mut self, capture: &Capture) {
         let source = capture
             .json
@@ -44,6 +56,7 @@ impl JsonDocument {
         self.set_window(0);
         self.refresh_matches();
         self.reveal_match();
+        self.schedule_reveal();
     }
     fn set_window(&mut self, start: usize) {
         let source = self.source.as_deref().unwrap_or("");
@@ -108,15 +121,13 @@ impl JsonDocument {
             format!("{key}:scroll"),
             (line as f32 * 21.0 - 60.0).max(0.0),
         );
-        let column = self.preview()[..local_start]
+        let prefix = self.preview()[..local_start]
             .rsplit('\n')
             .next()
-            .unwrap_or("")
-            .chars()
-            .count();
+            .unwrap_or("");
         tx.scroll_to_x(
             format!("{key}:scroll"),
-            (column as f32 * 7.8 - 180.0).max(0.0),
+            (rune::text::advance(prefix, code_font()) - 180.0).max(0.0),
         );
     }
     pub fn view(
@@ -155,8 +166,7 @@ impl JsonDocument {
             .map(|n| format!("{n:>digits$}"))
             .collect::<Vec<_>>()
             .join("\n");
-        let mut font = TextStyle::new(13.0, 400.0).mono();
-        font.line_height = 21.0;
+        let font = code_font();
         let matches = &self.matches;
         let mut spans =
             SyntaxTheme::from_kit(k).spans(&syntax::highlight(Some("json"), preview), 0);
@@ -199,6 +209,9 @@ impl JsonDocument {
                     .on_press(move |s: &mut State| {
                         let doc = get(s);
                         doc.tree = !doc.tree;
+                        if !doc.tree {
+                            doc.schedule_reveal();
+                        }
                     })
                     .build(k)
                     .key(format!("{key}:tree"))
@@ -216,6 +229,7 @@ impl JsonDocument {
                             doc.matches.clear();
                         } else {
                             doc.search.focused = true;
+                            doc.schedule_reveal();
                         }
                     })
                     .build(k)
@@ -385,6 +399,21 @@ impl JsonDocument {
             );
             panel = panel.child(controls);
         }
+        let reveal_key = key.to_owned();
+        let reveal = el()
+            .key(format!("{key}:reveal:{}", self.reveal_version))
+            .size(0.0, 0.0)
+            .on_layout_tx(move |s: &mut State, _, tx| {
+                let doc = get(s);
+                if doc.reveal_pending {
+                    doc.reveal_pending = false;
+                    if doc.search_open && !doc.tree {
+                        doc.find(&reveal_key, 0, tx);
+                    }
+                } else {
+                    tx.live_only();
+                }
+            });
         panel = panel
             .child(el().w_full().h(1.0).fill(k.c.border_base))
             .child(crate::request_scroll::area(
@@ -408,6 +437,7 @@ impl JsonDocument {
                     .scroll_xy()
                     .focusable(true)
                     .label("JSON code")
+                    .child(reveal)
                     .child(code),
                 true,
             ));

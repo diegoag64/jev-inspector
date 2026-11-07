@@ -141,3 +141,55 @@
      }
      pub(super) fn can_focus(&self, i: usize) -> bool {
          let n = &self.nodes[i];
+
+diff --git a/crates/rune-kit/src/select.rs b/crates/rune-kit/src/select.rs
+--- a/crates/rune-kit/src/select.rs
++++ b/crates/rune-kit/src/select.rs
+@@ -40,6 +40,12 @@
+     choose: Option<Choose>,
+     toggle: Option<Box<dyn FnOnce(El) -> El>>,
+     dismiss: Option<(El, Modal)>,
++}
++
++fn name_help(value: &str) -> String {
++    use unicode_segmentation::UnicodeSegmentation;
++    value.graphemes(true).collect::<Vec<_>>().chunks(48)
++        .map(|line| line.concat()).collect::<Vec<_>>().join("\n")
+ }
+ 
+ impl Select {
+@@ -185,6 +191,7 @@
+                 .role("option")
+                 .focusable(true).focus_selected(selected)
+                 .label(o.clone())
++                .help(name_help(o))
+                 .position_in_set(i + 1, count)
+                 .h(28.0)
+                 .pl(12.0)
+@@ -194,7 +201,7 @@
+                 .radius(4.0)
+                 .mt(if after_item { 2.0 } else { 0.0 })
+                 .child(
+-                    text(o.clone()).key("label").font(k.ty.ui_compact).color(c.text_base).grow(1.0).shrink().truncate().a11y_hidden(),
++                    text(o.clone()).key("label").font(k.ty.ui_compact).color(c.text_base).grow(1.0).shrink().truncate_middle().help_when_truncated(name_help(o)).a11y_hidden(),
+                 )
+                 .child(el().key("indicator").size(16.0, 16.0).center().a11y_hidden().child(
+                     icon(k.glyph.check_small, 14.0).color(c.icon_base).opacity(if selected { 1.0 } else { 0.0 }),
+@@ -266,7 +273,7 @@
+                     .py(4.0)
+                     .gap(4.0)
+                     .radius(k.radius.sm)
+-                    .child(text(label).key("value").font(font).color(ink).truncate().a11y_hidden())
++                    .child(text(label.clone()).key("value").font(font).color(ink).truncate_middle().help_when_truncated(name_help(&label)).a11y_hidden())
+                     .child(icon(chevron, 16.0).key("chevron").color(c.icon_muted).a11y_hidden());
+                 if hover {
+                     t = t.fill(c.hover);
+@@ -292,7 +299,7 @@
+                             .grow(1.0)
+                             .shrink()
+                             .pl(8.0)
+-                            .child(text(label).font(k.ty.ui_compact).color(ink).truncate())
++                            .child(text(label.clone()).font(k.ty.ui_compact).color(ink).truncate_middle().help_when_truncated(name_help(&label)))
+                             .a11y_hidden(),
+                     )
+                     .child(

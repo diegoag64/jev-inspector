@@ -1,4 +1,17 @@
 [
-  {"t": 0.2, "type": "tap", "key": "request-diagram:card-reveal"},
-  {"t": 0.8, "type": "tap", "key": "request-diagram:card-reveal"}
+  {
+    "t": 0.1,
+    "type": "tap",
+    "key": "request-diagram:zoom-in"
+  },
+  {
+    "t": 0.4,
+    "type": "tap",
+    "key": "request-diagram:card-reveal"
+  },
+  {
+    "t": 1.0,
+    "type": "tap",
+    "key": "request-diagram:card-reveal"
+  }
 ]

@@ -152,3 +152,31 @@ the result back to the captured data. In particular, check:
 
 Keep native OS checks separate from Runtime assertions. A passing headless
 clipboard effect or picker simulation does not verify the operating system.
+
+## Verify combinations and visible results
+
+The workflow reviews found gaps in tests that checked a search count or one
+response tab without checking the surrounding workflow. A positive match count
+does not prove the matching glyphs are visible. Correct saved-response wording
+does not establish correct Overview wording.
+
+- Find a term after a long CJK string, emoji, combining marks, and mixed text.
+  Check the shaped match bounds against the viewport in both themes and scales.
+- Keep Find open while switching short and long captures, returning from another
+  tab, and returning from Tree to Code. Scroll manually after the initial reveal
+  to check that layout updates do not keep moving the document.
+- Inspect saved pending, saved partial, and disconnected pending exchanges in
+  every applicable tab. Preserve recorded headers when total timing is absent.
+- Use a custom connection path containing spaces and an apostrophe, plus a custom
+  relay port. Compare the copied relay, inspector, and backend commands.
+- Give multiple questions identical long prefixes and different suffixes. Check
+  the closed selector, open menu, diagram heading, keyboard selection, and full-name help.
+- Place the returned choice just inside and outside each probability disclosure
+  boundary. Compare the button's count with the number of rows actually added.
+  Revisit the exchange to check that its disclosure state survives navigation.
+- Compare bodies whose only difference is outside the preview. Open the current
+  body and copy the complete baseline after its exchange leaves retained history.
+
+When layout changes make an old overflow fixture fit, exercise overflow at a
+larger zoom. Keep the ordinary-size fit check too. Derive pointer coordinates
+from the newly rendered scrollbar bounds before rerunning track-click checks.

@@ -191,13 +191,13 @@ pub fn scenario(s: &mut State, name: &str) -> Result<(), String> {
             s.set_detail(current);
             s.tab = 4;
         }
-        "many-questions-6" | "many-questions-12" | "many-questions-24" => {
-            let count: usize = name.rsplit('-').next().unwrap().parse().unwrap();
+        "many-questions-6" | "many-questions-12" | "many-questions-24" | "shared-prefix-questions" => {
+            let count: usize = if name == "shared-prefix-questions" { 24 } else { name.rsplit('-').next().unwrap().parse().unwrap() };
             let mut current = exchange(12);
             let mut questions = serde_json::Map::new();
             let mut answers = serde_json::Map::new();
             for i in 0..count {
-                let key = format!("question_{i:02}_customer_support_triage_and_resolution");
+                let key = if name == "shared-prefix-questions" { format!("{}_question_{i:02}", "customer_support_triage_and_resolution_".repeat(5)) } else { format!("question_{i:02}_customer_support_triage_and_resolution") };
                 questions.insert(key.clone(), json!({"type":"noul", "instructions":"Does this need review?"}));
                 answers.insert(key, json!({"type":"noul", "noul":0.12, "confidence":0.89}));
             }
@@ -245,10 +245,23 @@ pub fn scenario(s: &mut State, name: &str) -> Result<(), String> {
             s.workspace.comparison.baseline = s.detail.clone();
             let mut snapshot=s.snapshot.clone(); snapshot.instance_id="restart-example".into(); s.apply_snapshot(snapshot);
         }
-        "setup-disconnected" => {
+        "setup-disconnected" | "setup-custom" => {
             scenario(s, "first-use")?;
+            if name == "setup-custom" {
+                s.connection_file = "artifacts/custom path/O'Brien/connection.json".into();
+                s.snapshot.relay_url = "http://127.0.0.1:9876".into();
+            }
             s.connected = false;
             s.connection_error = Some(format!("No relay connection at {}", s.connection_file.display()));
+        }
+        "unicode-find" => {
+            let mut current = exchange(12);
+            current.response.json = Some(json!({"line": format!("{}NEEDLE", "\u{754c}".repeat(1000))}));
+            s.set_detail(current);
+            s.tab = 2;
+            s.response_text.search_open = true;
+            s.response_text.search = rune::TextEdit::new("NEEDLE");
+            s.response_text.schedule_reveal();
         }
         "long-json" => {
             let mut current = exchange(12);

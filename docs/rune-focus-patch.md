@@ -39,3 +39,8 @@ and thumb displacement at independent diagram zoom and renderer scales.
 Repeated preparation verifies the patched files against its receipt and refuses
 to overwrite local changes. Preserve any edits before changing the patch or
 replacing the generated source directory.
+
+The patch also updates RuneKit Select labels to retain the beginning and end of
+long option names. Options expose their full names as wrapped hover help, while
+accessible names retain the original text. Diagram headings use the same visual
+truncation and full-name help in the reusable diagram crate.

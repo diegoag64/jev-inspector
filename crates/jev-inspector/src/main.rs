@@ -103,6 +103,12 @@ impl Default for State {
 }
 
 impl State {
+    fn select_tab(&mut self, tab: u8) {
+        self.tab = tab;
+        self.diagram_questions_open = false;
+        self.request_text.schedule_reveal();
+        self.response_text.schedule_reveal();
+    }
     fn filter_rows(&mut self) {
         let query = query::Query::parse(&self.filter.text);
         self.workspace.query_error = query.as_ref().err().cloned();
@@ -168,7 +174,8 @@ impl State {
     fn select(&mut self, id: u64) {
         showcase::stop(self);
         if self.selected != Some(id) {
-            self.workspace.probability_limits.clear();
+            self.request_text.schedule_reveal();
+            self.response_text.schedule_reveal();
             self.request_text.copied = false;
             self.response_text.copied = false;
             self.diagram.reset();
