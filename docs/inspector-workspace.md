@@ -57,7 +57,7 @@ the divider to reset it. **Expand** gives the selected exchange the full workspa
 **Compact** reduces row height. The live app remembers theme, density, and the
 divider width after a drag. Static `--demo` fixtures keep preferences in memory.
 Short windows use a compact metrics strip to leave more room for captured bodies.
-Diagram **100%** restores readable actual size; **Fit** shows the whole graph.
+Diagram **Actual size** restores readable actual size; **Fit graph** shows the whole graph.
 On the focused canvas, arrow keys pan, `+` and `-` zoom, `0` fits, and `1` restores
 actual size.
 
@@ -80,7 +80,7 @@ not the original wire bytes.
 To compare two exchanges:
 
 1. Select the first exchange and open **Compare**.
-2. Click **Use this exchange as baseline**.
+2. Click **Set baseline**.
 3. Select another exchange.
 4. Read the input and output changes in **Unified** or **Split** mode.
 
