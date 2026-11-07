@@ -32,8 +32,8 @@ pub fn view(kind: &str, value: &Value, k: &Kit) -> El {
             )
             .child(
                 row()
-                    .child(label("False ? 0%", 10.0, k.c.text_faint).grow(1.0))
-                    .child(label("True ? 100%", 10.0, k.c.text_faint)),
+                    .child(label("False: 0%", 10.0, k.c.text_faint).grow(1.0))
+                    .child(label("True: 100%", 10.0, k.c.text_faint)),
             );
     }
     if kind == "box" {
