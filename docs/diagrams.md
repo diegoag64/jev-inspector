@@ -1,8 +1,9 @@
 # Use the local Rune diagram components
 
 The tracked implementation is `crates/rune-diagram`. The inspector depends on it
-as a Rust library. A copy is installed into `.upstream/rune/crates/rune-diagram`
-and registered in that local Rune workspace, so other local Rune apps can use it.
+as a Rust library. `python tools/install_rune_diagram.py` installs a copy into
+`.upstream/rune-inspector/crates/rune-diagram` and registers it in that prepared
+Rune workspace, so other local Rune apps can use it with the focus patch.
 This is a local extension; no upstream commit, push, or publication is required.
 
 ## Open a captured request diagram
@@ -10,6 +11,7 @@ This is a local extension; no upstream commit, push, or publication is required.
 Build and open the offline inspector fixture:
 
 ```sh
+python tools/prepare_rune.py
 cargo build --workspace --locked
 cargo run -p jev-inspector -- --demo --diagram
 ```

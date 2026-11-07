@@ -1,6 +1,6 @@
 use super::*;
 
-fn runtime() -> rune::Runtime<State> {
+pub(super) fn runtime() -> rune::Runtime<State> {
     let mut s = State::default();
     showcase::populate(&mut s);
     let mut rt = rune::Runtime::new(
@@ -18,7 +18,7 @@ fn runtime() -> rune::Runtime<State> {
     rt
 }
 
-fn press(rt: &mut rune::Runtime<State>, key: rune::Key, shift: bool) {
+pub(super) fn press(rt: &mut rune::Runtime<State>, key: rune::Key, shift: bool) {
     rt.key(rune::KeyEvent {
         key,
         mods: rune::Mods {
@@ -29,7 +29,7 @@ fn press(rt: &mut rune::Runtime<State>, key: rune::Key, shift: bool) {
     rt.frame(0.3);
 }
 
-fn click(rt: &mut rune::Runtime<State>, key: &str) {
+pub(super) fn click(rt: &mut rune::Runtime<State>, key: &str) {
     rt.frame(0.3);
     rt.frame(0.3);
     let (x, y) = rt.find(key).unwrap();

@@ -2,6 +2,7 @@
 members = ["crates/jev-protocol", "crates/jev-bridge", "crates/jev-inspector", "crates/rune-diagram"]
 default-members = ["crates/jev-bridge", "crates/jev-inspector"]
 resolver = "2"
+exclude = [".upstream/rune-inspector/crates/*"]
 
 [workspace.package]
 version = "0.1.0"
@@ -20,6 +21,14 @@ rune-kit = { git = "https://github.com/anomalyco/rune", rev = "781e2b6d87cd5f32d
 
 [profile.dev]
 debug = 0
+
+# Prepare these ignored sources with: python tools/prepare_rune.py
+[patch."https://github.com/anomalyco/rune"]
+rune = { path = ".upstream/rune-inspector/crates/rune" }
+rune-kit = { path = ".upstream/rune-inspector/crates/rune-kit" }
+rune-motion = { path = ".upstream/rune-inspector/crates/rune-motion" }
+rune-staging = { path = ".upstream/rune-inspector/crates/rune-staging" }
+rune-taffy = { path = ".upstream/rune-inspector/crates/rune-taffy" }
 
 [profile.dev.package."*"]
 opt-level = 2

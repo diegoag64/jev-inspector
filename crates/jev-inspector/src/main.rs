@@ -14,6 +14,8 @@ mod motion;
 mod overview;
 mod query;
 mod request_scroll;
+#[cfg(test)]
+mod scroll_focus_tests;
 mod session;
 mod showcase;
 #[cfg(test)]

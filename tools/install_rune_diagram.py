@@ -18,6 +18,8 @@ def install(checkout):
     target = checkout / "crates" / "rune-diagram"
     if not (checkout / "crates" / "rune" / "Cargo.toml").is_file():
         raise SystemExit("Expected a Rune checkout with crates/rune/Cargo.toml.")
+    if "pub fn focus_control" not in (checkout / "crates/rune/src/el/tx.rs").read_text(encoding="utf-8"):
+        raise SystemExit("This component requires patches/rune-focus.patch. Use the prepared rune-inspector source.")
     files = {p.relative_to(source).as_posix(): p.read_bytes()
              for p in source.rglob("*") if p.is_file() and "target" not in p.parts}
     manifest = files["Cargo.toml"].decode().replace(
@@ -58,5 +60,9 @@ def install(checkout):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--checkout", type=Path, default=ROOT / ".upstream" / "rune")
-    install(parser.parse_args().checkout)
+    parser.add_argument("--checkout", type=Path, default=ROOT / ".upstream" / "rune-inspector")
+    args = parser.parse_args()
+    if args.checkout == ROOT / ".upstream" / "rune-inspector":
+        from prepare_rune import prepare
+        prepare()
+    install(args.checkout)

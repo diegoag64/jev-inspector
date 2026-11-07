@@ -16,6 +16,8 @@ traffic idle. Add `--continuous` to repeat the batch. Use `python3 dev.py demo`
 on macOS with Rust installed.
 
 For an offline animation tour, run `cargo run -p jev-inspector -- --tour`.
+Before the first Cargo command on a new machine, run
+`python tools/prepare_rune.py`. The demo command does this automatically.
 **Pause tour** keeps the current layout; selecting a request also stops playback.
 Use `--showcase` to open the examples without starting playback. See
 [the example catalog and motion checks](docs/inspector-examples.md).
@@ -52,6 +54,12 @@ Choose a scene number. A native window opens. Close it to return to the terminal
 ```
 
 The repository contains the runner, case definitions, comparison tools, and tests. Rune's downloaded source, compiled programs, Python environment, and generated reports are ignored by Git.
+
+The inspector uses a separate pinned source export with the tracked
+[`Tx::focus_control` patch](patches/rune-focus.patch). It lets scrolling retain
+focus on a visible properties region. `tools/prepare_rune.py` applies it on Windows
+and macOS without changing the upstream gallery checkout. See
+[the local patch setup](docs/rune-focus-patch.md).
 
 Keep a local Git history with a focused commit after each completed change. Run relevant checks locally before committing. GitHub Actions and CI/CD are not configured, and pushing requires a separate request.
 

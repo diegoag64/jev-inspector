@@ -13,10 +13,12 @@ Studio C++ Build Tools and a Windows SDK. macOS needs Xcode Command Line Tools.
 From the repository root, run:
 
 ```sh
+python tools/prepare_rune.py
 cargo build --workspace --locked
 ```
 
-Cargo downloads the pinned Rune revision and dependencies. The binaries are in
+The preparation command exports the pinned Rune revision and applies the tracked
+inspector focus patch. Cargo downloads its dependencies. The binaries are in
 `target/debug`. The bridge can also be built independently with
 `cargo build -p jev-bridge --locked` and does not link Rune or require a GPU.
 

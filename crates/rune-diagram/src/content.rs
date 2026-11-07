@@ -64,6 +64,8 @@ impl<'a> DiagramContent<'a> {
         };
         let key = format!("{}:content", self.key);
         let watch_key = key.clone();
+        let drawn_key = format!("{}:drawn", self.key);
+        let watch_drawn_key = drawn_key.clone();
         let input_key = key.clone();
         let rows_key = format!("{}:rows", self.key);
         let mut pos = ScrollPos::default();
@@ -73,6 +75,14 @@ impl<'a> DiagramContent<'a> {
             pos.offset[1] = (v[1] - r[1]).clamp(0.0, pos.max[1]);
         }
         let overflow = pos.max[1] > 0.5;
+        // Rune drag deltas are screen points; layout and scroll offsets are
+        // local points. Measure the effective transform, including parent zoom.
+        let drawn_scale = state
+            .scroll
+            .get(&drawn_key)
+            .filter(|_| pos.viewport[1] > 0.0)
+            .map_or(1.0, |rect| rect[3] / pos.viewport[1])
+            .max(0.001);
         let viewport = col()
             .key(key.clone())
             .w_full()
@@ -89,6 +99,9 @@ impl<'a> DiagramContent<'a> {
                 state.scroll.insert(watch_key.clone(), rect);
             })
             .focusable(self.keyboard && overflow)
+            .on_drawn_layout(move |s: &mut S, rect| {
+                get(s).scroll.insert(watch_drawn_key.clone(), rect);
+            })
             .on_key(move |_: &mut S, event, tx| {
                 match event.key {
                     Key::PageDown => tx.scroll_page(input_key.clone(), 1),
@@ -97,6 +110,9 @@ impl<'a> DiagramContent<'a> {
                     Key::End => tx.scroll_to_bottom(input_key.clone()),
                     _ => return false,
                 }
+                // A descendant may be about to leave the viewport. Keep a
+                // visible focus owner while paging, without activating a row.
+                tx.focus_control(input_key.clone());
                 true
             })
             .child(content.on_layout(move |s: &mut S, rect| {
@@ -121,6 +137,7 @@ impl<'a> DiagramContent<'a> {
                     .a11y_hidden()
                     .on_drag(move |_: &mut S, d, tx| {
                         if d.phase == rune::Phase::Down {
+                            tx.focus_control(page_key.clone());
                             tx.scroll_page(page_key.clone(), if d.y < top { -1 } else { 1 });
                         }
                     })
@@ -137,12 +154,17 @@ impl<'a> DiagramContent<'a> {
                                 }
                                 if d.phase == rune::Phase::Down {
                                     d.data = pos.offset[1];
+                                    tx.focus_control(key.clone());
                                 }
                                 tx.scroll_to_instant(
                                     key.clone(),
                                     0.0,
-                                    (d.data + d.dy * pos.max[1] / travel).clamp(0.0, pos.max[1]),
+                                    (d.data + d.dy / drawn_scale * pos.max[1] / travel)
+                                        .clamp(0.0, pos.max[1]),
                                 );
+                                if d.phase != rune::Phase::Down {
+                                    tx.live_only();
+                                }
                             }),
                     ),
             );

@@ -1,0 +1,31 @@
+[
+  {
+    "t": 0.375,
+    "type": "tap",
+    "key": "request-diagram:node:6:answer:select",
+    "hold": 0.03
+  },
+  {
+    "t": 0.525,
+    "type": "key",
+    "name": "Home"
+  },
+  {
+    "t": 0.675,
+    "type": "key",
+    "name": "Down"
+  },
+  {
+    "t": 0.9,
+    "type": "drag",
+    "key": "request-diagram:node:5:state:scroll-thumb",
+    "dx": 0,
+    "dy": 80,
+    "dur": 0.2
+  },
+  {
+    "t": 1.275,
+    "type": "key",
+    "name": "PageUp"
+  }
+]

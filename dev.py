@@ -108,6 +108,8 @@ def run_demo(args):
     bridge = binary_dir / ("jev-bridge" + suffix)
     inspector = binary_dir / ("jev-inspector" + suffix)
     if not args.skip_build:
+        from tools.prepare_rune import prepare
+        prepare()
         command = ["cargo", "build", "--locked", "--workspace"]
         if args.profile != "debug":
             command += ["--profile", args.profile]

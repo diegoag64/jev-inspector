@@ -1,0 +1,113 @@
+--- a/crates/rune/src/el/tx.rs
++++ b/crates/rune/src/el/tx.rs
+@@ -24,6 +24,7 @@
+     pub(crate) physical_key: Option<crate::PhysicalKeyCode>,
+     pub(crate) key_base: Option<char>,
+     pub(crate) focused: Option<String>,
++    pub(crate) focus_request: Option<String>,
+     pub(crate) instant: bool,
+     pub(crate) motion: Option<Spring>,
+     /// The layout curve from [`Tx::motion_curve`]; `motion` holds its spring stand-in.
+@@ -151,7 +152,7 @@
+     /// or a text flight. A `wake_after` only schedules.
+     pub(crate) fn frame_work(&self) -> bool {
+         !self.pick_reads.is_empty() || !self.scroll_to.is_empty() || !self.scroll_bottom.is_empty() || !self.scroll_pages.is_empty() || !self.scroll_offsets.is_empty()
+-            || !self.keep_on_screen.is_empty() || !self.text_flights.is_empty() || !self.launches.is_empty() || self.select.is_some()
++            || self.focus_request.is_some() || !self.keep_on_screen.is_empty() || !self.text_flights.is_empty() || !self.launches.is_empty() || self.select.is_some()
+     }
+ 
+     /// An app marker on the next frame, e.g. `tx.trace_event(format_args!("lab:{step:?}"))`.
+@@ -258,7 +259,17 @@
+     /// `focused` in the model without `on_edit` takes focus back on the next frame unless the
+     /// model clears it too. Does nothing when nothing has focus.
+     pub fn blur(&mut self) {
++        self.focus_request = None;
+         self.blur = true;
++    }
++
++    /// Focus a currently mounted, enabled control by unique key or full path.
++    /// Missing, hidden, inert and modal-blocked targets are ignored. This does
++    /// not scroll the control into view or activate it. The last focus/blur
++    /// request in a transaction wins; keyboard focus visibility is preserved.
++    pub fn focus_control(&mut self, key: impl Into<String>) {
++        self.blur = false;
++        self.focus_request = Some(key.into());
+     }
+ 
+     /// The [`El::selectable`] text selection as this event arrived: the texts it covers with
+--- a/crates/rune/src/runtime/frame.rs
++++ b/crates/rune/src/runtime/frame.rs
+@@ -203,6 +203,17 @@
+             }
+             // An explicit blur is not the temporary pointer-down blur of a scrim.
+             self.last_focused = None;
++        }
++        if let Some(key) = tx.focus_request.take() {
++            let target = (0..self.nodes.len()).find(|&i| {
++                let node = &self.nodes[i];
++                (node.key.as_deref() == Some(key.as_str()) || node.path == key)
++                    && self.can_focus(i)
++            });
++            if let Some(i) = target {
++                self.set_focus(Some(self.nodes[i].path.clone()), self.keyboard_focus);
++                self.dirty = true;
++            }
+         }
+         if let Some(title) = tx.title.take() { self.window_title.set(title); }
+         if let Some(mut request) = tx.window_frame.take() {
+--- a/crates/rune/src/runtime/input/action.rs
++++ b/crates/rune/src/runtime/input/action.rs
+@@ -201,7 +201,8 @@
+     tx.font_smoothing = one.font_smoothing.or(tx.font_smoothing);
+     if one.font_families.is_some() { tx.font_families = one.font_families; }
+     if one.rewind.is_some() { tx.rewind = one.rewind; }
+-    tx.blur |= one.blur;
++    if one.blur { tx.blur = true; tx.focus_request = None; }
++    if one.focus_request.is_some() { tx.focus_request = one.focus_request; tx.blur = false; }
+     if one.select.is_some() {
+         tx.select = one.select;
+         tx.select_from_change = one.select_from_change;
+--- /dev/null
++++ b/changelog/unreleased/2026-11-06-control-focus.md
+@@ -0,0 +1 @@
++- Add `Tx::focus_control` to focus a mounted, reachable control without activating it or scrolling another pane.
+--- a/crates/rune/Cargo.toml
++++ b/crates/rune/Cargo.toml
+@@ -1,4 +1,5 @@
+ [package]
++workspace = "../.."
+ name = "rune"
+ version = "0.0.1"
+ edition.workspace = true
+--- a/crates/rune-kit/Cargo.toml
++++ b/crates/rune-kit/Cargo.toml
+@@ -1,4 +1,5 @@
+ [package]
++workspace = "../.."
+ name = "rune-kit"
+ version = "0.0.1"
+ edition.workspace = true
+--- a/crates/rune-motion/Cargo.toml
++++ b/crates/rune-motion/Cargo.toml
+@@ -1,4 +1,5 @@
+ [package]
++workspace = "../.."
+ name = "rune-motion"
+ version = "0.1.0"
+ edition.workspace = true
+--- a/crates/rune-staging/Cargo.toml
++++ b/crates/rune-staging/Cargo.toml
+@@ -1,4 +1,5 @@
+ [package]
++workspace = "../.."
+ name = "rune-staging"
+ version = "0.0.1"
+ edition.workspace = true
+--- a/crates/rune-taffy/Cargo.toml
++++ b/crates/rune-taffy/Cargo.toml
+@@ -1,4 +1,5 @@
+ [package]
++workspace = "../.."
+ name = "rune-taffy"
+ version = "0.0.1"
+ edition.workspace = true

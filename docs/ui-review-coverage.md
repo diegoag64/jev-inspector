@@ -84,6 +84,13 @@ resting thumb and accept Page Up/Down and Home/End through their focused viewpor
 Test Find by clicking its icon and typing immediately, as well as by shortcut.
 Check accessible names on the tree widget itself, not only its named rows.
 
+Test mixed pointer/keyboard scrolling, not just each input separately: drag the
+properties thumb, then Page Up, Page Down, Home, and End. Traffic must not move.
+Measure half- and full-thumb travel at diagram zoom below and above 100%,
+independently of renderer scale. Expand a nested object that overflows, then page
+while its disclosure owns focus; the resulting focus bounds must remain visible.
+Review the tracked Rune focus patch and its preparation path alongside these tests.
+
 Measure selected-row foreground/background pairs in both themes and row
 densities. The contrast regression reads actual Runtime element colors for
 metadata, timing, status and selection surfaces, including pending and error
