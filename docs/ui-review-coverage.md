@@ -207,3 +207,11 @@ For each finding, inventory every place that displays or acts on the same data:
   path together. Connected setup must lead with the remaining routing task.
 - Cross match 1,000 in both directions and wrap at the actual final match. Include
   Unicode and dense repeated patterns that overlap preview boundaries.
+- Check measured probability headlines and confidence against exact zero, tiny
+  positive, ordinary fractional, near-one, and exactly one values. Axis endpoint
+  labels are reference values; they must not be confused with measured values.
+- Compare an incomplete baseline with a complete current capture, then reverse
+  the roles. Check both incomplete, missing JSON, expansion, and returning to
+  Compare. Each side must retain its capture context even when captured JSON is equal.
+- Reopen a saved summary-only request with an existing live connection error,
+  then reconnect. Historical details must never promise automatic completion.

@@ -11,7 +11,7 @@ pub fn view(kind: &str, value: &Value, k: &Kit) -> El {
                 row()
                     .center_y()
                     .gap(12.0)
-                    .child(label(format!("{:.1}%", p * 100.0), 24.0, k.c.text_base))
+                    .child(label(rune_diagram::percent(p), 24.0, k.c.text_base))
                     .child(label("Probability of true", 12.0, k.c.text_muted)),
             )
             .child(

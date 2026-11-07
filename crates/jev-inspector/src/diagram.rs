@@ -257,7 +257,7 @@ pub(super) fn graph(
             }
             "noul" => {
                 if let Some(p) = answer.get("noul").and_then(Value::as_f64) {
-                    result.headline = Some(format!("{:.0}%", p * 100.0));
+                    result.headline = Some(percent(p));
                     result.caption = Some("probability of true".into());
                     result.likelihood = Some(p);
                     outputs.push(Output {

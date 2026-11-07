@@ -238,3 +238,12 @@ Help, Export, and the question menu contain keyboard input while open. Global
 investigation shortcuts resume after you close them. Diagram's help button opens
 its controls first. Probability labels use up to two decimal places; tiny values
 and values close to 100% use bounds so rounding does not imply an exact endpoint.
+
+Compare identifies incomplete or unavailable captures on both sides, including
+the baseline. This context remains visible when expanded. Equality describes
+captured JSON; an incomplete body can omit data. Narrow split comparisons suggest
+Unified or Expand for longer lines.
+
+Saved summary-only details describe a fixed snapshot, even if the live relay is
+reconnecting. The footer retains the number of requests with captured JSON.
+Diagram offers **Fit graph** to see relationships and **Actual size** to read cards.

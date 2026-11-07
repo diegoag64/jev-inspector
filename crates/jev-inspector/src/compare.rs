@@ -94,6 +94,25 @@ impl Comparison {
         }
     }
 }
+fn capture_coverage(exchange: &Exchange) -> String {
+    let mut issues = vec![];
+    for (name, capture) in [
+        ("request", &exchange.request),
+        ("response", &exchange.response),
+    ] {
+        if capture.json.is_none() {
+            issues.push(format!("{name} JSON unavailable"));
+        } else if !capture.complete {
+            issues.push(format!("{name} incomplete"));
+        }
+    }
+    if issues.is_empty() {
+        "complete".into()
+    } else {
+        issues.join(", ")
+    }
+}
+
 pub fn view(s: &State, current: &Exchange, k: &Kit, cx: &Cx<State>) -> El {
     let cmp = &s.workspace.comparison;
     let mut panel = col()
@@ -178,6 +197,45 @@ pub fn view(s: &State, current: &Exchange, k: &Kit, cx: &Cx<State>) -> El {
                     .key("clear-baseline"),
             ),
     );
+    let baseline_coverage = capture_coverage(base);
+    let current_coverage = capture_coverage(current);
+    if baseline_coverage != "complete" || current_coverage != "complete" {
+        panel = panel.child(
+            col()
+                .gap(4.0)
+                .key("comparison-capture-context")
+                .child(
+                    label(
+                        format!("Baseline: {baseline_coverage} · Current: {current_coverage}"),
+                        11.0,
+                        k.c.warning.fg,
+                    )
+                    .wrap()
+                    .role("status"),
+                )
+                .child(
+                    label(
+                        "Comparison applies to captured JSON. Incomplete bodies may omit data.",
+                        11.0,
+                        k.c.text_muted,
+                    )
+                    .wrap(),
+                ),
+        );
+    }
+    if cmp.diff.mode() == DiffMode::Split
+        && !s.workspace.detail_expanded
+        && s.workspace.window_width - s.workspace.list_width < 750.0
+    {
+        panel = panel.child(
+            label(
+                "For wider lines, choose Unified or Expand.",
+                11.0,
+                k.c.text_muted,
+            )
+            .wrap(),
+        );
+    }
     if let (Some(a), Some(b)) = (base.summary.duration_ms, current.summary.duration_ms) {
         panel = panel.child(label(
             format!(

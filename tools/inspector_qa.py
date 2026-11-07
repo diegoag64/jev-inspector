@@ -14,6 +14,16 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = {
+    "probability-low": ["--fixture", "probability-low", "--size", "1100x700"],
+    "probability-high": ["--fixture", "probability-high", "--size", "1100x700"],
+    "probability-low-light": ["--fixture", "probability-low", "--size", "1100x700", "--script", "tests/inspector-shared-overview-light.script.json"],
+    "partial-baseline": ["--fixture", "partial-baseline", "--size", "1100x700"],
+    "partial-baseline-expanded": ["--fixture", "partial-baseline", "--size", "1100x700", "--script", "tests/inspector-comparison-expand.script.json"],
+    "partial-current": ["--fixture", "partial-current", "--size", "1100x700"],
+    "partial-both": ["--fixture", "partial-both", "--size", "1100x700"],
+    "saved-summary-outage": ["--fixture", "saved-summary-outage", "--size", "1100x700"],
+    "saved-summary-reconnected": ["--fixture", "saved-summary-reconnected", "--size", "1100x700"],
+    "setup-restart": ["--fixture", "setup-custom-upstream", "--size", "1100x700", "--script", "tests/inspector-setup-end.script.json"],
     "overview-dark": [],
     "response-small-light": ["--size", "1100x700", "--script", "tests/inspector-json-response.script.json"],
     "json-find": ["--script", "tests/inspector-workspace-find.script.json"],
@@ -275,6 +285,22 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
         expected = "Show 2 more categories (3 remaining)" if name == "diagram-disclosure" else "Show 1 more category (1 remaining)"
         if keyed.get("diagram-more-categories", {}).get("name") != expected:
             errors.append("Diagram disclosure promised the wrong number of additions")
+    if name.startswith("probability-"):
+        expected = ">99.99%" if name == "probability-high" else "<0.01%"
+        if expected not in names or "Confidence >99.99%" not in names:
+            errors.append("Probability or confidence lost its non-endpoint value")
+    if name.startswith("partial-"):
+        baseline = "complete" if name == "partial-current" else "response incomplete"
+        current = "complete" if name.startswith("partial-baseline") else "response incomplete"
+        if f"Baseline: {baseline} · Current: {current}" not in names:
+            errors.append("Comparison lost one side's capture completeness")
+        if "Comparison applies to captured JSON" not in names:
+            errors.append("Comparison omitted captured-data qualification")
+    if name.startswith("saved-summary-"):
+        if "This snapshot will not update" not in names or "Reconnecting automatically" in names:
+            errors.append("Saved summary offers misleading live recovery guidance")
+    if name == "setup-restart" and "Stop the existing relay before running this restart command" not in names:
+        errors.append("Restart command lost its scoped warning")
     return errors
 
 

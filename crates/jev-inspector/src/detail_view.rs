@@ -343,9 +343,18 @@ fn content(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> El {
             } else {
                 "Couldn't load request details"
             };
-            let mut body = col().gap(14.0).child(label(title, 15.0, k.c.warning.fg).key("detail-unavailable"))
-                .child(label("Captured bodies are unavailable. The recorded request metadata is still available below.", 12.0, k.c.text_muted).wrap());
-            if let Some(error) = &s.connection_error {
+            let explanation = if s.workspace.session_name.is_some() {
+                "Bodies were unavailable when this session was saved. This snapshot will not update; recorded request metadata is shown below."
+            } else {
+                "Captured bodies are unavailable. The recorded request metadata is still available below."
+            };
+            let mut body = col()
+                .gap(14.0)
+                .child(label(title, 15.0, k.c.warning.fg).key("detail-unavailable"))
+                .child(label(explanation, 12.0, k.c.text_muted).wrap());
+            if s.workspace.session_name.is_none()
+                && let Some(error) = &s.connection_error
+            {
                 body = body.child(
                     label(
                         format!("{error} Reconnecting automatically."),
@@ -387,9 +396,15 @@ fn content(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> El {
         );
     }
     if s.tab == 4 {
+        let comparison = compare::view(s, detail, k, cx);
+        let comparison = if s.workspace.comparison.baseline.is_none() {
+            with_partial_response_note(s, detail, k, comparison)
+        } else {
+            comparison
+        };
         return motion::detail(
             s,
-            with_partial_response_note(s, detail, k, compare::view(s, detail, k, cx))
+            comparison
                 .grow(1.0)
                 .min_h(0.0)
                 .role("tabpanel")

@@ -1,6 +1,96 @@
 use super::*;
 
 #[test]
+fn comparison_keeps_both_capture_contexts_when_expanded_and_revisited() {
+    for (base_complete, current_complete) in
+        [(false, true), (true, false), (false, false), (true, true)]
+    {
+        for missing in 0..4 {
+            for expanded in [false, true] {
+                let mut rt = runtime("saved-typed-partial", true, 1.0);
+                rt.update(|s, _| {
+                    let mut base = demo::exchange(12);
+                    let mut current = base.clone();
+                    current.summary.id = 11;
+                    base.response.complete = base_complete;
+                    current.response.complete = current_complete;
+                    if missing & 1 != 0 {
+                        base.response.json = None;
+                    }
+                    if missing & 2 != 0 {
+                        current.response.json = None;
+                    }
+                    s.workspace.comparison.baseline = Some(base);
+                    s.set_detail(current);
+                    s.tab = 4;
+                    s.workspace.detail_expanded = expanded;
+                });
+                for revisit in [false, true] {
+                    if revisit {
+                        rt.update(|s, _| s.tab = 0);
+                        settle(&mut rt);
+                        rt.update(|s, _| s.tab = 4);
+                    }
+                    settle(&mut rt);
+                    let text = rt.accessibility_json().to_string();
+                    if base_complete && current_complete && missing == 0 {
+                        assert!(!text.contains("comparison-capture-context"));
+                    } else {
+                        let baseline = if missing & 1 != 0 {
+                            "response JSON unavailable"
+                        } else if base_complete {
+                            "complete"
+                        } else {
+                            "response incomplete"
+                        };
+                        let current = if missing & 2 != 0 {
+                            "response JSON unavailable"
+                        } else if current_complete {
+                            "complete"
+                        } else {
+                            "response incomplete"
+                        };
+                        assert!(
+                            text.contains(&format!("Baseline: {baseline} · Current: {current}")),
+                            "{text}"
+                        );
+                        assert!(text.contains("Comparison applies to captured JSON"));
+                    }
+                    if missing != 0 {
+                        assert!(text.contains("Equality is unknown"));
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn saved_summary_details_never_promise_live_recovery() {
+    for connected in [false, true] {
+        let mut rt = runtime("summary-only", true, 1.0);
+        rt.update(|s, _| {
+            s.workspace.session_name = Some("outage.jev.json".into());
+            s.workspace.last_received = true;
+            s.connection_error = Some("Relay unavailable".into());
+            s.connected = connected;
+            s.detail = None;
+        });
+        for tab in 0..5 {
+            rt.update(|s, _| s.tab = tab);
+            settle(&mut rt);
+            let text = rt.accessibility_json().to_string();
+            assert!(!text.contains("Reconnecting automatically"), "{text}");
+            if tab == 0 {
+                assert!(text.contains("Bodies were unavailable when this session was saved"));
+                assert!(text.contains("This snapshot will not update"));
+            }
+            assert!(text.contains("with JSON"));
+        }
+    }
+}
+
+#[test]
 fn compact_diagram_help_opens_relevant_instructions_and_returns_focus() {
     let mut rt = runtime("example-support-routing", true, 1.0);
     tap(&mut rt, "diagram-help");
@@ -782,4 +872,66 @@ fn tail_comparison_opens_current_and_copies_baseline_after_eviction() {
     tap(&mut rt, "compare-open-response.json");
     assert_eq!(rt.state.tab, 2);
     assert_eq!(rt.state.selected, Some(12));
+}
+
+#[test]
+fn probability_views_preserve_non_endpoint_values() {
+    fn names(tree: &serde_json::Value, out: &mut Vec<String>) {
+        if let Some(name) = tree["name"].as_str() {
+            out.push(name.to_owned());
+        }
+        if let Some(children) = tree["children"].as_array() {
+            for child in children {
+                names(child, out);
+            }
+        }
+    }
+    for dark in [false, true] {
+        for scale in [1.0, 1.5] {
+            for (p, expected) in [
+                (0.0, "0%"),
+                (1.0, "100%"),
+                (0.000001, "<0.01%"),
+                (0.999999, ">99.99%"),
+                (f64::MIN_POSITIVE, "<0.01%"),
+                (f64::from_bits(1.0f64.to_bits() - 1), ">99.99%"),
+                (0.125, "12.5%"),
+            ] {
+                for tab in [0, 3] {
+                    let mut rt = runtime("example-fraud-check", dark, scale);
+                    rt.update(|s, _| {
+                        let mut detail = s.detail.clone().unwrap();
+                        detail.response.json = Some(serde_json::json!({"answers": {
+                            "needs_review": {"type":"noul", "noul":p, "confidence":p}
+                        }}));
+                        s.set_detail(detail);
+                        s.tab = tab;
+                    });
+                    settle(&mut rt);
+                    let mut labels = vec![];
+                    names(&rt.accessibility_json(), &mut labels);
+                    assert!(
+                        labels.iter().any(|v| v == expected),
+                        "headline p={p}, tab={tab}, dark={dark}, scale={scale}: {labels:?}"
+                    );
+                    assert!(
+                        labels.contains(&format!("Confidence {expected}")),
+                        "confidence p={p}, tab={tab}: {labels:?}"
+                    );
+                    assert_eq!(
+                        rt.state
+                            .detail
+                            .as_ref()
+                            .unwrap()
+                            .response
+                            .json
+                            .as_ref()
+                            .unwrap()["answers"]["needs_review"]["noul"]
+                            .as_f64(),
+                        Some(p)
+                    );
+                }
+            }
+        }
+    }
 }

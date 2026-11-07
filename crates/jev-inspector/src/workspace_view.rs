@@ -46,20 +46,47 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
             &k,
         ))
         .child(
-            ui::action(&icons::OPEN, "Open session", false)
-                .help("Open a saved session")
-                .shortcut("cmd+o")
-                .on_press_tx(|s: &mut State, tx| session::open_dialog(s, tx))
-                .build(&k)
-                .key("open-session"),
+            if s.workspace.window_width >= 1300.0 || s.showcase.is_none() {
+                Button::new("Open")
+                    .icon(&icons::OPEN)
+                    .variant(ButtonVariant::Ghost)
+                    .control_size(ControlSize::Large)
+                    .help("Open a saved session (Ctrl/Cmd+O)")
+                    .on_press_tx(|s: &mut State, tx| session::open_dialog(s, tx))
+                    .build(&k)
+                    .label("Open session")
+                    .key("open-session")
+            } else {
+                ui::action(&icons::OPEN, "Open session", false)
+                    .help("Open a saved session")
+                    .shortcut("cmd+o")
+                    .on_press_tx(|s: &mut State, tx| session::open_dialog(s, tx))
+                    .build(&k)
+                    .key("open-session")
+            },
         )
         .child(
-            ui::action(&icons::EXPORT, "Export", s.workspace.export)
-                .help("Save session, exchange JSON, or CSV")
-                .shortcut("cmd+e")
-                .on_press(|s: &mut State| s.workspace.export = true)
-                .build(&k)
-                .key("export-menu"),
+            if s.workspace.window_width >= 1300.0 || s.showcase.is_none() {
+                Button::new("Export")
+                    .icon(&icons::EXPORT)
+                    .variant(if s.workspace.export {
+                        ButtonVariant::Contrast
+                    } else {
+                        ButtonVariant::Ghost
+                    })
+                    .control_size(ControlSize::Large)
+                    .help("Save session, exchange JSON, or CSV (Ctrl/Cmd+E)")
+                    .on_press(|s: &mut State| s.workspace.export = true)
+                    .build(&k)
+                    .key("export-menu")
+            } else {
+                ui::action(&icons::EXPORT, "Export", s.workspace.export)
+                    .help("Save session, exchange JSON, or CSV")
+                    .shortcut("cmd+e")
+                    .on_press(|s: &mut State| s.workspace.export = true)
+                    .build(&k)
+                    .key("export-menu")
+            },
         )
         .child(
             ui::action(&icons::HELP, "Help", s.workspace.help)
@@ -873,7 +900,18 @@ fn footer(s: &State, k: &Kit) -> El {
         .child(
             label(
                 if s.workspace.session_name.is_some() {
-                    "Offline · no requests sent".into()
+                    let total = s.snapshot.requests.len();
+                    let with_json = s
+                        .snapshot
+                        .requests
+                        .iter()
+                        .filter(|r| {
+                            s.workspace.cache.get(&r.id).is_some_and(|e| {
+                                e.request.json.is_some() || e.response.json.is_some()
+                            })
+                        })
+                        .count();
+                    format!("Offline · no requests sent · {with_json}/{total} with JSON")
                 } else if s.showcase.is_some() {
                     "Synthetic examples · no API calls".into()
                 } else if s.demo {
@@ -904,7 +942,7 @@ fn dialogs(s: &State, k: &Kit, layers: &mut Vec<El>) {
     let mut help = col().gap(13.0).padding(20.0);
     if s.tab == 3 {
         help = help.child(label("Diagram controls", 14.0, k.c.text_base))
-            .child(label("Drag the background to pan. Wheel or pinch to zoom. Tab enters cards; Up and Down browse them. Canvas arrow keys pan, + and - zoom, 0 fits, and 1 restores actual size. Focus a card's properties to scroll them with Page Up, Page Down, Home, or End.", 12.0, k.c.text_muted).wrap())
+            .child(label("Drag the background to pan. Wheel or pinch to zoom. Tab enters cards; Up and Down browse them. Canvas arrow keys pan, + and - zoom, 0 fits the graph, and 1 restores actual size. Fit graph shows relationships; Actual size makes cards readable. Focus a card's properties to scroll them with Page Up, Page Down, Home, or End.", 12.0, k.c.text_muted).wrap())
             .child(ui::rule(k));
     }
     for (title, body) in [

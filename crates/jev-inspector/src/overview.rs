@@ -192,7 +192,7 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
             }
             if let Some(confidence) = answer["confidence"].as_f64() {
                 card = card.child(label(
-                    format!("Confidence {:.1}%", confidence * 100.0),
+                    format!("Confidence {}", rune_diagram::percent(confidence)),
                     11.0,
                     k.c.text_faint,
                 ));

@@ -105,8 +105,13 @@ pub fn guide(s: &State, k: &Kit) -> El {
     let mut guide = col().w_full().gap(12.0)
         .child(label(if s.connected { "Route your backend" } else { "Connect your backend" }, 20.0, k.c.text_base).wrap())
         .child(label(if s.connected { "The relay is connected. Keep it running and send a request from your backend." } else { "Run these commands from this repository. Your backend keeps its existing API key." }, 13.0, k.c.text_muted).wrap());
-    let routing = label("Start your backend with its usual command. If your SDK configures baseUrl or baseURL explicitly, set that option to this relay origin instead. Do not append /v1.", 12.0, k.c.text_muted).wrap();
-    let send = label("Send one normal request from your backend. It should appear in Traffic; select it to inspect the exchange.", 12.0, k.c.text_muted).wrap();
+    let routing = label("Start your backend. If it sets baseUrl, baseURL, or Python base_url explicitly, use this relay URL instead. Do not append /v1.", 12.0, k.c.text_muted).wrap();
+    let send = label(
+        "Send a request, then select it in Traffic to inspect it.",
+        12.0,
+        k.c.text_muted,
+    )
+    .wrap();
     if s.connected {
         guide = guide
             .child(command(
@@ -127,14 +132,15 @@ pub fn guide(s: &State, k: &Kit) -> El {
                 k,
             ))
             .child(
-                label(
-                    "Stop the relay before using this command. It preserves the upstream, listener, and history limit; reapply any custom timeout before restarting.",
-                    12.0,
-                    k.c.text_muted,
-                )
-                .wrap(),
-            )
-            .child(command("Relay restart command", bridge, "setup-relay", k));
+                command("Relay restart command", bridge, "setup-relay", k).child(
+                    label(
+                        "Stop the existing relay before running this restart command. It preserves the upstream, listener, and history limit; reapply any custom timeout before restarting.",
+                        12.0,
+                        k.c.text_muted,
+                    )
+                    .wrap(),
+                ),
+            );
     } else {
         guide = guide
             .child(command(

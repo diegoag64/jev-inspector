@@ -111,7 +111,7 @@ impl<'a, S: 'static> Diagram<'a, S> {
                     .label("Zoom diagram in"),
             )
             .child(
-                Button::new("100%")
+                Button::new("Actual size")
                     .on_press(move |s: &mut S| {
                         initialize(s);
                         let state = get(s);
@@ -122,10 +122,11 @@ impl<'a, S: 'static> Diagram<'a, S> {
                     .help("Read cards at actual size; drag or use arrow keys to pan"),
             )
             .child(
-                Button::new("Fit")
+                Button::new("Fit graph")
                     .on_press(move |s: &mut S| get(s).fit(size))
                     .build(k)
-                    .key(format!("{}:fit", self.key)),
+                    .key(format!("{}:fit", self.key))
+                    .help("See all relationships; use Actual size to read cards"),
             );
         let mut lines = Shape::new();
         let mut edge_labels = Vec::new();

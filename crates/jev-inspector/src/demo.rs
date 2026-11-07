@@ -159,6 +159,44 @@ pub fn scenario(s: &mut State, name: &str) -> Result<(), String> {
             s.filter_rows();
         }
         "compare-unset" => s.tab = 4,
+        "probability-low" | "probability-high" => {
+            scenario(s, "example-fraud-check")?;
+            let mut current = s.detail.clone().unwrap();
+            let p = if name == "probability-low" { 0.000001 } else { 0.999999 };
+            current.response.json = Some(json!({"answers":{"needs_review":{"type":"noul","noul":p,"confidence":0.999999}}}));
+            let bytes = serde_json::to_vec(current.response.json.as_ref().unwrap()).unwrap().len();
+            current.response.captured_bytes = bytes;
+            current.response.wire_bytes = bytes as u64;
+            current.summary.response_bytes = bytes as u64;
+            if let Some(row) = s.snapshot.requests.iter_mut().find(|r| r.id == current.summary.id) { *row = current.summary.clone(); }
+            s.set_detail(current);
+            s.tab = if name == "probability-low" { 0 } else { 3 };
+        }
+        "partial-baseline" | "partial-current" | "partial-both" => {
+            s.workspace.session_name = Some("partial-comparison.jev.json".into());
+            let mut baseline = exchange(12);
+            let mut current = baseline.clone();
+            current.summary.id = 11;
+            baseline.response.complete = name == "partial-current";
+            current.response.complete = name == "partial-baseline";
+            for capture in [&mut baseline, &mut current] {
+                if !capture.response.complete { capture.summary.outcome = Outcome::Pending; capture.summary.duration_ms = None; }
+                if let Some(row) = s.snapshot.requests.iter_mut().find(|r| r.id == capture.summary.id) { *row = capture.summary.clone(); }
+                s.workspace.cache.insert(capture.summary.id, capture.clone());
+            }
+            s.workspace.comparison.baseline = Some(baseline);
+            s.selected = Some(11);
+            s.set_detail(current);
+            s.filter_rows();
+            s.tab = 4;
+        }
+        "saved-summary-outage" | "saved-summary-reconnected" => {
+            scenario(s, "summary-only")?;
+            s.workspace.last_received = true;
+            s.connected = name == "saved-summary-reconnected";
+            s.connection_error = Some("The local relay is unavailable.".into());
+            s.tab = 0;
+        }
         "saved" | "summary-only" | "cached-session" => {
             s.workspace.session_name = Some("support-investigation.jev.json".into());
             s.workspace.last_received = name == "cached-session";
