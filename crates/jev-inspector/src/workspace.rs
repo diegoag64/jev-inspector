@@ -18,6 +18,9 @@ pub struct Workspace {
     pub starred: BTreeSet<u64>,
     pub cache: BTreeMap<u64, Exchange>,
     pub query_error: Option<String>,
+    pub applied_query: String,
+    pub probability_limits: BTreeMap<String, usize>,
+    pub setup_help: bool,
     pub notice: Option<(String, bool)>,
     pub help: bool,
     pub export: bool,
@@ -43,6 +46,9 @@ impl Default for Workspace {
             starred: BTreeSet::new(),
             cache: BTreeMap::new(),
             query_error: None,
+            applied_query: String::new(),
+            probability_limits: BTreeMap::new(),
+            setup_help: false,
             notice: None,
             help: false,
             export: false,
@@ -76,6 +82,9 @@ impl State {
     }
     pub fn apply_snapshot(&mut self, snapshot: Snapshot) {
         if self.snapshot.instance_id != snapshot.instance_id {
+            if !self.snapshot.instance_id.is_empty() {
+                self.workspace.notice = Some(("Relay restarted. Previous stars and comparison baseline were cleared. Save a session to keep an investigation across restarts.".into(), false));
+            }
             self.workspace.comparison = compare::Comparison::default();
             self.selected = None;
             self.detail = None;
@@ -85,6 +94,11 @@ impl State {
             self.workspace.cache.clear();
             self.table.clear_selection();
             self.mailbox.lock().unwrap().selected = None;
+        } else if self
+            .selected
+            .is_some_and(|id| !snapshot.requests.iter().any(|r| r.id == id))
+        {
+            self.workspace.notice = Some(("The selected exchange is no longer retained by the relay. Save a session to keep older captures.".into(), false));
         }
         self.workspace
             .cache
@@ -356,7 +370,11 @@ mod tests {
         assert_eq!(s.visible.len(), 1);
         s.star();
         assert!(s.visible.is_empty());
-        assert!(s.selected.is_none());
+        assert_eq!(
+            s.selected,
+            Some(4),
+            "Unstarring retains the investigated exchange outside the filter"
+        );
     }
     #[test]
     fn pause_accumulates_latest_snapshot_and_resumes_without_losing_rows() {

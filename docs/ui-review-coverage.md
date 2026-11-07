@@ -134,3 +134,21 @@ The Windows desktop connection was retried on 2026-11-06. It still reports
 "Computer Use native pipe is unavailable" (OS error 2). Clipboard paste, picker UI,
 OS keyboard/focus and screen-reader announcements remain not tested through the
 native desktop. Do not replace these results with runtime-test passes.
+
+## Broad workflow boundaries
+
+The broader reviews found cases that repeated screenshots of the same fixtures
+did not exercise. Reviewers must vary data size and combine states, then trace
+the result back to the captured data. In particular, check:
+
+- A search term beyond byte 16,000, including Unicode; absent terms and match navigation.
+- Equal comparison prefixes with different tails beyond the byte and line limits.
+- Typing incomplete filters while a non-default exchange is selected, then correcting or clearing.
+- Saved pending and partially captured responses, plus live pending while disconnected.
+- Six, twelve, and twenty-four long question names at minimum window size and both DPI scales.
+- Thirteen and forty probability categories with the returned choice beyond the leading twelve.
+- Summary-only metadata with Traffic hidden, relay restart, and selected-exchange eviction.
+- First-use connection guidance from both the empty workspace and Help.
+
+Keep native OS checks separate from Runtime assertions. A passing headless
+clipboard effect or picker simulation does not verify the operating system.

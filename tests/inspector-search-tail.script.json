@@ -1,0 +1,13 @@
+[
+  {
+    "t": 0.1,
+    "type": "tap",
+    "key": "response-json:find"
+  },
+  {
+    "t": 0.3,
+    "type": "type",
+    "text": "1999",
+    "every": 0.03
+  }
+]

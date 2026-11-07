@@ -1,1 +1,12 @@
-[{"t":0.1,"type":"tap","key":"errors-filter"}]
+[
+  {
+    "t": 0.1,
+    "type": "tap",
+    "key": "errors-filter"
+  },
+  {
+    "t": 0.18,
+    "type": "tap",
+    "key": "7"
+  }
+]

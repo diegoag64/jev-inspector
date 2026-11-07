@@ -169,3 +169,7 @@ establish a relay latency budget or an operating-system performance comparison.
 
 See [the implementation contract and validation record](bridge-v1.md) for limits
 and the remaining platform checks.
+
+The inspector also includes these connection steps under **Help > Connection
+setup**. JSON Find searches the complete captured value. Footer arrows page
+through large JSON captures without changing the selected exchange.

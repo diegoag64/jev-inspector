@@ -1,5 +1,27 @@
 [
-  {"t": 0.1, "type": "tap", "key": "theme-toggle"},
-  {"t": 0.3, "type": "tap", "key": "diagram-question-1"},
-  {"t": 0.5, "type": "tap", "key": "request-diagram:fit"}
+  {
+    "t": 0.1,
+    "type": "tap",
+    "key": "theme-toggle"
+  },
+  {
+    "t": 0.25,
+    "type": "tap",
+    "key": "diagram-question-trigger"
+  },
+  {
+    "t": 0.35,
+    "type": "key",
+    "name": "Down"
+  },
+  {
+    "t": 0.42,
+    "type": "key",
+    "name": "Enter"
+  },
+  {
+    "t": 0.5,
+    "type": "tap",
+    "key": "request-diagram:fit"
+  }
 ]

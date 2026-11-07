@@ -1,7 +1,10 @@
 use super::*;
 
-pub fn detail_view(s: &State, k: &Kit, cx: &Cx<State>) -> El {
+pub fn detail_view(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> El {
     let Some(id) = s.selected else {
+        if s.snapshot.requests.is_empty() && s.workspace.session_name.is_none() {
+            return setup_view::panel(s, k, cx);
+        }
         return col()
             .padding(28.0)
             .gap(14.0)
@@ -16,7 +19,7 @@ pub fn detail_view(s: &State, k: &Kit, cx: &Cx<State>) -> El {
     let mut pane = col()
         .min_h(0.0)
         .padding(if compact { 14.0 } else { 20.0 })
-        .gap(if compact { 8.0 } else { 14.0 });
+        .gap(if compact { 6.0 } else { 14.0 });
     let summary = s.snapshot.requests.iter().find(|r| r.id == id);
     pane = pane.child(
         row()
@@ -24,7 +27,15 @@ pub fn detail_view(s: &State, k: &Kit, cx: &Cx<State>) -> El {
             .gap(12.0)
             .child(label(format!("Exchange #{id:03}"), 20.0, k.c.text_base).grow(1.0))
             .child(ui::badge(
-                summary.map(status).unwrap_or_else(|| "Evicted".into()),
+                summary
+                    .map(|r| {
+                        if s.workspace.session_name.is_some() && r.outcome == Outcome::Pending {
+                            "Pending when saved".into()
+                        } else {
+                            status(r)
+                        }
+                    })
+                    .unwrap_or_else(|| "Evicted".into()),
                 summary
                     .map(|r| ui::status_color(r, k))
                     .unwrap_or(k.c.text_muted),
@@ -118,6 +129,29 @@ pub fn detail_view(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                 ),
         );
     }
+    if !s.visible.iter().any(|r| r.id == id) {
+        pane = pane.child(
+            row()
+                .center_y()
+                .gap(8.0)
+                .child(
+                    label(
+                        "Selected exchange is outside the visible results",
+                        12.0,
+                        k.c.warning.fg,
+                    )
+                    .wrap()
+                    .grow(1.0),
+                )
+                .child(ui::button(
+                    "Show in list",
+                    "show-selected",
+                    false,
+                    k,
+                    State::reset_filters,
+                )),
+        );
+    }
     pane = pane.child(
         row()
             .key("detail-tabs")
@@ -145,11 +179,48 @@ pub fn detail_view(s: &State, k: &Kit, cx: &Cx<State>) -> El {
             .wrap(),
         );
     }
-    pane.child(content(s, k, cx))
+    pane.child(content(s, k, cx, layers))
 }
 
-fn content(s: &State, k: &Kit, cx: &Cx<State>) -> El {
+fn content(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> El {
     let Some(detail) = &s.detail else {
+        if s.tab == 0
+            && (s.workspace.session_name.is_some()
+                || s.detail_error.is_some()
+                || s.connection_error.is_some())
+            && let Some(summary) = s
+                .snapshot
+                .requests
+                .iter()
+                .find(|r| Some(r.id) == s.selected)
+        {
+            let title = if s.workspace.session_name.is_some() {
+                "Summary only"
+            } else if s.connection_error.is_some() {
+                "Relay unavailable"
+            } else {
+                "Couldn't load request details"
+            };
+            let mut body = col().gap(14.0).child(label(title, 15.0, k.c.warning.fg).key("detail-unavailable"))
+                .child(label("Captured bodies are unavailable. The recorded request metadata is still available below.", 12.0, k.c.text_muted).wrap());
+            if let Some(error) = &s.connection_error {
+                body = body.child(
+                    label(
+                        format!("{error} Reconnecting automatically."),
+                        12.0,
+                        k.c.text_muted,
+                    )
+                    .wrap(),
+                );
+            }
+            if s.workspace.session_name.is_none() && s.connected {
+                body = body.child(ui::button("Retry loading", "retry-detail", true, k, |s| {
+                    s.detail_error = None;
+                    s.mailbox.lock().unwrap().refresh = true;
+                }));
+            }
+            return scroll_overview(s, body.child(overview::summary(summary, k)), k, cx);
+        }
         return motion::detail(s, detail_states::missing(s, k));
     };
     if s.tab == 2 && detail.response.json.is_none() {
@@ -166,7 +237,7 @@ fn content(s: &State, k: &Kit, cx: &Cx<State>) -> El {
     if s.tab == 3 {
         return motion::detail(
             s,
-            diagram::view(s, detail, k)
+            diagram::view(s, detail, k, layers)
                 .role("tabpanel")
                 .label("Diagram"),
         );
@@ -179,9 +250,15 @@ fn content(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                 .label("Compare"),
         );
     }
-    let mut body = col().gap(14.0).w_full();
+    let mut body = col()
+        .gap(if s.workspace.window_height < 800.0 {
+            8.0
+        } else {
+            14.0
+        })
+        .w_full();
     if s.tab == 0 {
-        body = crate::overview::view(detail, k);
+        body = crate::overview::view(s, detail, k);
     } else {
         let (capture, preview) = if s.tab == 1 {
             (&detail.request, &s.request_text)
@@ -202,6 +279,17 @@ fn content(s: &State, k: &Kit, cx: &Cx<State>) -> El {
             11.0,
             k.c.text_muted,
         ));
+        if !capture.complete && s.workspace.session_name.is_some() {
+            body = body.child(
+                label(
+                    "Incomplete when saved · This snapshot will not update.",
+                    12.0,
+                    k.c.warning.fg,
+                )
+                .wrap()
+                .role("status"),
+            );
+        }
         for note in &capture.notes {
             body = body.child(label(note, 12.0, k.c.warning.fg).wrap());
         }
@@ -219,6 +307,10 @@ fn content(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                 .child(preview.view(key, get, k, s, cx)),
         );
     }
+    scroll_overview(s, body, k, cx)
+}
+
+fn scroll_overview(s: &State, body: El, k: &Kit, cx: &Cx<State>) -> El {
     motion::detail(
         s,
         request_scroll::area(
@@ -252,6 +344,7 @@ fn tab(name: &str, value: u8, current: u8, k: &Kit) -> El {
         .on_press(move |s: &mut State| {
             showcase::stop(s);
             s.tab = value;
+            s.diagram_questions_open = false;
         })
         .build(k)
         .role("tab")

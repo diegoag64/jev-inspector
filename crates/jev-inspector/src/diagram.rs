@@ -29,7 +29,7 @@ pub fn reveal_keyboard_card(s: &mut State) {
     }
 }
 
-pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
+pub fn view(s: &State, detail: &Exchange, k: &Kit, layers: &mut Vec<El>) -> El {
     let questions = detail
         .request
         .json
@@ -40,61 +40,57 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
         q.get_key_value(&s.diagram_question)
             .or_else(|| q.iter().next())
     });
-    let mut toolbar =
-        row()
-            .gap(6.0)
-            .flex_wrap()
-            .center_y()
-            .child(label("Question", 11.0, k.c.text_muted));
-    if let Some(questions) = questions {
-        let limit = s.diagram.content.visible("questions");
-        for (index, (key, _)) in questions
-            .iter()
-            .enumerate()
-            .filter(|(i, (key, _))| *i < limit || selected.is_some_and(|(n, _)| n == *key))
-        {
-            let action = key.clone();
-            toolbar = toolbar.child(
-                Button::new(key)
-                    .variant(if selected.is_some_and(|(n, _)| n == key) {
-                        ButtonVariant::Contrast
-                    } else {
-                        ButtonVariant::Ghost
-                    })
-                    .on_press(move |s: &mut State| {
-                        s.diagram_question = action.clone();
-                        s.diagram.reset();
-                    })
-                    .build(k)
-                    .key(format!("diagram-question-{index}")),
-            );
-        }
-        if questions.len() > limit {
-            toolbar = toolbar.child(
-                Button::new("More questions")
-                    .on_press(|s: &mut State| s.diagram.content.more("questions".into()))
-                    .build(k),
-            );
-        }
+    let names: Vec<&str> = questions
+        .map(|q| q.keys().map(String::as_str).collect())
+        .unwrap_or_default();
+    let mut question_layers = Vec::new();
+    let selector = rune_kit::Select::new("diagram-question", &names)
+        .label(format!("Question ({} total)", names.len()))
+        .current(selected.map(|(name, _)| name.as_str()))
+        .placeholder("No questions")
+        .width(280.0)
+        .appearance(rune_kit::SelectAppearance::Field)
+        .disabled(names.is_empty())
+        .open(s.diagram_questions_open)
+        .on_toggle(|s: &mut State| s.diagram_questions_open = !s.diagram_questions_open)
+        .on_close(|s: &mut State| s.diagram_questions_open = false)
+        .on_choose(|s: &mut State, name, _| {
+            s.diagram_question = name.to_owned();
+            s.diagram_questions_open = false;
+            s.diagram.reset();
+        })
+        .build(k, &mut question_layers);
+    // Rune's default 160-point menu hides most descriptive question names.
+    // Keep its modal and keyboard behavior while giving its surface room to read.
+    if s.diagram_questions_open
+        && let Some(menu) = question_layers.pop()
+    {
+        let width = 520.0_f32.min((s.workspace.window_width - 32.0).max(160.0));
+        question_layers.push(menu.w(width).min_w(width).max_w(width));
     }
-    toolbar = toolbar.child(rune::el().grow(1.0)).child(
-        crate::ui::action(
-            if s.workspace.detail_expanded {
+    layers.extend(question_layers);
+    let toolbar = row()
+        .gap(6.0)
+        .center_y()
+        .child(label("Question", 11.0, k.c.text_muted))
+        .child(selector.min_w(0.0))
+        .child(rune::el().grow(1.0))
+        .child(
+            Button::new(if s.workspace.detail_expanded {
+                "Restore"
+            } else {
+                "Expand"
+            })
+            .icon(if s.workspace.detail_expanded {
                 &crate::icons::RESTORE
             } else {
                 &crate::icons::EXPAND
-            },
-            if s.workspace.detail_expanded {
-                "Restore split view"
-            } else {
-                "Expand diagram"
-            },
-            false,
-        )
-        .on_press(State::toggle_expanded)
-        .build(k)
-        .key("diagram-expand"),
-    );
+            })
+            .variant(ButtonVariant::Ghost)
+            .on_press(State::toggle_expanded)
+            .build(k)
+            .key("diagram-expand"),
+        );
     let extra = s.diagram.content.visible("categories").saturating_sub(12);
     let (graph, remaining) = graph(detail, selected, extra);
     let mut root = col().w_full().grow(1.0).min_h(0.0).gap(10.0).child(toolbar);
@@ -119,20 +115,34 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
         .map(String::as_str)
         .collect();
     if !notes.is_empty() {
-        root = root.child(label(notes.join(" · "), 11.0, k.c.text_muted).wrap());
+        let message = notes.join(" · ");
+        root = root.child(
+            label(
+                format!("Capture notes ({}) · {message}", notes.len()),
+                11.0,
+                k.c.text_muted,
+            )
+            .truncate()
+            .help(message),
+        );
     }
     root.child(
         Diagram::new("request-diagram", &graph, &s.diagram, |s: &mut State| {
             &mut s.diagram
         })
         .readable_focus("answer")
+        .compact(s.workspace.window_height < 800.0)
         .build(k),
     )
-    .child(label(
-        "Captured data and returned values · your application decides what runs next",
-        11.0,
-        k.c.text_muted,
-    ))
+    .child(if s.workspace.window_height < 800.0 {
+        rune::el()
+    } else {
+        label(
+            "Captured data and returned values · your application decides what runs next",
+            11.0,
+            k.c.text_muted,
+        )
+    })
 }
 
 struct Output {

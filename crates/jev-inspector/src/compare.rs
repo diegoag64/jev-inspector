@@ -1,13 +1,27 @@
 use super::*;
 use rune_kit::diff::{DiffMode, DiffState, DiffView, FileDiff};
 
-#[derive(Default)]
 pub struct Comparison {
     pub baseline: Option<Exchange>,
     pub diff: DiffState,
     inputs: Vec<(&'static str, String, String)>,
     unavailable: Vec<String>,
     limited: bool,
+    outside_preview: Vec<String>,
+}
+impl Default for Comparison {
+    fn default() -> Self {
+        let mut diff = DiffState::default();
+        diff.set_mode(DiffMode::Unified);
+        Self {
+            baseline: None,
+            diff,
+            inputs: vec![],
+            unavailable: vec![],
+            limited: false,
+            outside_preview: vec![],
+        }
+    }
 }
 fn body(c: &jev_protocol::Capture) -> (String, bool) {
     let Some(value) = &c.json else {
@@ -37,6 +51,7 @@ impl Comparison {
         let mut inputs = vec![];
         self.limited = false;
         self.unavailable.clear();
+        self.outside_preview.clear();
         for (name, a, b) in [
             ("request.json", &base.request, &current.request),
             ("response.json", &base.response, &current.response),
@@ -52,9 +67,14 @@ impl Comparison {
                 ));
                 continue;
             }
+            let equal = a.json == b.json;
             let (a, limit_a) = body(a);
             let (b, limit_b) = body(b);
             self.limited |= limit_a || limit_b;
+            if !equal && a == b {
+                self.outside_preview.push(format!("{name}: captured values differ beyond this diff preview. Open the Request or Response tab to search or copy the complete captured JSON."));
+                continue;
+            }
             inputs.push((name, a, b));
         }
         if inputs != self.inputs {
@@ -93,11 +113,15 @@ pub fn view(s: &State, current: &Exchange, k: &Kit, cx: &Cx<State>) -> El {
     };
     panel = panel.child(
         row()
-            .gap(10.0)
+            .gap(8.0)
+            .flex_wrap()
             .center_y()
             .child(
                 label(
-                    format!("#{:03} → #{:03}", base.summary.id, current.summary.id),
+                    format!(
+                        "Baseline #{:03} → Current #{:03}",
+                        base.summary.id, current.summary.id
+                    ),
                     13.0,
                     k.c.text_accent,
                 )
@@ -105,9 +129,9 @@ pub fn view(s: &State, current: &Exchange, k: &Kit, cx: &Cx<State>) -> El {
             )
             .child(ui::button(
                 if cmp.diff.mode() == DiffMode::Unified {
-                    "Split"
+                    "View: Unified"
                 } else {
-                    "Unified"
+                    "View: Split"
                 },
                 "diff-mode",
                 false,
@@ -138,13 +162,12 @@ pub fn view(s: &State, current: &Exchange, k: &Kit, cx: &Cx<State>) -> El {
                 .build(k)
                 .key("expand-comparison"),
             )
-            .child(ui::button(
-                "Clear baseline",
-                "clear-baseline",
-                false,
-                k,
-                |s| s.workspace.comparison = Comparison::default(),
-            )),
+            .child(
+                ui::action(&rune_kit::glyphs::CLOSE, "Clear baseline", false)
+                    .on_press(|s: &mut State| s.workspace.comparison = Comparison::default())
+                    .build(k)
+                    .key("clear-baseline"),
+            ),
     );
     if let (Some(a), Some(b)) = (base.summary.duration_ms, current.summary.duration_ms) {
         panel = panel.child(label(
@@ -159,10 +182,21 @@ pub fn view(s: &State, current: &Exchange, k: &Kit, cx: &Cx<State>) -> El {
         ));
     }
     if cmp.limited {
-        panel = panel.child(label("Comparison limited to 16,000 bytes / 800 lines per body. Export JSON for the full captured values.", 11.0, k.c.warning.fg).wrap());
+        panel = panel.child(label("Diff preview limited to 16,000 bytes / 800 lines per body. Equality checks use complete captured JSON.", 11.0, k.c.warning.fg).wrap());
     }
     for message in &cmp.unavailable {
         panel = panel.child(label(message, 12.0, k.c.warning.fg).wrap().role("status"));
+    }
+    for message in &cmp.outside_preview {
+        panel = panel.child(
+            label(message, 13.0, k.c.warning.fg)
+                .wrap()
+                .role("status")
+                .key("comparison-outside-preview"),
+        );
+    }
+    if cmp.inputs.is_empty() && !cmp.outside_preview.is_empty() {
+        return panel;
     }
     if cmp.inputs.is_empty() {
         return panel.child(label("No captured bodies available to compare", 16.0, k.c.text_base))
@@ -197,6 +231,37 @@ pub fn view(s: &State, current: &Exchange, k: &Kit, cx: &Cx<State>) -> El {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn different_tails_never_become_unchanged_after_either_preview_limit() {
+        for prefix in [
+            serde_json::json!("🦀".repeat(6000)),
+            serde_json::json!((0..1000).collect::<Vec<_>>()),
+        ] {
+            let mut a = demo::exchange(1);
+            let mut b = demo::exchange(2);
+            a.response.json = Some(serde_json::json!({"a":prefix,"z":1}));
+            b.response.json = Some(serde_json::json!({"a":prefix,"z":2}));
+            let mut cmp = Comparison {
+                baseline: Some(a.clone()),
+                ..Default::default()
+            };
+            cmp.update(&b);
+            assert_eq!(cmp.outside_preview.len(), 1);
+            assert!(cmp.outside_preview[0].contains("response.json"));
+            assert_eq!(
+                cmp.diff.files().len(),
+                1,
+                "Only the actually equal request has an unchanged diff"
+            );
+            cmp.update(&a);
+            assert!(cmp.outside_preview.is_empty());
+            assert_eq!(cmp.diff.files().len(), 2);
+            b.response.json = None;
+            cmp.update(&b);
+            assert!(cmp.outside_preview.is_empty());
+            assert_eq!(cmp.unavailable.len(), 1);
+        }
+    }
     #[test]
     fn absent_bodies_are_unavailable_instead_of_equal() {
         for missing_baseline in [true, false] {

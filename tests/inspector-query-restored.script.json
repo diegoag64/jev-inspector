@@ -1,0 +1,53 @@
+[
+  {
+    "t": 0.1,
+    "type": "tap",
+    "key": "11"
+  },
+  {
+    "t": 0.3,
+    "type": "tap",
+    "key": "request-filter"
+  },
+  {
+    "t": 0.45,
+    "type": "type",
+    "text": "status:",
+    "every": 0.03
+  },
+  {
+    "t": 0.85,
+    "type": "key",
+    "name": "Backspace"
+  },
+  {
+    "t": 0.92,
+    "type": "key",
+    "name": "Backspace"
+  },
+  {
+    "t": 0.99,
+    "type": "key",
+    "name": "Backspace"
+  },
+  {
+    "t": 1.06,
+    "type": "key",
+    "name": "Backspace"
+  },
+  {
+    "t": 1.13,
+    "type": "key",
+    "name": "Backspace"
+  },
+  {
+    "t": 1.2,
+    "type": "key",
+    "name": "Backspace"
+  },
+  {
+    "t": 1.27,
+    "type": "key",
+    "name": "Backspace"
+  }
+]

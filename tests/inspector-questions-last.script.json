@@ -1,0 +1,17 @@
+[
+  {
+    "t": 0.2,
+    "type": "tap",
+    "key": "diagram-question-trigger"
+  },
+  {
+    "t": 0.4,
+    "type": "key",
+    "name": "End"
+  },
+  {
+    "t": 0.6,
+    "type": "key",
+    "name": "Enter"
+  }
+]

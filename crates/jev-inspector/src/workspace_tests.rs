@@ -382,6 +382,13 @@ fn keyboard_search_star_clear_restore_and_json_find_are_wired() {
     });
     rt.frame(0.02);
     assert_eq!(rt.state.visible.len(), 1);
+    assert_eq!(
+        rt.state.selected,
+        Some(12),
+        "Filtering retains the investigation"
+    );
+    rt.update(|s, _| s.select(7));
+    rt.frame(0.2);
     assert_eq!(rt.state.selected, Some(7));
     command(&mut rt, 'b');
     assert!(rt.state.workspace.starred.contains(&7));
@@ -418,6 +425,13 @@ fn comparison_and_resize_controls_work_at_minimum_size() {
         12
     );
     tap(&mut rt, "errors-filter");
+    assert_eq!(
+        rt.state.selected,
+        Some(12),
+        "Filtering retains the investigation"
+    );
+    rt.update(|s, _| s.select(7));
+    rt.frame(0.2);
     assert_eq!(rt.state.selected, Some(7));
     assert_eq!(rt.state.workspace.comparison.diff.files().len(), 2);
     assert!(rt.state.workspace.comparison.diff.collapsed(0));

@@ -1,6 +1,6 @@
 use super::*;
 
-pub fn view(detail: &Exchange, k: &Kit) -> El {
+pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
     let r = &detail.summary;
     let mut body = col().w_full().gap(18.0);
     if let Some(error) = detail.response.json.as_ref().and_then(|j| j.get("error")) {
@@ -84,19 +84,37 @@ pub fn view(detail: &Exchange, k: &Kit) -> El {
                         .child(ui::badge(kind.to_uppercase(), k.c.text_accent, k)),
                 )
                 .child(answer_value::view(kind, value, k));
+            let mut probability_shown = 0;
             if let Some(probabilities) = answer["probabilities"].as_object() {
                 let mut values: Vec<_> = probabilities
                     .iter()
                     .filter_map(|(n, v)| v.as_f64().map(|v| (n, v)))
                     .collect();
                 values.sort_by(|a, b| b.1.total_cmp(&a.1));
-                for (name, probability) in values.into_iter().take(12) {
+                let limit = s
+                    .workspace
+                    .probability_limits
+                    .get(name)
+                    .copied()
+                    .unwrap_or(12);
+                let choice = answer["choice"].as_str();
+                for (_, (name, probability)) in values
+                    .into_iter()
+                    .enumerate()
+                    .filter(|(i, (n, _))| *i < limit || Some(n.as_str()) == choice)
+                {
+                    probability_shown += 1;
                     let p = probability.clamp(0.0, 1.0) as f32;
                     card = card.child(
                         row()
                             .gap(12.0)
                             .center_y()
-                            .child(label(clip(name, 36), 11.0, k.c.text_muted).w(130.0))
+                            .child(
+                                label(name, 11.0, k.c.text_muted)
+                                    .w(130.0)
+                                    .truncate()
+                                    .help(name),
+                            )
                             .child(
                                 row()
                                     .grow(1.0)
@@ -112,14 +130,27 @@ pub fn view(detail: &Exchange, k: &Kit) -> El {
                                     ),
                             )
                             .child(
-                                ui::mono(
-                                    format!("{:.1}%", probability * 100.0),
-                                    11.0,
-                                    k.c.text_base,
-                                )
-                                .w(55.0),
+                                ui::mono(rune_diagram::percent(probability), 11.0, k.c.text_base)
+                                    .w(55.0),
                             ),
                     );
+                }
+            }
+            if let Some(probabilities) = answer["probabilities"].as_object() {
+                let total = probabilities.values().filter(|v| v.is_number()).count();
+                let limit = s
+                    .workspace
+                    .probability_limits
+                    .get(name)
+                    .copied()
+                    .unwrap_or(12);
+                if total > probability_shown {
+                    let action = name.clone();
+                    card = card.child(label(format!("Showing {probability_shown} of {total} probabilities; returned choice is included."), 11.0, k.c.text_muted).wrap())
+                        .child(Button::new(format!("Show {} more probabilities", (total-limit).min(12)))
+                            .variant(ButtonVariant::Ghost)
+                            .on_press_tx(move |s: &mut State, tx| { s.workspace.probability_limits.insert(action.clone(), limit + 12); tx.focus_control("detail-scroll"); })
+                            .build(k).key(format!("probabilities-more-{name}")));
                 }
             }
             if let Some(confidence) = answer["confidence"].as_f64() {
@@ -281,6 +312,45 @@ pub fn view(detail: &Exchange, k: &Kit) -> El {
         }
     }
     body
+}
+pub fn summary(r: &Summary, k: &Kit) -> El {
+    col()
+        .w_full()
+        .gap(14.0)
+        .child(
+            row()
+                .gap(10.0)
+                .child(tile("Elapsed", ui::duration(r.duration_ms), k))
+                .child(tile("Sent", ui::bytes(r.request_bytes), k))
+                .child(tile("Received", ui::bytes(r.response_bytes), k)),
+        )
+        .child(fact(
+            "Model",
+            r.model.as_deref().unwrap_or("Not captured"),
+            k,
+        ))
+        .child(fact("Started · UTC", &ui::timestamp(r.started_at_ms), k))
+        .child(fact(
+            "Request ID",
+            r.request_id
+                .as_deref()
+                .unwrap_or("Not provided by upstream"),
+            k,
+        ))
+        .child(fact(
+            "Upstream headers",
+            &r.upstream_headers_ms
+                .map(|v| format!("{v:.2} ms"))
+                .unwrap_or_else(|| "Not recorded".into()),
+            k,
+        ))
+        .child(fact(
+            "Total duration",
+            &r.duration_ms
+                .map(|v| format!("{v:.2} ms"))
+                .unwrap_or_else(|| "Not recorded".into()),
+            k,
+        ))
 }
 fn tile(name: &str, value: String, k: &Kit) -> El {
     col()

@@ -206,8 +206,9 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
     if !expanded {
         body = body.child(traffic(s, &k, cx)).child(splitter(&k));
     }
+    let mut layers = vec![];
     body = body.child(
-        detail_view::detail_view(s, &k, cx)
+        detail_view::detail_view(s, &k, cx, &mut layers)
             .grow(1.0)
             .min_w(0.0)
             .h_full()
@@ -216,7 +217,6 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
             .fill(k.c.layer_01),
     );
     root = root.child(body).child(footer(s, &k));
-    let mut layers = vec![];
     dialogs(s, &k, &mut layers);
     root.children(layers)
 }
@@ -312,7 +312,11 @@ fn metrics(s: &State, k: &Kit) -> El {
             },
         ),
         (
-            "IN FLIGHT",
+            if s.workspace.session_name.is_some() {
+                "INCOMPLETE"
+            } else {
+                "IN FLIGHT"
+            },
             pending.to_string(),
             "visible requests",
             k.c.warning.fg,
@@ -464,7 +468,16 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
             ),
         );
     if let Some(error) = &s.workspace.query_error {
-        panel = panel.child(label(error, 11.0, k.c.danger.fg).wrap().px(14.0).py(8.0));
+        panel = panel.child(
+            label(
+                format!("{error} Showing previous results until the query is valid."),
+                11.0,
+                k.c.danger.fg,
+            )
+            .wrap()
+            .px(14.0)
+            .py(8.0),
+        );
     }
     panel = panel.child(
         row()
@@ -505,7 +518,11 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                 },
             ))
             .child(ui::button(
-                "In flight",
+                if s.workspace.session_name.is_some() {
+                    "Incomplete"
+                } else {
+                    "In flight"
+                },
                 "pending-filter",
                 s.workspace.filter == Filter::Pending,
                 k,
@@ -678,7 +695,7 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                 col()
                     .gap(4.0)
                     .child(label(
-                        format!("{}  {}", r.method, clip(&r.path, 24)),
+                        format!("{}  {}", r.method, r.path),
                         12.0,
                         k.c.text_base,
                     ))
@@ -686,13 +703,19 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                         format!(
                             "#{:03} · {}",
                             r.id,
-                            clip(r.model.as_deref().unwrap_or("Model unavailable"), 23)
+                            r.model.as_deref().unwrap_or("Model unavailable")
                         ),
                         10.0,
                         supporting,
                     )),
             ),
-            "request" => Cell::text(format!("#{:03} {}", r.id, r.path)),
+            "request" => Cell::text(format!(
+                "#{:03} {} · {} · {}",
+                r.id,
+                r.method,
+                r.model.as_deref().unwrap_or("No model"),
+                r.path
+            )),
             "status" => Cell::text(if r.outcome == Outcome::Pending {
                 "Pending".into()
             } else {
@@ -768,6 +791,10 @@ fn empty(s: &State, k: &Kit) -> El {
             .wrap(),
         );
     if waiting {
+        body = body.child(ui::button("Connection setup", "open-setup", true, k, |s| {
+            s.workspace.setup_help = true;
+            s.workspace.help = true;
+        }));
         body = body.child(
             ui::mono(
                 if s.snapshot.relay_url.starts_with("http") {
@@ -898,40 +925,69 @@ fn dialogs(s: &State, k: &Kit, layers: &mut Vec<El>) {
             .child(label(title, 13.0, k.c.text_base))
             .child(label(body, 12.0, k.c.text_muted).wrap());
     }
-    Dialog::new("help", "Help and shortcuts")
-        .description("Search, inspect, compare, and save requests")
-        .open(s.workspace.help)
-        .width(600.0)
-        .fit()
-        .on_close(|s: &mut State| s.workspace.help = false)
-        .child(
-            rune_kit::scroll_bar(
-                k,
-                "help-scroll",
-                "viewport",
-                col()
-                    .h_full()
-                    .min_h(0.0)
-                    .focusable(true)
-                    .role("region")
-                    .label("Help content")
-                    .scroll(rune::ScrollSpec {
-                        stick_bottom: false,
-                    })
-                    .child(help),
-            )
-            .h((s.workspace.window_height - 220.0).clamp(300.0, 560.0)),
-        )
-        .child(if s.workspace.window_height < 800.0 {
-            row().px(20.0).py(8.0).fill(k.c.layer_02).child(label(
-                "Scroll help · Page Down / End",
-                11.0,
-                k.c.text_muted,
-            ))
+    if s.workspace.setup_help {
+        help = col().padding(20.0).child(setup_view::guide(s, k));
+    }
+    Dialog::new(
+        "help",
+        if s.workspace.setup_help {
+            "Connection setup"
         } else {
-            el()
-        })
-        .build(k, layers);
+            "Help and shortcuts"
+        },
+    )
+    .description("Search, inspect, compare, and save requests")
+    .open(s.workspace.help)
+    .width(600.0)
+    .fit()
+    .on_close(|s: &mut State| s.workspace.help = false)
+    .child(
+        row()
+            .px(20.0)
+            .gap(8.0)
+            .child(ui::button(
+                "Shortcuts",
+                "help-shortcuts",
+                !s.workspace.setup_help,
+                k,
+                |s| s.workspace.setup_help = false,
+            ))
+            .child(ui::button(
+                "Connection setup",
+                "help-setup",
+                s.workspace.setup_help,
+                k,
+                |s| s.workspace.setup_help = true,
+            )),
+    )
+    .child(
+        rune_kit::scroll_bar(
+            k,
+            "help-scroll",
+            "viewport",
+            col()
+                .h_full()
+                .min_h(0.0)
+                .focusable(true)
+                .role("region")
+                .label("Help content")
+                .scroll(rune::ScrollSpec {
+                    stick_bottom: false,
+                })
+                .child(help),
+        )
+        .h((s.workspace.window_height - 220.0).clamp(300.0, 560.0)),
+    )
+    .child(if s.workspace.window_height < 800.0 {
+        row().px(20.0).py(8.0).fill(k.c.layer_02).child(label(
+            "Scroll help · Page Down / End",
+            11.0,
+            k.c.text_muted,
+        ))
+    } else {
+        el()
+    })
+    .build(k, layers);
     let busy = s.workspace.job.is_some();
     let mut choices = col().padding(20.0).gap(12.0);
     for (kind, title, note) in [

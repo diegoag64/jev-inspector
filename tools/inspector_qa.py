@@ -89,10 +89,23 @@ for name, fixture in [("focus-heading-fit", "support-routing"), ("focus-heading-
                       ("focus-properties-fit-light", "support-routing")]:
     CASES[name] = ["--fixture", "example-" + fixture, "--size", "1100x700", "--script", "tests/inspector-" + name + ".script.json"]
 
+for fixture in ["many-questions-6", "many-questions-12", "many-questions-24", "probabilities-13", "probabilities-40", "saved-pending", "saved-partial", "disconnected-pending", "compare-tail", "compare-line-tail", "setup-disconnected", "relay-restarted"]:
+    CASES[fixture] = ["--fixture", fixture, "--size", "1100x700"]
+for name, fixture, script in [
+    ("questions-menu", "many-questions-24", "questions-menu"),
+    ("questions-last", "many-questions-24", "questions-last"),
+    ("search-tail", "long-json", "search-tail"),
+    ("query-preserved", "compare-unset", "query-preserved"),
+    ("query-restored", "compare-unset", "query-restored"),
+    ("summary-expanded", "summary-only", "summary-expanded"),
+]:
+    CASES[name] = ["--fixture", fixture, "--size", "1100x700", "--script", "tests/inspector-" + script + ".script.json"]
+
 
 def verify_state(name: str, tree_path: Path) -> list[str]:
     """A rendered PNG is not enough: verify the scripted workflow reached its destination."""
-    tree = json.loads(tree_path.read_text(encoding="utf-8"))["accessibility"]
+    document = json.loads(tree_path.read_text(encoding="utf-8"))
+    tree = document["accessibility"]
     def walk(node):
         yield node
         for child in node.get("children", []):
@@ -151,6 +164,21 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
                "request-diagram:node:6:answer:select")
         if "focused" not in keyed.get(key, {}).get("states", []):
             errors.append("Expected keyboard focus on " + key)
+    if name.startswith("many-questions-") or name in ("questions-menu", "questions-last"):
+        canvas = next((e["rect"] for e in document["elements"] if e.get("key") == "request-diagram:viewport"), [0, 0, 0, 0])
+        if canvas[3] < 240:
+            errors.append("Question navigation consumed the diagram canvas")
+    expected = {"saved-pending": "Incomplete when saved", "saved-partial": "Incomplete when saved",
+                "disconnected-pending": "Response status unknown", "compare-tail": "captured values differ beyond",
+                "compare-line-tail": "captured values differ beyond", "setup-disconnected": "Connect your backend",
+                "relay-restarted": "Relay restarted", "search-tail": "1 / 1", "query-preserved": "Exchange #011",
+                "query-restored": "Exchange #011", "summary-expanded": "demo-request-012",
+                "probabilities-40": "Showing 13 of 40 probabilities"}
+    if name in expected and expected[name] not in json.dumps(tree, ensure_ascii=False):
+        errors.append("Missing workflow result: " + expected[name])
+    if name in ("saved-pending", "saved-partial", "disconnected-pending"):
+        if "Waiting for response" in names or any(e.get("loopPhase") is not None for e in document["elements"]):
+            errors.append("Historical or disconnected captures must not show live waiting")
     selected_tabs = {"overview-dark": 0, "response-small-light": 2, "json-find": 2,
                      "json-tree": 2, "compare": 4, "diagram-expanded": 3,
                      "missing-compare": 4, "long-json-small": 2, "tree-small": 2, "compare-small-split": 4, "compare-small-expanded": 4}
@@ -177,14 +205,14 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
     new_text = {"first-use": "No requests yet", "saved-empty": "No requests in this session"}
     if name in new_text and new_text[name] not in names:
         errors.append(f"Missing {new_text[name]}")
-    if name in ("compare-small-split", "compare-small-expanded") and keyed.get("diff-mode", {}).get("name") != "Unified":
+    if name in ("compare-small-split", "compare-small-expanded") and keyed.get("diff-mode", {}).get("name") != "View: Split":
         errors.append("Expected split comparison mode")
     if name == "compare-small-expanded" and "requests" in keyed:
         errors.append("Expected expanded comparison")
     required_text = {"saved-session": "SAVED WITH BODIES", "summary-only": "Summary only",
                      "disconnected": "CAPTURE UNKNOWN", "paused": "List paused",
                      "missing-compare": "No captured bodies available to compare",
-                     "invalid-query": "Use status:200", "long-json-small": "Preview limited",
+                     "invalid-query": "Use status:200", "long-json-small": "Find and Copy use the full capture",
                      "export-progress": "Working", "export-cancelled": "File operation cancelled",
                      "upstream-error": "429", "export-failed": "Could not save session", "long-labels-small": "SAVED SESSION"}
     if name in required_text and required_text[name] not in names:

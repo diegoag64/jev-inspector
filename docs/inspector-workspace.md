@@ -2,7 +2,7 @@
 
 Start the local demo with `python dev.py demo --skip-build`, or connect the inspector
 to a relay as described in [the quickstart](bridge-quickstart.md). The demo generates
-synthetic requests continuously. It does not contact TypeSafe.
+one batch of synthetic requests, then stays idle. It does not contact TypeSafe.
 
 The sun or moon button switches between neutral grayscale light and dark themes.
 Status colors distinguish errors and warnings; JSON keeps syntax colors. Toolbar
@@ -64,8 +64,10 @@ actual size.
 ## Explore JSON and compare exchanges
 
 Request and Response provide indented, selectable JSON with Rune syntax colors and
-line numbers. **Find** searches the displayed preview, with case-sensitive matches.
-Use Enter and Shift+Enter for the next and previous match.
+line numbers. **Find** searches the complete captured JSON, with case-sensitive matches.
+Use Enter and Shift+Enter for the next and previous match. Find from Tree opens
+the code view at the result. Large documents use 16,000-byte display windows;
+the footer arrows page through them, and Find brings its result into view.
 
 **Tree** opens Rune's virtualized property tree. Arrow keys navigate the tree.
 Use **Expand all**, **Collapse all**, or a row's disclosure arrow to explore it.
@@ -139,14 +141,17 @@ navigation also works. Tab visits controls throughout the app.
 ## Display and file limits
 
 The relay retains 100 exchanges by default, with a configurable maximum of 200.
-Its capture limits remain unchanged. Code previews stop at 16,000 UTF-8 bytes.
+Its capture limits remain unchanged. Code displays at most 16,000 UTF-8 bytes at a
+time, with page navigation and character-safe boundaries.
 JSON trees contain at most 4,096 nodes and 64 nested levels. Long tree labels are
 shortened; Copy value retains the captured value. Comparisons use at most 16,000
-bytes and 800 lines per body, with a visible notice when limited.
+bytes and 800 lines per body for rendering, with a visible notice when limited.
+Equality checks use the complete captured JSON. Matching prefixes with different
+tails are labeled as different beyond the preview, never unchanged.
 
 Sessions accept at most 200 exchanges and 64 MB per file. A saved capture is limited
 to 512 KB in its serialized representation. Search highlights at most 1,000 matches
-in the code preview. The app does not automatically persist traffic.
+across the complete captured JSON. The app does not automatically persist traffic.
 
 ## Repeat the visual checks
 
@@ -189,3 +194,19 @@ not interactive FPS, GPU completion times, or TypeSafe latency.
 The Rust tests exercise Rune controls and file-dialog callbacks, real temporary
 files, and a synthetic HTTP inspection API. This Windows run does not establish
 macOS behavior or OS-level mouse, clipboard, and native-dialog integration.
+
+## Keep investigation context
+
+Filters keep the selected exchange open even when it leaves the result list.
+**Show selected** clears the filters to reveal it. An incomplete query keeps the
+last valid results until you finish editing. Clear view still works during editing.
+Relay restarts and eviction of the selected exchange display a notice.
+
+Saved pending exchanges are static snapshots labeled **Incomplete when saved**.
+Summary-only sessions retain their timing, model, request ID, and size metadata.
+Overview includes the returned choice among probability rows and offers **Show
+12 more** when more categories are available. Long question lists use a scrollable
+selector above the diagram.
+
+Open **Help > Connection setup** for copyable relay, inspector, and backend
+base URL commands. The same guide appears when a live session has no requests.

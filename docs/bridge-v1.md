@@ -44,7 +44,7 @@ relay. The convenience demo owns and stops all processes that it starts.
 | Decoder queue | 32 completed exchanges; overflow loses inspection data, not forwarded bytes |
 | Upstream deadline | Default 120 seconds, configurable from 1 to 600 seconds |
 | Upstream connect deadline | 10 seconds |
-| UI JSON preview | First 16,000 UTF-8 bytes, cut at a character boundary; the UI marks this display limit outside the code |
+| UI JSON preview | 16,000 UTF-8 bytes per display window, cut at a character boundary; paging and Find reach the full capture |
 
 Request and response bodies stream through the relay. Parsing and decompression
 run in a separate capture worker. A small capture budget does not truncate the

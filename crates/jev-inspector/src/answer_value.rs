@@ -12,7 +12,7 @@ pub fn view(kind: &str, value: &Value, k: &Kit) -> El {
                     .center_y()
                     .gap(12.0)
                     .child(label(format!("{:.1}%", p * 100.0), 24.0, k.c.text_base))
-                    .child(label("Likelihood", 12.0, k.c.text_muted)),
+                    .child(label("Probability of true", 12.0, k.c.text_muted)),
             )
             .child(
                 row()
@@ -32,8 +32,8 @@ pub fn view(kind: &str, value: &Value, k: &Kit) -> El {
             )
             .child(
                 row()
-                    .child(label("0%", 10.0, k.c.text_faint).grow(1.0))
-                    .child(label("100%", 10.0, k.c.text_faint)),
+                    .child(label("False ? 0%", 10.0, k.c.text_faint).grow(1.0))
+                    .child(label("True ? 100%", 10.0, k.c.text_faint)),
             );
     }
     if kind == "box" {

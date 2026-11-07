@@ -17,10 +17,13 @@ mod request_scroll;
 #[cfg(test)]
 mod scroll_focus_tests;
 mod session;
+mod setup_view;
 mod showcase;
 #[cfg(test)]
 mod showcase_tests;
 mod ui;
+#[cfg(test)]
+mod workflow_tests;
 mod workspace;
 #[cfg(test)]
 mod workspace_tests;
@@ -60,6 +63,7 @@ struct State {
     tab: u8,
     diagram: rune_diagram::DiagramState,
     diagram_question: String,
+    diagram_questions_open: bool,
     connected: bool,
     connection_error: Option<String>,
     demo: bool,
@@ -87,6 +91,7 @@ impl Default for State {
             tab: 0,
             diagram: rune_diagram::DiagramState::default(),
             diagram_question: String::new(),
+            diagram_questions_open: false,
             connected: false,
             connection_error: None,
             demo: false,
@@ -101,6 +106,13 @@ impl State {
     fn filter_rows(&mut self) {
         let query = query::Query::parse(&self.filter.text);
         self.workspace.query_error = query.as_ref().err().cloned();
+        let query = match query {
+            Ok(query) => {
+                self.workspace.applied_query = self.filter.text.clone();
+                query
+            }
+            Err(_) => query::Query::parse(&self.workspace.applied_query).expect("last valid query"),
+        };
         self.visible = self
             .snapshot
             .requests
@@ -109,7 +121,7 @@ impl State {
                 s.id > self.workspace.clear_before
                     && (!self.errors_only || failed(s))
                     && self.workspace.matches(s)
-                    && query.as_ref().is_ok_and(|q| q.matches(s))
+                    && query.matches(s)
             })
             .cloned()
             .collect();
@@ -134,10 +146,13 @@ impl State {
             };
             direction.apply(order).then_with(|| b.id.cmp(&a.id))
         });
-        if self
-            .selected
-            .is_some_and(|id| !self.visible.iter().any(|row| row.id == id))
-        {
+        if self.selected.is_some_and(|id| {
+            !self
+                .snapshot
+                .requests
+                .iter()
+                .any(|row| row.id == id && row.id > self.workspace.clear_before)
+        }) {
             self.selected = None;
             self.detail = None;
             self.detail_error = None;
@@ -153,10 +168,12 @@ impl State {
     fn select(&mut self, id: u64) {
         showcase::stop(self);
         if self.selected != Some(id) {
+            self.workspace.probability_limits.clear();
             self.request_text.copied = false;
             self.response_text.copied = false;
             self.diagram.reset();
             self.diagram_question.clear();
+            self.diagram_questions_open = false;
             self.detail = None;
             self.detail_error = None;
         }

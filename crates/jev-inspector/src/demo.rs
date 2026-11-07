@@ -191,6 +191,65 @@ pub fn scenario(s: &mut State, name: &str) -> Result<(), String> {
             s.set_detail(current);
             s.tab = 4;
         }
+        "many-questions-6" | "many-questions-12" | "many-questions-24" => {
+            let count: usize = name.rsplit('-').next().unwrap().parse().unwrap();
+            let mut current = exchange(12);
+            let mut questions = serde_json::Map::new();
+            let mut answers = serde_json::Map::new();
+            for i in 0..count {
+                let key = format!("question_{i:02}_customer_support_triage_and_resolution");
+                questions.insert(key.clone(), json!({"type":"noul", "instructions":"Does this need review?"}));
+                answers.insert(key, json!({"type":"noul", "noul":0.12, "confidence":0.89}));
+            }
+            current.request.json = Some(json!({"questions":questions, "state":{"message":"Synthetic multi-question example"}}));
+            current.response.json = Some(json!({"answers":answers}));
+            s.set_detail(current);
+            s.tab = 3;
+        }
+        "probabilities-13" | "probabilities-40" => {
+            let count: usize = name.rsplit('-').next().unwrap().parse().unwrap();
+            let mut current = exchange(12);
+            let probabilities: serde_json::Map<String, serde_json::Value> = (0..count)
+                .map(|i| (format!("category_{i:02}"), json!(1.0 / count as f64))).collect();
+            current.response.json = Some(json!({"answers":{"department":{"type":"choice", "choice":format!("category_{:02}",count-1), "confidence":0.89, "probabilities":probabilities}}}));
+            s.set_detail(current);
+            s.tab = 0;
+        }
+        "saved-pending" | "saved-partial" | "disconnected-pending" => {
+            scenario(s, "pending-response")?;
+            if name == "disconnected-pending" {
+                s.demo = false;
+                s.connected = false;
+                s.connection_error = Some("The local relay is not responding.".into());
+            } else {
+                s.workspace.session_name = Some("incomplete-capture.jev.json".into());
+                if name == "saved-partial" {
+                    let mut current = s.detail.clone().unwrap();
+                    current.response.json = Some(json!({"partial": true, "message": "Inspection data available when saved"}));
+                    s.set_detail(current);
+                }
+            }
+        }
+        "compare-tail" | "compare-line-tail" => {
+            let mut baseline = exchange(7);
+            let mut current = exchange(12);
+            let prefix = if name == "compare-tail" { json!("x".repeat(17_000)) } else { json!((0..1000).collect::<Vec<_>>()) };
+            baseline.response.json = Some(json!({"a_prefix":prefix, "z_tail":1}));
+            current.response.json = Some(json!({"a_prefix":prefix, "z_tail":2}));
+            s.workspace.comparison.baseline = Some(baseline);
+            s.set_detail(current);
+            s.tab = 4;
+        }
+        "relay-restarted" => {
+            s.select(4); s.star();
+            s.workspace.comparison.baseline = s.detail.clone();
+            let mut snapshot=s.snapshot.clone(); snapshot.instance_id="restart-example".into(); s.apply_snapshot(snapshot);
+        }
+        "setup-disconnected" => {
+            scenario(s, "first-use")?;
+            s.connected = false;
+            s.connection_error = Some(format!("No relay connection at {}", s.connection_file.display()));
+        }
         "long-json" => {
             let mut current = exchange(12);
             current.response.json = Some(

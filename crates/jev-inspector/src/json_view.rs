@@ -12,7 +12,9 @@ const PREVIEW_BYTES: usize = 16_000;
 #[derive(Default)]
 pub struct JsonDocument {
     source: Option<String>,
+    start: usize,
     end: usize,
+    matches: Vec<std::ops::Range<usize>>,
     pub copied: bool,
     pub search_open: bool,
     pub search: rune::TextEdit,
@@ -38,41 +40,67 @@ impl JsonDocument {
             .as_ref()
             .map(crate::json_tree::model)
             .unwrap_or_default();
-        self.end = source.as_ref().map_or(0, |s| {
-            let mut end = s.len().min(PREVIEW_BYTES);
-            while !s.is_char_boundary(end) {
-                end -= 1;
-            }
-            end
-        });
         self.source = source;
+        self.set_window(0);
+        self.refresh_matches();
+        self.reveal_match();
+    }
+    fn set_window(&mut self, start: usize) {
+        let source = self.source.as_deref().unwrap_or("");
+        self.start = start.min(source.len());
+        while !source.is_char_boundary(self.start) {
+            self.start -= 1;
+        }
+        self.end = (self.start + PREVIEW_BYTES).min(source.len());
+        while !source.is_char_boundary(self.end) {
+            self.end -= 1;
+        }
     }
     fn preview(&self) -> &str {
-        self.source.as_ref().map_or("", |s| &s[..self.end])
+        self.source
+            .as_ref()
+            .map_or("", |s| &s[self.start..self.end])
     }
     fn truncated(&self) -> bool {
-        self.source.as_ref().is_some_and(|s| s.len() > self.end)
+        self.source
+            .as_ref()
+            .is_some_and(|s| self.start > 0 || s.len() > self.end)
     }
-    fn matches(&self) -> Vec<std::ops::Range<usize>> {
-        if self.search.text.is_empty() {
-            return vec![];
+    fn refresh_matches(&mut self) {
+        self.matches = if self.search.text.is_empty() {
+            vec![]
+        } else {
+            self.source
+                .as_deref()
+                .unwrap_or("")
+                .match_indices(&self.search.text)
+                .take(1001)
+                .map(|(i, s)| i..i + s.len())
+                .collect()
+        };
+        self.match_index = self
+            .match_index
+            .min(self.matches.len().min(1000).saturating_sub(1));
+    }
+    fn reveal_match(&mut self) {
+        if let Some(range) = self.matches.get(self.match_index)
+            && (range.start < self.start || range.end > self.end)
+        {
+            self.set_window(range.start.saturating_sub(2048));
         }
-        self.preview()
-            .match_indices(&self.search.text)
-            .take(1000)
-            .map(|(i, s)| i..i + s.len())
-            .collect()
     }
     pub fn find(&mut self, key: &str, delta: isize, tx: &mut rune::Tx) {
-        let matches = self.matches();
-        if matches.is_empty() {
+        self.refresh_matches();
+        if self.matches.is_empty() {
             self.match_index = 0;
             return;
         }
-        self.match_index =
-            (self.match_index as isize + delta).rem_euclid(matches.len() as isize) as usize;
-        let range = matches[self.match_index].clone();
-        let line = self.preview()[..range.start]
+        self.match_index = (self.match_index as isize + delta)
+            .rem_euclid(self.matches.len().min(1000) as isize) as usize;
+        self.reveal_match();
+        let range = self.matches[self.match_index].clone();
+        let local_start = range.start - self.start;
+        let line = self.preview()[..local_start]
             .bytes()
             .filter(|b| *b == b'\n')
             .count();
@@ -80,7 +108,7 @@ impl JsonDocument {
             format!("{key}:scroll"),
             (line as f32 * 21.0 - 60.0).max(0.0),
         );
-        let column = self.preview()[..range.start]
+        let column = self.preview()[..local_start]
             .rsplit('\n')
             .next()
             .unwrap_or("")
@@ -119,30 +147,46 @@ impl JsonDocument {
         };
         let preview = self.preview();
         let lines = preview.lines().count();
-        let digits = lines.to_string().len();
-        let numbers = (1..=lines)
+        let digits = (lines + source[..self.start].bytes().filter(|b| *b == b'\n').count())
+            .to_string()
+            .len();
+        let first_line = source[..self.start].bytes().filter(|b| *b == b'\n').count() + 1;
+        let numbers = (first_line..first_line + lines)
             .map(|n| format!("{n:>digits$}"))
             .collect::<Vec<_>>()
             .join("\n");
         let mut font = TextStyle::new(13.0, 400.0).mono();
         font.line_height = 21.0;
-        let matches = self.matches();
+        let matches = &self.matches;
         let mut spans =
             SyntaxTheme::from_kit(k).spans(&syntax::highlight(Some("json"), preview), 0);
         for (i, range) in matches.iter().enumerate() {
-            spans.push(rune::Span::new(range.start, range.end).bg(
-                k.alpha(
-                    k.c.warning.fg,
-                    if i == self.match_index { 0.45 } else { 0.18 },
+            if range.end <= self.start || range.start >= self.end {
+                continue;
+            }
+            spans.push(
+                rune::Span::new(
+                    range.start.max(self.start) - self.start,
+                    range.end.min(self.end) - self.start,
+                )
+                .bg(
+                    k.alpha(
+                        k.c.warning.fg,
+                        if i == self.match_index { 0.45 } else { 0.18 },
+                    ),
+                    0.0,
                 ),
-                0.0,
-            ));
+            );
         }
         let header = row()
             .center_y()
             .gap(10.0)
             .px(14.0)
-            .py(10.0)
+            .py(if state.workspace.window_height < 800.0 {
+                6.0
+            } else {
+                10.0
+            })
             .fill(k.c.layer_02)
             .child(
                 text("JSON")
@@ -162,19 +206,21 @@ impl JsonDocument {
             )
             .child(
                 crate::ui::action(&rune_kit::glyphs::SEARCH, "Find in JSON", self.search_open)
-                    .disabled(self.tree)
                     .on_press(move |s: &mut State| {
                         let doc = get(s);
-                        doc.search_open = !doc.search_open;
+                        let open = doc.tree || !doc.search_open;
+                        doc.tree = false;
+                        doc.search_open = open;
                         if !doc.search_open {
                             doc.search = rune::TextEdit::default();
+                            doc.matches.clear();
                         } else {
                             doc.search.focused = true;
                         }
                     })
                     .build(k)
                     .key(format!("{key}:find"))
-                    .help("Find text in this preview · Ctrl/Cmd+F"),
+                    .help("Find text in the full capture · Ctrl/Cmd+F"),
             )
             .child(
                 label(
@@ -257,13 +303,17 @@ impl JsonDocument {
             let enter_key = key.to_string();
             let mut controls = row()
                 .px(12.0)
-                .py(8.0)
+                .py(if state.workspace.window_height < 800.0 {
+                    5.0
+                } else {
+                    8.0
+                })
                 .gap(6.0)
                 .center_y()
                 .fill(k.c.layer_01)
                 .child(
                     rune_kit::TextInput::new(&self.search)
-                        .placeholder("Find in preview (case-sensitive)")
+                        .placeholder("Find in full capture (case-sensitive)")
                         .label("Find in JSON")
                         .on_edit(move |s: &mut State| &mut get(s).search)
                         .on_change(move |s: &mut State, tx| {
@@ -279,6 +329,7 @@ impl JsonDocument {
                                 let doc = get(s);
                                 doc.search_open = false;
                                 doc.search = rune::TextEdit::default();
+                                doc.matches.clear();
                                 tx.blur();
                                 true
                             } else {
@@ -297,8 +348,8 @@ impl JsonDocument {
                         format!(
                             "{} / {}{}",
                             self.match_index.min(matches.len() - 1) + 1,
-                            matches.len(),
-                            if matches.len() == 1000 { "+" } else { "" }
+                            matches.len().min(1000),
+                            if matches.len() > 1000 { "+" } else { "" }
                         )
                     },
                     11.0,
@@ -327,6 +378,7 @@ impl JsonDocument {
                         let doc = get(s);
                         doc.search_open = false;
                         doc.search = rune::TextEdit::default();
+                        doc.matches.clear();
                     })
                     .build(k)
                     .help("Close find"),
@@ -360,8 +412,52 @@ impl JsonDocument {
                 true,
             ));
         if self.truncated() {
-            panel=panel.child(label("Preview limited to 16,000 bytes. Copy JSON includes the complete captured JSON.",11.0,k.c.text_muted)
-                .wrap().px(14.0).py(10.0).fill(k.c.layer_01));
+            let previous_key = key.to_owned();
+            let next_key = key.to_owned();
+            panel = panel.child(
+                row()
+                    .px(12.0)
+                    .py(6.0)
+                    .gap(6.0)
+                    .center_y()
+                    .fill(k.c.layer_01)
+                    .child(
+                        label(
+                            format!(
+                                "Bytes {}–{} of {} · Find and Copy use the full capture",
+                                self.start + 1,
+                                self.end,
+                                source.len()
+                            ),
+                            11.0,
+                            k.c.text_muted,
+                        )
+                        .wrap()
+                        .grow(1.0),
+                    )
+                    .child(
+                        crate::ui::action(&crate::icons::UP, "Previous JSON page", false)
+                            .disabled(self.start == 0)
+                            .on_press_tx(move |s: &mut State, tx| {
+                                let doc = get(s);
+                                doc.set_window(doc.start.saturating_sub(PREVIEW_BYTES));
+                                tx.scroll_to_y(format!("{previous_key}:scroll"), 0.0);
+                            })
+                            .build(k)
+                            .key(format!("{key}:previous-page")),
+                    )
+                    .child(
+                        crate::ui::action(&crate::icons::DOWN, "Next JSON page", false)
+                            .disabled(self.end == source.len())
+                            .on_press_tx(move |s: &mut State, tx| {
+                                let doc = get(s);
+                                doc.set_window(doc.end);
+                                tx.scroll_to_y(format!("{next_key}:scroll"), 0.0);
+                            })
+                            .build(k)
+                            .key(format!("{key}:next-page")),
+                    ),
+            );
         }
         panel
     }
@@ -371,6 +467,33 @@ impl JsonDocument {
 mod tests {
     use super::*;
     use serde_json::json;
+    #[test]
+    fn full_capture_search_reveals_tail_and_pages_at_unicode_boundaries() {
+        let mut doc = JsonDocument::default();
+        doc.update(&Capture {
+            json: Some(json!({"a": "🦀".repeat(6000), "z": "unique tail marker"})),
+            ..Default::default()
+        });
+        assert!(!doc.preview().contains("unique tail marker"));
+        doc.search = rune::TextEdit::new("unique tail marker");
+        doc.find("response-json", 0, &mut rune::Tx::default());
+        assert_eq!(doc.matches.len(), 1);
+        assert!(doc.start > 0 && doc.preview().contains("unique tail marker"));
+        assert!(doc.preview().len() <= PREVIEW_BYTES);
+        doc.search = rune::TextEdit::new("not in this capture");
+        doc.find("response-json", 0, &mut rune::Tx::default());
+        assert!(doc.matches.is_empty());
+        doc.set_window(0);
+        let mut reconstructed = String::new();
+        loop {
+            reconstructed.push_str(doc.preview());
+            if doc.end == doc.source.as_ref().unwrap().len() {
+                break;
+            }
+            doc.set_window(doc.end);
+        }
+        assert_eq!(Some(&reconstructed), doc.source.as_ref());
+    }
     #[test]
     fn truncated_unicode_preview_keeps_full_valid_copy_and_no_annotation_in_code() {
         let value = json!({"message":"🦀".repeat(5000),"ok":true,"missing":null});

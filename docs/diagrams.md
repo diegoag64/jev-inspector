@@ -18,9 +18,11 @@ cargo run -p jev-inspector -- --demo --diagram
 
 For live capture, open the inspector normally and select **Diagram** beside
 Overview, Request, and Response. Select a question to see its captured context,
-question definition, returned answer, and probability distribution.
+question definition, returned answer, and probability distribution. The question
+selector scrolls through long lists without reducing the canvas height; End and
+Enter select its final option.
 Use `python dev.py demo --diagram` to start the synthetic traffic demo on that tab.
-**Expand diagram** hides the request list and counters to give the canvas more
+**Expand** hides the request list and counters to give the canvas more
 space. Choice results have separate returned-choice and alternative cards; Noul
 results show P(True) and its explicitly labeled complement, P(False). Neither
 branch implies that a backend condition was executed. Large choice distributions

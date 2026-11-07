@@ -17,6 +17,7 @@ pub struct Diagram<'a, S> {
     get: fn(&mut S) -> &mut DiagramState,
     minimum_size: [f32; 2],
     readable_focus: Option<&'a str>,
+    compact: bool,
 }
 impl<'a, S: 'static> Diagram<'a, S> {
     pub fn new(
@@ -32,8 +33,15 @@ impl<'a, S: 'static> Diagram<'a, S> {
             get,
             minimum_size: [0.0, 0.0],
             readable_focus: None,
+            compact: false,
         }
     }
+    /// Hide the keyboard hint to give short viewports more drawing space.
+    pub fn compact(mut self, compact: bool) -> Self {
+        self.compact = compact;
+        self
+    }
+
     /// Reserve whitespace around the caller's layout without adding fake nodes.
     pub fn content_size(mut self, size: [f32; 2]) -> Self {
         if size
@@ -317,7 +325,9 @@ impl<'a, S: 'static> Diagram<'a, S> {
             .gap(8.0)
             .child(toolbar)
             .child(viewport)
-            .child(
+            .child(if self.compact {
+                el()
+            } else {
                 label(
                     "Drag to pan · ↑↓ browse cards · Scroll to zoom · 0 Fit · 1 Actual size",
                     11.0,
@@ -325,8 +335,8 @@ impl<'a, S: 'static> Diagram<'a, S> {
                 )
                 .wrap()
                 .px(12.0)
-                .py(3.0),
-            )
+                .py(3.0)
+            })
     }
 }
 
