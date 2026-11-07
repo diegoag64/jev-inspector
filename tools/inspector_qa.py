@@ -81,6 +81,9 @@ CASES["example-find-click"] = ["--fixture", "example-models", "--size", "1100x70
 CASES["properties-drag-keyboard"] = ["--fixture", "example-support-routing", "--size", "1100x700", "--script", "tests/inspector-properties-drag.script.json"]
 CASES["nested-properties-end"] = ["--fixture", "nested-properties", "--size", "1100x700", "--script", "tests/inspector-nested-end.script.json"]
 
+CASES["inactive-properties-drag"] = ["--fixture", "example-support-routing", "--size", "1100x700", "--script", "tests/inspector-inactive-drag.script.json"]
+CASES["inactive-properties-track"] = ["--fixture", "example-support-routing", "--size", "1100x700", "--script", "tests/inspector-inactive-track.script.json"]
+
 
 def verify_state(name: str, tree_path: Path) -> list[str]:
     """A rendered PNG is not enough: verify the scripted workflow reached its destination."""
@@ -132,7 +135,7 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
     if name in ("json-tree", "tree-small", "example-inventory-expanded"):
         if not any(n.get("role") == "tree" and n.get("name") in ("Request JSON properties", "Response JSON properties") for n in nodes):
             errors.append("JSON property tree lacks its document name")
-    if name in ("properties-drag-keyboard", "nested-properties-end"):
+    if name in ("properties-drag-keyboard", "nested-properties-end", "inactive-properties-drag", "inactive-properties-track"):
         control = keyed.get("request-diagram:node:5:state:content", {})
         r, v = control.get("bounds"), keyed.get("request-diagram:viewport", {}).get("bounds")
         if "focused" not in control.get("states", []) or not r or not v or not (r[0] >= v[0] and r[1] >= v[1] and r[0]+r[2] <= v[0]+v[2]+0.5 and r[1]+r[3] <= v[1]+v[3]+0.5):

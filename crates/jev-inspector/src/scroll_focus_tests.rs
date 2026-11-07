@@ -210,3 +210,78 @@ fn requested_control_focus_respects_modal_scope_and_last_request() {
         before
     );
 }
+
+#[test]
+fn inactive_properties_drag_and_track_activate_owner_before_keyboard_input() {
+    for renderer_scale in [1.0, 1.5] {
+        for track_click in [false, true] {
+            for select_other in [false, true] {
+                let mut rt = runtime();
+                rt.set_viewport((1100.0, 700.0), renderer_scale);
+                rt.update(|s, _| showcase::select_example(s, "support-routing").unwrap());
+                settle(&mut rt);
+                if select_other {
+                    click(&mut rt, "request-diagram:node:6:answer:select");
+                }
+                click(&mut rt, "request-diagram:fit");
+                settle(&mut rt);
+                assert!(
+                    !rt.elements()
+                        .iter()
+                        .find(|e| e.key.as_deref() == Some(PROPERTIES))
+                        .unwrap()
+                        .focusable
+                );
+                let camera = rt.state.diagram.camera;
+                let traffic = rect(&rt, "requests/viewport/rows");
+                let top = rect(&rt, THUMB)[1];
+                if track_click {
+                    let r = rect(&rt, TRACK);
+                    let (x, y) = (r[0] + r[2] / 2.0, r[1] + r[3] - 0.5);
+                    // Down, up and the key can arrive before a view has rebuilt.
+                    rt.pointer_down(x, y);
+                    rt.pointer_up(x, y);
+                    rt.key(rune::KeyEvent {
+                        key: rune::Key::Home,
+                        mods: Default::default(),
+                    });
+                    rt.frame(0.3);
+                    settle(&mut rt);
+                } else {
+                    drag(&mut rt, 15.0);
+                    assert!(rect(&rt, THUMB)[1] > top + 1.0);
+                    press(&mut rt, rune::Key::Home, false);
+                    settle(&mut rt);
+                }
+                assert_eq!(rt.state.diagram.selected.as_deref(), Some("state"));
+                assert_properties_focus(&rt);
+                assert_eq!(
+                    rt.state.diagram.camera, camera,
+                    "pointer activation must not reframe underneath a drag"
+                );
+                assert_eq!(rect(&rt, "requests/viewport/rows"), traffic);
+                assert!((rect(&rt, THUMB)[1] - top).abs() < 0.6);
+                for key in [
+                    rune::Key::End,
+                    rune::Key::PageUp,
+                    rune::Key::PageDown,
+                    rune::Key::Home,
+                ] {
+                    press(&mut rt, key, false);
+                    settle(&mut rt);
+                    assert_properties_focus(&rt);
+                    assert_eq!(rect(&rt, "requests/viewport/rows"), traffic);
+                }
+                // A different card's activation removes properties from traversal again.
+                click(&mut rt, "request-diagram:node:6:answer:select");
+                assert!(
+                    !rt.elements()
+                        .iter()
+                        .find(|e| e.key.as_deref() == Some(PROPERTIES))
+                        .unwrap()
+                        .focusable
+                );
+            }
+        }
+    }
+}

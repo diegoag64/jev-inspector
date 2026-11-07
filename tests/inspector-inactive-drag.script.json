@@ -1,0 +1,20 @@
+[
+  {
+    "t": 0.2,
+    "type": "tap",
+    "key": "request-diagram:fit"
+  },
+  {
+    "t": 0.6,
+    "type": "drag",
+    "key": "request-diagram:node:5:state:scroll-thumb",
+    "dx": 0,
+    "dy": 15,
+    "dur": 0.2
+  },
+  {
+    "t": 1.0,
+    "type": "key",
+    "name": "Home"
+  }
+]

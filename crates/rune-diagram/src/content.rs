@@ -57,6 +57,15 @@ impl<'a> DiagramContent<'a> {
         get: impl Fn(&mut S) -> &mut ContentState + Copy + 'static,
         k: &Kit,
     ) -> El {
+        self.build_with_activation(state, get, k, |_: &mut S| {})
+    }
+    pub(crate) fn build_with_activation<S: 'static>(
+        &self,
+        state: &ContentState,
+        get: impl Fn(&mut S) -> &mut ContentState + Copy + 'static,
+        k: &Kit,
+        activate: impl Fn(&mut S) + Clone + 'static,
+    ) -> El {
         let mut budget = 160;
         let content = match self.value {
             Some(v) => value::<S>(v, self.key, state, get, k, 0, &mut budget, self.keyboard),
@@ -129,14 +138,16 @@ impl<'a> DiagramContent<'a> {
             let travel = track - height;
             let top = 2.0 + travel * pos.offset[1] / pos.max[1];
             let page_key = key.clone();
+            let activate_track = activate.clone();
             area = area.child(
                 el().key(format!("{}:scrollbar", self.key))
                     .pin(None, Some(0.0), Some(0.0), Some(0.0))
                     .w(10.0)
                     .fill(k.c.layer_02)
                     .a11y_hidden()
-                    .on_drag(move |_: &mut S, d, tx| {
+                    .on_drag(move |s: &mut S, d, tx| {
                         if d.phase == rune::Phase::Down {
+                            activate_track(s);
                             tx.focus_control(page_key.clone());
                             tx.scroll_page(page_key.clone(), if d.y < top { -1 } else { 1 });
                         }
@@ -148,12 +159,13 @@ impl<'a> DiagramContent<'a> {
                             .radius(3.0)
                             .fill(k.c.text_faint)
                             .hover(k.c.text_muted)
-                            .on_drag(move |_: &mut S, d, tx| {
+                            .on_drag(move |s: &mut S, d, tx| {
                                 if d.cancelled() || travel <= 0.0 {
                                     return;
                                 }
                                 if d.phase == rune::Phase::Down {
                                     d.data = pos.offset[1];
+                                    activate(s);
                                     tx.focus_control(key.clone());
                                 }
                                 tx.scroll_to_instant(

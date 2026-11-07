@@ -91,6 +91,12 @@ independently of renderer scale. Expand a nested object that overflows, then pag
 while its disclosure owns focus; the resulting focus bounds must remain visible.
 Review the tracked Rune focus patch and its preparation path alongside these tests.
 
+Repeat thumb and track interactions on an inactive card after Fit, both with no
+explicit card selection and with another card selected. Test a click and paging
+key queued before a frame, not only settled input sequences. Activation must
+preserve the camera and Traffic offset, and switching cards must remove the old
+properties from keyboard traversal.
+
 Measure selected-row foreground/background pairs in both themes and row
 densities. The contrast regression reads actual Runtime element colors for
 metadata, timing, status and selection surfaces, including pending and error

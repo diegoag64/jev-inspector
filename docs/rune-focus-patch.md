@@ -20,14 +20,17 @@ diagram crate into this workspace, run `python tools/install_rune_diagram.py`.
 Other Rune workspaces need the same focus patch before using this version of
 the diagram crate. No upstream publication is involved.
 
-The patch adds `Tx::focus_control(key)` for a currently mounted control. It uses
+The patch adds `Tx::focus_control(key)`, resolved after the view rebuilds and
+before the next queued keyboard event. A control enabled or mounted by the same
+interaction can receive focus. It uses
 Rune's existing focus eligibility checks, respects modal boundaries, and does
 not activate the target or scroll a different pane. Missing or unreachable
 targets leave focus unchanged. The last focus or blur request wins. The existing
 keyboard-versus-pointer focus-ring behavior is preserved.
 
 The inspector uses this API when paging would hide a focused property, and when
-pressing a property's scrollbar. Tests cover focus ownership, modal containment,
+pressing a property's scrollbar. An inactive scrollbar activates its owning card
+without reframing the camera. Tests cover focus ownership, modal containment,
 missing targets, request ordering, nested disclosures, pointer/keyboard switching,
 and thumb displacement at independent diagram zoom and renderer scales.
 

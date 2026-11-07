@@ -25,7 +25,7 @@
          self.blur = true;
 +    }
 +
-+    /// Focus a currently mounted, enabled control by unique key or full path.
++    /// Focus an enabled control by unique key or full path after the view rebuilds.
 +    /// Missing, hidden, inert and modal-blocked targets are ignored. This does
 +    /// not scroll the control into view or activate it. The last focus/blur
 +    /// request in a transaction wins; keyboard focus visibility is preserved.
@@ -37,24 +37,22 @@
      /// The [`El::selectable`] text selection as this event arrived: the texts it covers with
 --- a/crates/rune/src/runtime/frame.rs
 +++ b/crates/rune/src/runtime/frame.rs
-@@ -203,6 +203,17 @@
+@@ -483,6 +483,7 @@
+                     }
+                 }
              }
-             // An explicit blur is not the temporary pointer-down blur of a scrim.
-             self.last_focused = None;
-+        }
-+        if let Some(key) = tx.focus_request.take() {
-+            let target = (0..self.nodes.len()).find(|&i| {
-+                let node = &self.nodes[i];
-+                (node.key.as_deref() == Some(key.as_str()) || node.path == key)
-+                    && self.can_focus(i)
-+            });
-+            if let Some(i) = target {
-+                self.set_focus(Some(self.nodes[i].path.clone()), self.keyboard_focus);
-+                self.dirty = true;
-+            }
++            if routed { self.apply_control_focus(&mut tx); }
+             // A selection an earlier handler asked for is what this key copies.
+             if matches!(action, Action::Key { .. } | Action::Physical(..)) && let Some(request) = tx.select.take() {
+                 let from_change = std::mem::take(&mut tx.select_from_change);
+@@ -559,6 +560,7 @@
          }
-         if let Some(title) = tx.title.take() { self.window_title.set(title); }
-         if let Some(mut request) = tx.window_frame.take() {
+         #[cfg(debug_assertions)]
+         { self.live_check = None; }
++        self.apply_control_focus(&mut tx);
+         tx.keep_on_screen.clear();
+         let mut scroll_to = std::mem::take(&mut tx.scroll_to);
+         for (path, v) in &mut self.virtuals {
 --- a/crates/rune/src/runtime/input/action.rs
 +++ b/crates/rune/src/runtime/input/action.rs
 @@ -201,7 +201,8 @@
@@ -111,3 +109,26 @@
  name = "rune-taffy"
  version = "0.0.1"
  edition.workspace = true
+--- a/crates/rune/src/runtime/input/focus.rs
++++ b/crates/rune/src/runtime/input/focus.rs
+@@ -79,6 +79,20 @@
+     /// Input may reach node `i`: it's outside any `El::inert` subtree and not behind a modal.
+     pub(super) fn allowed(&self, i: usize) -> bool {
+         !self.nodes.get(i).is_some_and(|n| n.inert) && (self.active_modal().is_none() || self.modal_members.get(i).copied().unwrap_or(false))
++    }
++    /// Resolve against the current tree, after state changes mount or enable controls.
++    pub(super) fn apply_control_focus(&mut self, tx: &mut Tx) {
++        if let Some(key) = tx.focus_request.take() {
++            let target = (0..self.nodes.len()).find(|&i| {
++                let node = &self.nodes[i];
++                (node.key.as_deref() == Some(key.as_str()) || node.path == key)
++                    && self.can_focus(i)
++            });
++            if let Some(i) = target {
++                self.set_focus(Some(self.nodes[i].path.clone()), self.keyboard_focus);
++                self.dirty = true;
++            }
++        }
+     }
+     pub(super) fn can_focus(&self, i: usize) -> bool {
+         let n = &self.nodes[i];

@@ -443,9 +443,17 @@ impl<'a> DiagramCard<'a> {
                         .wrap_anywhere()
                         .selectable(true),
                 ),
-            NodeBody::Json(v) => DiagramContent::new(self.key, v.as_ref())
-                .keyboard(self.tab_selected.unwrap_or(true))
-                .build(&state.content, move |s: &mut S| &mut get(s).content, k),
+            NodeBody::Json(v) => {
+                let owner = n.id.clone();
+                DiagramContent::new(self.key, v.as_ref())
+                    .keyboard(self.tab_selected.unwrap_or(true))
+                    .build_with_activation(
+                        &state.content,
+                        move |s: &mut S| &mut get(s).content,
+                        k,
+                        move |s: &mut S| get(s).selected = Some(owner.clone()),
+                    )
+            }
             NodeBody::Probabilities { values, selected } => {
                 ProbabilityBars::new(self.key, values, selected.as_deref())
                     .keyboard(self.tab_selected.unwrap_or(true))
