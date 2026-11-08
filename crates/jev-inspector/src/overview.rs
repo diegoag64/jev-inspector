@@ -22,7 +22,7 @@ fn elapsed(s: &State, r: &Summary) -> String {
 
 pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
     let r = &detail.summary;
-    let mut body = col().w_full().gap(18.0);
+    let mut body = col().w_full().gap(12.0);
     if let Some(error) = detail.response.json.as_ref().and_then(|j| j.get("error")) {
         let message = error
             .get("message")
@@ -47,7 +47,7 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
     }
     body = body.child(
         row()
-            .gap(12.0)
+            .gap(8.0)
             .child(tile("Elapsed", elapsed(s, r), k))
             .child(tile("Sent", ui::bytes(r.request_bytes), k))
             .child(tile("Received", ui::bytes(r.response_bytes), k)),
@@ -87,9 +87,9 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
                 _ => answer,
             };
             let mut card = col()
-                .gap(10.0)
-                .padding(14.0)
-                .radius(8.0)
+                .gap(8.0)
+                .padding(12.0)
+                .radius(6.0)
                 .fill(k.c.bg_deep)
                 .border(1.0, k.c.border_base)
                 .child(
@@ -304,20 +304,12 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
     );
     body = body
         .child(timing)
-        .child(
-            row()
-                .gap(16.0)
-                .child(
-                    fact("Model", r.model.as_deref().unwrap_or("Not captured"), k)
-                        .grow(1.0)
-                        .min_w(0.0),
-                )
-                .child(
-                    fact("Started · UTC", &ui::timestamp(r.started_at_ms), k)
-                        .grow(1.0)
-                        .min_w(0.0),
-                ),
-        )
+        .child(fact(
+            "Model",
+            r.model.as_deref().unwrap_or("Not captured"),
+            k,
+        ))
+        .child(fact("Started · UTC", &ui::timestamp(r.started_at_ms), k))
         .child(fact(
             "Request ID",
             r.request_id
@@ -408,25 +400,33 @@ fn tile(name: &str, value: String, k: &Kit) -> El {
     let size = if value.chars().count() > 10 {
         14.0
     } else {
-        20.0
+        18.0
     };
     col()
         .grow(1.0)
         .min_w(0.0)
-        .gap(7.0)
-        .padding(14.0)
-        .radius(8.0)
+        .gap(4.0)
+        .padding(10.0)
+        .radius(6.0)
         .fill(k.c.layer_02)
         .child(label(name.to_uppercase(), 10.0, k.c.text_muted))
         .child(ui::mono(value, size, k.c.text_base).wrap())
 }
 fn fact(name: &str, value: &str, k: &Kit) -> El {
     col()
-        .gap(6.0)
-        .child(label(name.to_uppercase(), 10.0, k.c.text_faint))
+        .w_full()
+        .gap(8.0)
         .child(
-            label(value, 12.0, k.c.text_base)
-                .wrap_anywhere()
-                .selectable(true),
+            row()
+                .gap(12.0)
+                .child(label(name, 11.0, k.c.text_faint).w(104.0))
+                .child(
+                    label(value, 12.0, k.c.text_base)
+                        .grow(1.0)
+                        .min_w(0.0)
+                        .wrap_anywhere()
+                        .selectable(true),
+                ),
         )
+        .child(ui::rule(k))
 }

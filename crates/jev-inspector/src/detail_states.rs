@@ -189,18 +189,18 @@ pub fn loading(s: &State, k: &Kit) -> El {
             }
         }
         _ => {
-            let mut tiles = row().gap(12.0);
+            let mut tiles = row().gap(8.0);
             for _ in 0..3 {
                 tiles = tiles.child(
                     col()
                         .grow(1.0)
                         .min_w(0.0)
-                        .padding(16.0)
-                        .gap(16.0)
-                        .radius(8.0)
+                        .padding(10.0)
+                        .gap(12.0)
+                        .radius(6.0)
                         .fill(k.c.layer_02)
                         .child(line(54.0, 8.0, k))
-                        .child(line(76.0, 20.0, k)),
+                        .child(line(76.0, 18.0, k)),
                 );
             }
             skeleton = skeleton

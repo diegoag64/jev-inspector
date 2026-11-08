@@ -20,6 +20,8 @@ fn runtime(size: (f32, f32)) -> rune::Runtime<State> {
 #[test]
 fn request_scrollbar_drags_the_table_and_hides_when_rows_fit() {
     let mut rt = runtime((1100.0, 700.0));
+    // Compact rows now fit this fixture; use roomy rows to exercise overflow.
+    rt.update(|s, _| s.workspace.compact = false);
     rt.frame(0.2);
     let selected = rt.state.selected;
     let (x, y) = rt.find("request-scroll-thumb").expect("overflow scrollbar");

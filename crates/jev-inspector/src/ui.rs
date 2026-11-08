@@ -7,17 +7,17 @@ pub fn kit(dark: bool) -> Kit {
     let color = |d, l| rune::color::hex(if dark { d } else { l }).unwrap();
     let mut k = Kit::from_palette_focus(
         PaletteSeed {
-            bg: color("#111111", "#f7f7f7"),
+            bg: color("#090909", "#f4f4f4"),
             fg: color("#eeeeee", "#202020"),
             accent: color("#eeeeee", "#202020"),
         },
         PaletteFocus::Ink,
     );
     k.c.bg_deep = color("#101010", "#ffffff");
-    k.c.layer_01 = color("#191919", "#ffffff");
-    k.c.layer_02 = color("#242424", "#f0f0f0");
+    k.c.layer_01 = color("#161616", "#ffffff");
+    k.c.layer_02 = color("#222222", "#f0f0f0");
     k.c.layer_03 = color("#303030", "#e7e7e7");
-    k.c.border_base = color("#343434", "#dedede");
+    k.c.border_base = color("#2c2c2c", "#dedede");
     k.c.border_muted = k.c.border_base;
     k.c.border_weak = k.c.border_base;
     k.c.text_faint = color("#a0a0a0", "#686868");
@@ -27,13 +27,18 @@ pub fn kit(dark: bool) -> Kit {
     k.c.success.fg = color("#7fd6b1", "#19784e");
     k.c.warning.fg = color("#efc079", "#926017");
     k.c.danger.fg = color("#f194a0", "#b82d49");
+    k.radius.sm = 4.0;
+    k.radius.md = 5.0;
+    k.radius.lg = 6.0;
+    k.elevation.button_neutral.clear();
+    k.elevation.button_contrast.clear();
     k
 }
-/// Shared 36-point action target. Rune supplies keyboard focus, tooltips and accessibility.
+/// Compact desktop action target; Rune supplies focus, tooltips and accessibility.
 pub fn action(icon: &'static rune::Icon, label: &str, active: bool) -> IconButton {
     IconButton::new(icon)
         .label(label)
-        .control_size(ControlSize::ExtraLarge)
+        .control_size(ControlSize::Large)
         .variant(if active {
             IconButtonVariant::Contrast
         } else {
@@ -48,21 +53,26 @@ pub fn button(
     f: impl Fn(&mut State) + 'static,
 ) -> El {
     Button::new(name)
-        .control_size(ControlSize::Large)
+        .control_size(ControlSize::Regular)
         .variant(if active {
-            ButtonVariant::Contrast
+            ButtonVariant::Neutral
         } else {
             ButtonVariant::Ghost
         })
         .on_press(f)
         .build(k)
+        .fill(if active {
+            k.c.layer_03
+        } else {
+            Color::TRANSPARENT
+        })
         .key(key)
 }
 pub fn badge(value: impl Into<String>, color: Color, k: &Kit) -> El {
     label(value, 11.0, color)
         .px(8.0)
-        .py(4.0)
-        .radius(5.0)
+        .py(3.0)
+        .radius(4.0)
         .fill(k.alpha(color, 0.11))
 }
 pub fn rule(k: &Kit) -> El {

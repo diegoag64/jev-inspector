@@ -185,18 +185,19 @@ pub fn summary(s: &State, k: &Kit) -> El {
     }
     col()
         .key("cost-summary")
-        .px(14.0)
-        .py(10.0)
-        .gap(6.0)
+        .px(12.0)
+        .py(8.0)
+        .gap(4.0)
         .fill(k.c.layer_02)
         .child(
             row()
                 .center_y()
                 .gap(10.0)
                 .child(
-                    col()
+                    row()
                         .grow(1.0)
-                        .gap(3.0)
+                        .center_y()
+                        .gap(10.0)
                         .child(label(
                             if partial {
                                 "PARTIAL ESTIMATE · USD"
@@ -206,7 +207,7 @@ pub fn summary(s: &State, k: &Kit) -> El {
                             10.0,
                             k.c.text_muted,
                         ))
-                        .child(ui::mono(headline, 20.0, k.c.text_base).key("cost-total")),
+                        .child(ui::mono(headline, 17.0, k.c.text_base).key("cost-total")),
                 )
                 .child(
                     Button::new("Pricing")

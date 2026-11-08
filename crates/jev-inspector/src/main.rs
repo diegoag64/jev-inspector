@@ -365,7 +365,7 @@ fn main() {
     if !state.demo && !state.offline_fixture {
         state.workspace.prefs = rune::prefs::Prefs::open("dev.jev.inspector");
         state.dark = state.workspace.prefs.get("dark").unwrap_or(true);
-        state.workspace.compact = state.workspace.prefs.get("compact").unwrap_or(false);
+        state.workspace.compact = state.workspace.prefs.get("compact").unwrap_or(true);
         state.cost.load(&state.workspace.prefs);
         state.workspace.list_width = state
             .workspace

@@ -8,7 +8,14 @@ The sun or moon button switches between neutral grayscale light and dark themes.
 Status colors distinguish errors and warnings; JSON keeps syntax colors. Toolbar
 actions use icons with hover labels and keyboard hints. In Traffic, the pause/play
 icon holds or resumes the list, the labeled tracking icon toggles Follow, and the
-labeled eraser clears the view. Active toggles have an inverted background.
+labeled eraser clears the view. Active tabs and filters use a filled neutral surface.
+
+Traffic starts with compact, single-line rows. Each row shows its exchange ID and
+model, with the method and endpoint available on hover. Rows without a captured
+model show the endpoint instead. Click **Comfortable** in the Traffic footer for
+two-line rows that show the endpoint and model together; **Compact** switches back.
+Live workspaces remember your density preference. The metrics remain in a slim
+strip so request details have more vertical space.
 
 ## Find a request
 

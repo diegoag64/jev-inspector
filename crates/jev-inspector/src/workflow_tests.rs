@@ -505,7 +505,7 @@ fn summary_only_keeps_metadata_when_the_list_is_hidden() {
         ui::timestamp(summary.started_at_ms),
         ui::bytes(summary.request_bytes),
         ui::bytes(summary.response_bytes),
-        "Upstream headers".to_uppercase(),
+        "Upstream headers".to_owned(),
     ] {
         assert!(tree.contains(&value), "Missing {value}");
     }

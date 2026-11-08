@@ -53,7 +53,7 @@ impl Default for Workspace {
             notice: None,
             help: false,
             export: false,
-            compact: false,
+            compact: true,
             detail_expanded: false,
             session_name: None,
             last_received: false,

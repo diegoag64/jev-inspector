@@ -5,24 +5,19 @@ use workspace::Filter;
 pub fn view(s: &State, cx: &mut Cx<State>) -> El {
     let k = ui::kit(s.dark);
     let header = row()
-        .h(if s.workspace.window_height < 800.0 {
-            52.0
-        } else {
-            64.0
-        })
-        .px(22.0)
-        .gap(12.0)
+        .h(44.0)
+        .px(14.0)
+        .gap(9.0)
         .center_y()
         .child(
-            el().size(32.0, 32.0)
+            el().size(24.0, 24.0)
                 .center()
-                .radius(8.0)
+                .radius(5.0)
                 .fill(k.alpha(k.c.text_base, 0.08))
-                .child(label("j", 25.0, k.c.text_base)),
+                .child(label("j", 19.0, k.c.text_base)),
         )
-        .child(label("jev", 23.0, k.c.text_base))
-        .child(label("/", 21.0, k.c.text_faint))
-        .child(label("inspector", 17.0, k.c.text_muted))
+        .child(label("jev", 16.0, k.c.text_base))
+        .child(label("inspector", 14.0, k.c.text_muted))
         .child(el().grow(1.0))
         .child(ui::badge(
             if s.workspace.session_name.is_some() {
@@ -242,7 +237,7 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
     if !expanded {
         root = root.child(metrics(s, &k));
     }
-    let mut body = row().grow(1.0).min_h(0.0).padding(16.0).gap(5.0);
+    let mut body = row().grow(1.0).min_h(0.0).px(8.0).pb(6.0).gap(3.0);
     if !expanded {
         body = body.child(traffic(s, &k, cx)).child(splitter(&k));
     }
@@ -252,7 +247,7 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
             .grow(1.0)
             .min_w(0.0)
             .h_full()
-            .radius(10.0)
+            .radius(7.0)
             .border(1.0, k.c.border_base)
             .fill(k.c.layer_01),
     );
@@ -325,11 +320,7 @@ fn metrics(s: &State, k: &Kit) -> El {
         .iter()
         .filter(|r| r.outcome == Outcome::Pending)
         .count();
-    let compact = s.workspace.window_height < 800.0;
-    let mut bar = row()
-        .px(22.0)
-        .py(if compact { 10.0 } else { 16.0 })
-        .gap(22.0);
+    let mut bar = row().px(16.0).h(34.0).center_y().gap(18.0);
     for (title, value, sub, color) in [
         (
             "OBSERVED",
@@ -380,26 +371,15 @@ fn metrics(s: &State, k: &Kit) -> El {
             k.c.text_base,
         ),
     ] {
-        if compact {
-            bar = bar.child(
-                row()
-                    .grow(1.0)
-                    .gap(8.0)
-                    .center_y()
-                    .child(label(title, 10.0, k.c.text_faint))
-                    .child(motion::metric(title, value, 15.0, color, k))
-                    .help(format!("{title}: {sub}")),
-            );
-        } else {
-            bar = bar.child(
-                col()
-                    .grow(1.0)
-                    .gap(6.0)
-                    .child(label(title, 10.0, k.c.text_faint))
-                    .child(motion::metric(title, value, 23.0, color, k))
-                    .child(label(sub, 10.0, k.c.text_faint)),
-            );
-        }
+        bar = bar.child(
+            row()
+                .grow(1.0)
+                .gap(7.0)
+                .center_y()
+                .child(label(title, 10.0, k.c.text_faint))
+                .child(motion::metric(title, value, 13.0, color, k))
+                .help(format!("{title}: {sub}")),
+        );
     }
     bar
 }
@@ -410,14 +390,14 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
             .min((s.workspace.window_width - 530.0).max(440.0)))
         .h_full()
         .min_h(0.0)
-        .radius(10.0)
-        .clip_rounded(10.0)
+        .radius(7.0)
+        .clip_rounded(7.0)
         .border(1.0, k.c.border_base)
         .fill(k.c.layer_01)
         .child(
             row()
-                .px(14.0)
-                .py(12.0)
+                .px(10.0)
+                .py(7.0)
                 .center_y()
                 .gap(6.0)
                 .child(label("Traffic", 15.0, k.c.text_base).grow(1.0))
@@ -456,7 +436,7 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                         "Follow"
                     })
                     .icon(&icons::FOLLOW)
-                    .control_size(ControlSize::ExtraLarge)
+                    .control_size(ControlSize::Large)
                     .variant(if s.workspace.follow {
                         ButtonVariant::Contrast
                     } else {
@@ -479,7 +459,7 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                 .child(
                     Button::new("Clear view")
                         .icon(&icons::CLEAR)
-                        .control_size(ControlSize::ExtraLarge)
+                        .control_size(ControlSize::Large)
                         .variant(ButtonVariant::Ghost)
                         .help("Hide current rows in this window; restore them at any time")
                         .shortcut("cmd+l")
@@ -489,14 +469,14 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                 ),
         )
         .child(
-            col().w_full().px(14.0).child(
+            col().w_full().px(10.0).child(
                 TextInput::new(&s.filter)
                     .width(None)
                     .placeholder("Search requests…  status:4xx  duration:>200")
                     .leading_icon(k.glyph.search)
                     .label("Search request metadata")
                     .clear_button()
-                    .height(34.0)
+                    .height(30.0)
                     .invalid(s.workspace.query_error.is_some())
                     .on_edit(|s: &mut State| &mut s.filter)
                     .on_change(|s: &mut State, _| s.filter_rows())
@@ -513,14 +493,14 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                 k.c.danger.fg,
             )
             .wrap()
-            .px(14.0)
-            .py(8.0),
+            .px(10.0)
+            .py(5.0),
         );
     }
     panel = panel.child(
         row()
             .px(10.0)
-            .py(10.0)
+            .py(6.0)
             .gap(3.0)
             .child(ui::button(
                 "All",
@@ -588,15 +568,15 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                 11.0,
                 k.c.warning.fg,
             )
-            .px(14.0)
-            .py(8.0)
+            .px(10.0)
+            .py(5.0)
             .fill(k.c.layer_02),
         );
     }
     if s.workspace.clear_before > 0 && !s.visible.is_empty() {
         panel = panel.child(
             row()
-                .px(14.0)
+                .px(10.0)
                 .py(5.0)
                 .center_y()
                 .child(label("Earlier requests hidden", 11.0, k.c.text_muted).grow(1.0))
@@ -621,7 +601,7 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
         .child(
             row()
                 .px(12.0)
-                .py(8.0)
+                .py(5.0)
                 .center_y()
                 .gap(8.0)
                 .child(
@@ -659,8 +639,8 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
 }
 fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
     let mut style = TableStyle::from_kit(k);
-    style.row_height = if s.workspace.compact { 32.0 } else { 54.0 };
-    style.header_height = 33.0;
+    style.row_height = if s.workspace.compact { 30.0 } else { 48.0 };
+    style.header_height = 29.0;
     style.cell_pad = 9.0;
     style.rule = k.c.border_base;
     // Opaque selection surfaces keep supporting text and semantic status readable.
@@ -765,13 +745,30 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                         supporting,
                     )),
             ),
-            "request" => Cell::text(format!(
-                "#{:03} {} · {} · {}",
-                r.id,
-                r.method,
-                r.model.as_deref().unwrap_or("No model"),
-                r.path
-            )),
+            "request" => Cell::el(
+                row()
+                    .center_y()
+                    .gap(8.0)
+                    .child(ui::mono(format!("#{:03}", r.id), 11.0, supporting).w(34.0))
+                    .child(
+                        label(
+                            r.model
+                                .clone()
+                                .unwrap_or_else(|| format!("{} {}", r.method, r.path)),
+                            12.0,
+                            k.c.text_base,
+                        )
+                        .grow(1.0)
+                        .min_w(0.0)
+                        .truncate(),
+                    )
+                    .help(format!(
+                        "{} {} · {}",
+                        r.method,
+                        r.path,
+                        r.model.as_deref().unwrap_or("Model unavailable")
+                    )),
+            ),
             "status" => Cell::text(if r.outcome == Outcome::Pending {
                 "Pending".into()
             } else {
@@ -900,9 +897,9 @@ fn empty(s: &State, k: &Kit) -> El {
 }
 fn footer(s: &State, k: &Kit) -> El {
     row()
-        .h(32.0)
-        .px(22.0)
-        .gap(18.0)
+        .h(26.0)
+        .px(14.0)
+        .gap(14.0)
         .center_y()
         .child(ui::badge(
             if s.workspace.session_name.is_some() {
