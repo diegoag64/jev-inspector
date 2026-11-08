@@ -88,3 +88,18 @@ versus alternative branches, Noul complements, and compact category expansion.
 macOS native input still needs verification.
 Agent launches on Windows must use the normal desktop outside the execution
 sandbox; a sandbox process can create a window invisible to the user.
+
+## Inspect card data
+
+Select a card and choose **Inspect data** in the diagram toolbar, or double-click
+its heading. The reader opens inside the canvas and keeps a fixed text size while
+the graph stays at its current zoom. Use **JSON** for highlighted, wrapped content
+or **Tree** for nested properties. Large JSON values have page controls; **Copy**
+copies the full value, including content outside the current page or card preview.
+
+Escape or Close dismisses the reader and returns focus to Inspect data. Selecting
+a different request or question clears the previous reader. The surrounding app
+remains interactive.
+
+Reusable graphs can call `Node::inspection(Some(value))` to supply the full value
+behind a summarized card; otherwise the reader uses its `NodeBody`.

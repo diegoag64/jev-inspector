@@ -1,8 +1,209 @@
 use super::*;
 
-pub(super) fn runtime() -> rune::Runtime<State> {
+#[test]
+fn normal_demo_is_jev_focused_and_keeps_only_one_error() {
     let mut s = State::default();
     showcase::populate(&mut s);
+    assert_eq!(s.snapshot.requests.len(), 10);
+    assert!(
+        s.snapshot
+            .requests
+            .iter()
+            .all(|r| r.path == "/v1/systemone")
+    );
+    assert_eq!(
+        s.snapshot
+            .requests
+            .iter()
+            .filter(|r| r.status.unwrap() >= 400)
+            .count(),
+        1
+    );
+    for id in [1, 2, 3, 4, 5, 6, 7, 8, 14] {
+        let context = &s.workspace.cache[&id].request.json.as_ref().unwrap()["state"];
+        assert!(
+            serde_json::to_vec(context).unwrap().len() >= 700,
+            "substantial context for {id}"
+        );
+    }
+}
+
+#[test]
+fn card_inspector_preserves_camera_and_copies_full_capture() {
+    for (dark, scale) in [(true, 1.0), (false, 1.0), (true, 1.5), (false, 1.5)] {
+        let mut rt = runtime();
+        rt.set_viewport((1100.0, 700.0), scale);
+        rt.update(|s, _| {
+            s.dark = dark;
+            showcase::select_example(s, "support-routing").unwrap();
+        });
+        rt.frame(0.3);
+        for (node, expected) in [
+            (
+                "state",
+                rt.state
+                    .detail
+                    .as_ref()
+                    .unwrap()
+                    .request
+                    .json
+                    .as_ref()
+                    .unwrap()["state"]
+                    .clone(),
+            ),
+            (
+                "question",
+                rt.state
+                    .detail
+                    .as_ref()
+                    .unwrap()
+                    .request
+                    .json
+                    .as_ref()
+                    .unwrap()["questions"]["department"]
+                    .clone(),
+            ),
+            (
+                "answer",
+                rt.state
+                    .detail
+                    .as_ref()
+                    .unwrap()
+                    .response
+                    .json
+                    .as_ref()
+                    .unwrap()["answers"]["department"]
+                    .clone(),
+            ),
+        ] {
+            rt.update(|s, _| s.diagram.selected = Some(node.into()));
+            rt.frame(0.3);
+            let camera = rt.state.diagram.camera;
+            click(&mut rt, "request-diagram:inspect");
+            assert_eq!(rt.state.diagram.camera, camera);
+            let (panel, _) = rt.presented("request-diagram:inspector").unwrap();
+            let (canvas, _) = rt.presented("request-diagram:viewport").unwrap();
+            assert!(panel[0] >= canvas[0] && panel[1] >= canvas[1]);
+            assert!(
+                panel[0] + panel[2] <= canvas[0] + canvas[2] + 0.5
+                    && panel[1] + panel[3] <= canvas[1] + canvas[3] + 0.5
+            );
+            let (_, _, w, h) = {
+                let (r, _) = rt.presented("request-diagram:inspector:scroll").unwrap();
+                (r[0], r[1], r[2], r[3])
+            };
+            assert!(w > 350.0 && h > 120.0, "readable area: {w} x {h}");
+            assert!(
+                !rt.elements()
+                    .iter()
+                    .find(|e| e.key.as_deref() == Some("requests"))
+                    .unwrap()
+                    .inert
+            );
+            click(&mut rt, "request-diagram:inspector:copy");
+            let copied: serde_json::Value =
+                serde_json::from_str(rt.copy_request.take().unwrap().content().text()).unwrap();
+            assert_eq!(copied, expected);
+            if node == "state" {
+                let content_y = |rt: &rune::Runtime<State>| {
+                    rt.elements()
+                        .into_iter()
+                        .find(|e| {
+                            e.path.contains(":inspector")
+                                && e.text.as_deref().is_some_and(|t| t.starts_with("{\n"))
+                        })
+                        .unwrap()
+                        .rect[1]
+                };
+                let before = content_y(&rt);
+                let (x, y) = rt
+                    .find("request-diagram:inspector:scroll-thumb")
+                    .expect("visible scrollbar");
+                rt.pointer_down(x, y);
+                rt.frame(0.02);
+                rt.pointer_move(x, y + 30.0);
+                rt.frame(0.1);
+                rt.pointer_up(x, y + 30.0);
+                rt.frame(0.3);
+                assert!(
+                    content_y(&rt) < before - 5.0,
+                    "thumb must scroll the reader"
+                );
+                assert_eq!(rt.state.diagram.camera, camera);
+            }
+            let (x, y) = rt.find("request-diagram:inspector:scroll").unwrap();
+            rt.wheel_event(rune::WheelEvent::new(0.0, -120.0).at(x, y));
+            rt.frame(0.3);
+            assert_eq!(rt.state.diagram.camera, camera);
+            click(&mut rt, "request-diagram:inspector:tree");
+            press(&mut rt, rune::Key::Text("+".into()), false);
+            assert_eq!(rt.state.diagram.camera, camera);
+            press(&mut rt, rune::Key::Escape, false);
+            assert!(rt.state.diagram.inspection.is_none());
+            assert!(
+                rt.elements()
+                    .iter()
+                    .any(|e| e.key.as_deref() == Some("request-diagram:inspect") && e.focused)
+            );
+        }
+        click(&mut rt, "request-diagram:inspect");
+        rt.update(|s, _| showcase::select_example(s, "return-review").unwrap());
+        rt.frame(0.3);
+        assert!(
+            rt.state.diagram.inspection.is_none(),
+            "new exchange must not retain old card data"
+        );
+    }
+}
+
+#[test]
+fn card_inspector_pages_large_values_without_losing_copy_or_answer_data() {
+    let mut rt = runtime();
+    rt.update(|s, _| {
+        showcase::select_example(s, "inventory").unwrap();
+        s.tab = 3;
+        s.diagram.selected = Some("state".into());
+    });
+    rt.frame(0.3);
+    let expected = rt
+        .state
+        .detail
+        .as_ref()
+        .unwrap()
+        .request
+        .json
+        .as_ref()
+        .unwrap()["state"]
+        .clone();
+    click(&mut rt, "request-diagram:inspect");
+    click(&mut rt, "request-diagram:inspector:next");
+    assert!(
+        rt.elements()
+            .iter()
+            .any(|e| e.text.as_deref().is_some_and(|t| t.contains("Page 2 /")))
+    );
+    click(&mut rt, "request-diagram:inspector:copy");
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(rt.copy_request.take().unwrap().content().text())
+            .unwrap(),
+        expected
+    );
+    rt.update(|s, _| showcase::select_example(s, "many-choices").unwrap());
+    rt.frame(0.3);
+    click(&mut rt, "request-diagram:inspect");
+    click(&mut rt, "request-diagram:inspector:copy");
+    let copied: serde_json::Value =
+        serde_json::from_str(rt.copy_request.take().unwrap().content().text()).unwrap();
+    assert_eq!(
+        copied["probabilities"].as_object().unwrap().len(),
+        12,
+        "all probabilities, including those outside the diagram preview"
+    );
+}
+
+pub(super) fn runtime() -> rune::Runtime<State> {
+    let mut s = State::default();
+    showcase::populate_all(&mut s);
     let mut rt = rune::Runtime::new(
         s,
         view,
@@ -112,7 +313,12 @@ fn scalar_diagram_properties_scroll_with_keyboard_and_expose_thumb() {
     for scale in [1.0, 1.5] {
         let mut rt = runtime();
         rt.set_viewport((1100.0, 700.0), scale);
-        rt.update(|s, _| showcase::select_example(s, "support-routing").unwrap());
+        rt.update(|s, _| {
+            showcase::select_example(s, "support-routing").unwrap();
+            // Keep this paging probe independent of the evolving demo catalog.
+            s.detail.as_mut().unwrap().request.json.as_mut().unwrap()["state"] =
+                serde_json::json!({"demo_case":"support-routing", "channel":"email", "message":"My invoice was charged twice."});
+        });
         rt.frame(0.3);
         click(&mut rt, "request-diagram:node:6:answer:select");
         press(&mut rt, rune::Key::Home, false);
@@ -258,7 +464,7 @@ fn pending_open_and_save_pickers_pause_tour_before_cancel_or_failed_import() {
 #[test]
 fn catalog_exercises_typed_answers_payloads_and_protocol_edge_cases() {
     let mut s = State::default();
-    showcase::populate(&mut s);
+    showcase::populate_all(&mut s);
     assert_eq!(s.snapshot.requests.len(), 14);
     assert_eq!(s.workspace.cache.len(), 14);
     for example in [
@@ -330,7 +536,7 @@ fn tour_cycles_layouts_and_yields_to_manual_selection_and_dialogs() {
         s.workspace.help = false;
         s.return_live();
     });
-    assert_eq!(rt.state.workspace.cache.len(), 14);
+    assert_eq!(rt.state.workspace.cache.len(), 10);
 }
 
 #[test]
@@ -538,7 +744,7 @@ fn json_scrollbar_axes_preserve_each_other_and_short_content_hides_them() {
     );
     assert!(after[1] < before[1] - 10.0);
     rt.update(|s, _| {
-        showcase::populate(s);
+        showcase::populate_all(s);
         showcase::select_example(s, "empty").unwrap();
     });
     rt.frame(0.3);

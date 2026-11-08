@@ -47,7 +47,7 @@ class DemoRelayTests(unittest.TestCase):
                                 return json.load(response)
 
                         snapshot = inspect("/api/requests")
-                        for case in load_cases():
+                        for case in load_cases(include_qa=True):
                             with self.subTest(example=case["id"]):
                                 payload = None if case.get("request") is None else json.dumps(case["request"], ensure_ascii=False).encode()
                                 request = Request(snapshot["relay_url"] + case["path"], data=payload, method=case["method"], headers={"Content-Type": "application/json"})
@@ -65,8 +65,14 @@ class DemoRelayTests(unittest.TestCase):
                                         break
                                     time.sleep(0.01)
                                 self.assertIsNotNone(summary, "completed capture not published")
-                                detail = inspect(f"/api/requests/{summary['id']}")
-                                self.assertEqual(detail["request"]["json"], case.get("request"))
+                                # Forwarding completes before the background JSON inspection worker.
+                                for _ in range(200):
+                                    detail = inspect(f"/api/requests/{summary['id']}")
+                                    if all("Inspection is processing." not in detail[side]["notes"]
+                                           for side in ("request", "response")):
+                                        break
+                                    time.sleep(0.01)
+                                self.assertEqual(detail["request"]["json"], case.get("request"), detail["request"]["notes"])
                                 self.assertEqual(detail["response"]["json"], case.get("response"))
                                 self.assertEqual(detail["response"]["wire_bytes"], len(response_bytes(case)))
                                 self.assertTrue(detail["response"]["complete"])

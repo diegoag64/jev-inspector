@@ -16,7 +16,7 @@ from tools.demo_catalog import load_cases, response_bytes
 ROOT = Path(__file__).resolve().parent
 LOCAL_HTTP = build_opener(ProxyHandler({}))
 DEMO_CASES = load_cases()
-DEMO_BY_ID = {case["id"]: case for case in DEMO_CASES}
+DEMO_BY_ID = {case["id"]: case for case in load_cases(include_qa=True)}
 
 
 class MockHandler(BaseHTTPRequestHandler):

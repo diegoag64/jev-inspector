@@ -369,7 +369,8 @@ pub(super) fn graph(
                 [20.0, 288.0, 240.0, 180.0],
                 NodeBody::Json(question.and_then(|q| q.get("instructions")).cloned()),
             )
-            .kind("INSTRUCTIONS"),
+            .kind("INSTRUCTIONS")
+            .inspection(question.cloned()),
             Node::new(
                 "answer",
                 name,
@@ -377,7 +378,12 @@ pub(super) fn graph(
                 body,
             )
             .kind(format!("JEV · {}", kind.to_uppercase()))
-            .status(status),
+            .status(status)
+            .inspection(
+                answer
+                    .cloned()
+                    .or_else(|| response.and_then(|r| r.get("error")).cloned()),
+            ),
         ],
         edges: vec![
             Edge::new("state", "answer")

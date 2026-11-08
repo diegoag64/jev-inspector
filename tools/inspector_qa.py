@@ -138,6 +138,20 @@ for fixture in ["diagram-disclosure", "cached-session", "setup-custom-upstream"]
     CASES[fixture] = ["--fixture", fixture, "--size", "1100x700"]
 
 
+CASES["curated-demo"] = ["--showcase", "--size", "1100x700"]
+for name, fixture, script, size in [
+    ("state", "support-routing", "state", "1100x700"),
+    ("light", "support-routing", "light", "1100x700"),
+    ("wide", "support-routing", "state", "1600x1000"),
+    ("tree", "support-routing", "tree", "1100x700"),
+    ("answer", "many-choices", "answer", "1100x700"),
+    ("question", "return-review", "question", "1100x700"),
+    ("paged", "inventory", "paged", "1100x700"),
+]:
+    CASES["card-reader-" + name] = ["--fixture", "example-" + fixture, "--size", size,
+        "--script", "tests/inspector-reader-" + script + ".script.json"]
+
+
 def verify_state(name: str, tree_path: Path) -> list[str]:
     """A rendered PNG is not enough: verify the scripted workflow reached its destination."""
     document = json.loads(tree_path.read_text(encoding="utf-8"))
@@ -150,6 +164,22 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
     keyed = {n["key"]: n for n in nodes if "key" in n}
     names = "\n".join(n.get("name", "") for n in nodes)
     errors = []
+    if name.startswith("card-reader-"):
+        panel = keyed.get("request-diagram:inspector", {}).get("bounds")
+        canvas = keyed.get("request-diagram:viewport", {}).get("bounds")
+        if not panel or not canvas or not (panel[0] >= canvas[0] and panel[1] >= canvas[1]
+                and panel[0]+panel[2] <= canvas[0]+canvas[2]+0.5
+                and panel[1]+panel[3] <= canvas[1]+canvas[3]+0.5):
+            errors.append("Card reader must stay inside the diagram canvas")
+        if name == "card-reader-light" and keyed.get("theme-toggle", {}).get("name") != "Switch to dark theme":
+            errors.append("Light reader fixture did not switch theme")
+        if name == "card-reader-tree" and "selected" not in keyed.get("request-diagram:inspector:tree", {}).get("states", []):
+            errors.append("Tree tab is not selected")
+        if name == "card-reader-paged" and "Page 2 /" not in names:
+            errors.append("Large capture did not reach its second page")
+    if name == "curated-demo":
+        if "OBSERVED" not in names or any(v in names for v in ["/v1/models", "auth-demo", "maintenance-demo"]):
+            errors.append("Curated demo contains protocol-only samples")
     if name.startswith("example-"):
         if "EXAMPLES" not in names:
             errors.append("Example did not reach the offline showcase")

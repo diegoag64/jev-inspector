@@ -1,0 +1,22 @@
+[
+  {
+    "t": 0.1,
+    "type": "tap",
+    "key": "tab-3"
+  },
+  {
+    "t": 0.3,
+    "type": "tap",
+    "key": "request-diagram:node:5:state:select"
+  },
+  {
+    "t": 0.6,
+    "type": "tap",
+    "key": "request-diagram:inspect"
+  },
+  {
+    "t": 0.9,
+    "type": "tap",
+    "key": "request-diagram:inspector:next"
+  }
+]

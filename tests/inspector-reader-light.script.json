@@ -1,0 +1,17 @@
+[
+  {
+    "t": 0.1,
+    "type": "tap",
+    "key": "theme-toggle"
+  },
+  {
+    "t": 0.4,
+    "type": "tap",
+    "key": "request-diagram:node:5:state:select"
+  },
+  {
+    "t": 0.7,
+    "type": "tap",
+    "key": "request-diagram:inspect"
+  }
+]

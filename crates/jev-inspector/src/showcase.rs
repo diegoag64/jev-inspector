@@ -12,6 +12,8 @@ struct Catalog {
 
 #[derive(Deserialize)]
 struct Example {
+    #[serde(default)]
+    qa_only: bool,
     id: String,
     method: String,
     path: String,
@@ -61,6 +63,14 @@ fn capture(value: Option<Value>, text: Option<&str>, content_type: &str) -> Capt
 }
 
 pub fn populate(s: &mut State) {
+    populate_catalog(s, false);
+}
+
+pub fn populate_all(s: &mut State) {
+    populate_catalog(s, true);
+}
+
+fn populate_catalog(s: &mut State, include_qa: bool) {
     let catalog: Catalog =
         serde_json::from_str(include_str!("../../../examples/demo-requests.json"))
             .expect("valid embedded demo catalog");
@@ -76,6 +86,9 @@ pub fn populate(s: &mut State) {
     let mut items = Vec::new();
     let mut summaries = Vec::new();
     for (index, example) in catalog.cases.into_iter().enumerate() {
+        if example.qa_only && !include_qa {
+            continue;
+        }
         let id = index as u64 + 1;
         let request = capture(example.request, None, "application/json");
         let response = capture(

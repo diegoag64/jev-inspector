@@ -7,14 +7,14 @@ from pathlib import Path
 CATALOG = Path(__file__).resolve().parents[1] / "examples" / "demo-requests.json"
 
 
-def load_cases() -> list[dict]:
+def load_cases(*, include_qa: bool = False) -> list[dict]:
     document = json.loads(CATALOG.read_text(encoding="utf-8"))
     if document["version"] != 1:
         raise ValueError("Unsupported demo catalog version")
     cases = document["cases"]
     if len({case["id"] for case in cases}) != len(cases):
         raise ValueError("Duplicate demo case IDs")
-    return cases
+    return cases if include_qa else [case for case in cases if not case.get("qa_only", False)]
 
 
 def response_bytes(case: dict) -> bytes:

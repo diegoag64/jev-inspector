@@ -93,6 +93,14 @@ impl<'a, S: 'static> Diagram<'a, S> {
                 state.initialize(size, focus);
             }
         };
+        let inspect_id = self
+            .state
+            .selected
+            .as_deref()
+            .or(self.entry_card)
+            .unwrap_or(&self.graph.nodes[0].id)
+            .to_owned();
+        let inspector_close = format!("{}:inspector:close", self.key);
         let toolbar = row()
             .gap(6.0)
             .center_y()
@@ -141,6 +149,18 @@ impl<'a, S: 'static> Diagram<'a, S> {
                     .build(k)
                     .key(format!("{}:fit", self.key))
                     .help("See all relationships; use Actual size to read cards"),
+            )
+            .child(el().grow(1.0))
+            .child(
+                Button::new("Inspect data")
+                    .icon(&rune_kit::glyphs::SEARCH)
+                    .help("Read the selected card at full size without changing graph zoom")
+                    .on_press_tx(move |s: &mut S, tx| {
+                        get(s).inspect(inspect_id.clone());
+                        tx.focus_control(inspector_close.clone());
+                    })
+                    .build(k)
+                    .key(format!("{}:inspect", self.key)),
             );
         let mut lines = Shape::new();
         let mut edge_labels = Vec::new();
@@ -335,6 +355,11 @@ impl<'a, S: 'static> Diagram<'a, S> {
                 );
             }
         }
+        if let Some(open) = &self.state.inspection
+            && let Some(node) = self.graph.nodes.iter().find(|n| n.id == open.node)
+        {
+            viewport = viewport.child(crate::inspector::view(self.key, node, self.state, get, k));
+        }
         col()
             .w_full()
             .grow(1.0)
@@ -412,6 +437,11 @@ impl<'a> DiagramCard<'a> {
         };
         let id = n.id.clone();
         let rect = n.rect;
+        let inspect_id = n.id.clone();
+        let inspector_close = format!(
+            "{}:inspector:close",
+            self.key.split(":node:").next().unwrap_or(self.key)
+        );
         let in_diagram = self.tab_selected.is_some();
         let heading = col()
             .gap(if content_card { 5.0 } else { 7.0 })
@@ -429,9 +459,16 @@ impl<'a> DiagramCard<'a> {
             .on_press(move |s: &mut S| {
                 let state = get(s);
                 state.selected = Some(id.clone());
+                if state.inspection.is_some() {
+                    state.inspect(id.clone());
+                }
                 if in_diagram {
                     state.reveal(rect);
                 }
+            })
+            .on_double_press_tx(move |s: &mut S, tx| {
+                get(s).inspect(inspect_id.clone());
+                tx.focus_control(inspector_close.clone());
             })
             .child(
                 text(&n.kind)

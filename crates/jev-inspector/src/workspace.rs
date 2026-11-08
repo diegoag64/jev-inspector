@@ -295,6 +295,12 @@ pub fn on_key(s: &mut State, event: &rune::KeyEvent, tx: &mut Tx) -> bool {
     if s.workspace.help || s.workspace.export || s.diagram_questions_open {
         return false;
     }
+    if s.tab == 3
+        && s.diagram.inspection.is_some()
+        && tx.focused().is_some_and(|key| key.contains(":inspector"))
+    {
+        return false;
+    }
     // Element handlers cannot receive Tab after an action clears focus.
     if event.key == rune::Key::Tab && s.tab == 3 && !s.workspace.help && !s.workspace.export {
         diagram::reveal_keyboard_card(s);

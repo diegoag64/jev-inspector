@@ -1,0 +1,17 @@
+[
+  {
+    "t": 0.05,
+    "type": "tap",
+    "key": "tab-3"
+  },
+  {
+    "t": 0.25,
+    "type": "tap",
+    "key": "request-diagram:node:8:question:select"
+  },
+  {
+    "t": 0.44999999999999996,
+    "type": "tap",
+    "key": "request-diagram:inspect"
+  }
+]

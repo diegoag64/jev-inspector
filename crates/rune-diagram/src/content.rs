@@ -270,6 +270,7 @@ fn value<S: 'static>(
                     .variant(ButtonVariant::Ghost)
                     .on_press(move |s: &mut S| get(s).toggle(action.clone()))
                     .build(k)
+                    .justify_start()
                     .focusable(keyboard)
                     .expanded(expanded)
                     .key(button_key),
@@ -316,6 +317,7 @@ fn value<S: 'static>(
                     .variant(ButtonVariant::Ghost)
                     .on_press(move |s: &mut S| get(s).more(action.clone()))
                     .build(k)
+                    .justify_start()
                     .focusable(keyboard)
                     .key(format!("{path}:more")),
             );
@@ -352,6 +354,7 @@ fn value<S: 'static>(
                 .variant(ButtonVariant::Ghost)
                 .on_press(move |s: &mut S| get(s).toggle(action.clone()))
                 .build(k)
+                .justify_start()
                 .focusable(keyboard)
                 .key(format!("{path}:text")),
             );

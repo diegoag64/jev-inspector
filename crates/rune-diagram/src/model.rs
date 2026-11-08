@@ -33,6 +33,8 @@ pub struct Node {
     pub status: NodeStatus,
     pub rect: [f32; 4],
     pub body: NodeBody,
+    /// Full captured value for inspection when the card shows a compact summary.
+    pub inspection: Option<Value>,
     pub style: CardStyle,
 }
 
@@ -57,8 +59,13 @@ impl Node {
             status: NodeStatus::Neutral,
             rect,
             body,
+            inspection: None,
             style: CardStyle::Trace,
         }
+    }
+    pub fn inspection(mut self, value: Option<Value>) -> Self {
+        self.inspection = value;
+        self
     }
     pub fn kind(mut self, kind: impl Into<String>) -> Self {
         self.kind = kind.into();
@@ -153,6 +160,7 @@ pub struct DiagramState {
     pub camera: Camera,
     pub selected: Option<String>,
     pub content: ContentState,
+    pub inspection: Option<crate::inspector::InspectionState>,
     pub(crate) fitted: bool,
     pub(crate) viewport: [f32; 2],
     pub(crate) drag_start: Camera,
@@ -161,6 +169,9 @@ pub struct DiagramState {
     fit_requested: bool,
 }
 impl DiagramState {
+    pub fn inspect(&mut self, node: impl Into<String>) {
+        self.inspection = Some(crate::inspector::InspectionState::new(node.into()));
+    }
     /// Fit on the next viewport layout while preserving selection and disclosures.
     pub fn request_fit(&mut self) {
         self.fitted = false;

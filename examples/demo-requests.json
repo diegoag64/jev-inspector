@@ -11,12 +11,79 @@
         "state": {
           "demo_case": "support-routing",
           "message": "My invoice was charged twice.",
-          "channel": "email"
+          "channel": "email",
+          "customer": {
+            "id": "cus_demo_418",
+            "name": "Harbor Design Studio",
+            "plan": "Team annual",
+            "locale": "en-US",
+            "timezone": "America/New_York",
+            "seats": 18,
+            "renewal_date": "2026-11-01"
+          },
+          "ticket": {
+            "id": "SUP-2048",
+            "subject": "Two charges after adding seats",
+            "received_at": "2026-11-07T14:32:00Z",
+            "priority": "normal",
+            "attachments": [
+              {
+                "name": "bank-statement.txt",
+                "excerpt": "Nov 1: HARBOR CLOUD $864.00; Nov 2: HARBOR CLOUD $96.00 (pending)"
+              }
+            ]
+          },
+          "billing": {
+            "invoice": {
+              "id": "INV-2026-1101",
+              "currency": "USD",
+              "total": 864.0,
+              "status": "paid",
+              "lines": [
+                {
+                  "description": "Team plan — 16 seats, annual",
+                  "amount": 768.0
+                },
+                {
+                  "description": "Two additional seats, prorated",
+                  "amount": 96.0
+                }
+              ]
+            },
+            "payments": [
+              {
+                "id": "pay_demo_41",
+                "amount": 864,
+                "state": "captured"
+              },
+              {
+                "id": "auth_demo_42",
+                "amount": 96,
+                "state": "authorization_hold",
+                "expires_at": "2026-11-09T00:00:00Z"
+              }
+            ]
+          },
+          "conversation": [
+            {
+              "role": "customer",
+              "text": "I added two teammates yesterday. My bank now shows two payments. Please check whether we paid twice."
+            },
+            {
+              "role": "agent",
+              "text": "The account has one paid invoice. I am checking whether the second entry is a temporary authorization."
+            }
+          ],
+          "routing_policy": {
+            "billing": "Charges, credits, invoices, and pending payment authorizations",
+            "technical": "Failed product functionality after payment is confirmed",
+            "sales": "Pricing and plan changes before purchase"
+          }
         },
         "questions": {
           "department": {
             "type": "choice",
-            "instructions": "Which team should handle this?",
+            "instructions": "Route the ticket using the customer conversation and billing evidence. A temporary card authorization is still a billing inquiry; do not infer that a refund has already been approved.",
             "criteria": {
               "billing": "Payments",
               "technical": "Product issues",
@@ -41,7 +108,7 @@
           }
         },
         "usage": {
-          "input_tokens": 180,
+          "input_tokens": 463,
           "output_tokens": 24
         }
       },
@@ -62,6 +129,43 @@
             "known_device": true,
             "account_age_days": 842,
             "prior_chargebacks": 0
+          },
+          "transaction": {
+            "id": "txn_demo_701",
+            "amount": 49.95,
+            "currency": "USD",
+            "merchant_category": "homewares",
+            "payment": {
+              "network": "Visa",
+              "last4": "4242",
+              "three_ds": "authenticated"
+            },
+            "shipping": {
+              "country": "US",
+              "postal_prefix": "100",
+              "matches_billing": true
+            }
+          },
+          "device": {
+            "id": "device_demo_83",
+            "first_seen_days_ago": 214,
+            "country": "US",
+            "ip_reputation": "low risk",
+            "recent_accounts": 1
+          },
+          "history": {
+            "orders_last_90_days": 7,
+            "average_order_value": 61.2,
+            "successful_payments": 23,
+            "failed_attempts_last_hour": 0
+          },
+          "review_policy": {
+            "manual_review_triggers": [
+              "shipping country differs from billing",
+              "more than 3 failed payment attempts in 1 hour",
+              "new account with order value over $500"
+            ],
+            "allowlist_notes": "Returning customer; do not treat travel alone as evidence of fraud."
           }
         },
         "questions": {
@@ -82,7 +186,7 @@
           }
         },
         "usage": {
-          "input_tokens": 180,
+          "input_tokens": 271,
           "output_tokens": 24
         }
       },
@@ -102,7 +206,57 @@
           "affected_regions": [
             "eu-west"
           ],
-          "error_rate": 0.34
+          "error_rate": 0.34,
+          "incident": {
+            "id": "INC-482",
+            "started_at": "2026-11-07T09:42:00Z",
+            "detected_by": "checkout-success-rate",
+            "owner": "Payments on-call"
+          },
+          "metrics": {
+            "window_minutes": 15,
+            "requests": 12480,
+            "failed_requests": 4243,
+            "p95_latency_ms": 8200,
+            "baseline_p95_ms": 410,
+            "estimated_revenue_at_risk_usd": 18600
+          },
+          "dependencies": [
+            {
+              "service": "payment-gateway-eu",
+              "status": "timeouts",
+              "failure_rate": 0.71
+            },
+            {
+              "service": "cart-api",
+              "status": "healthy",
+              "failure_rate": 0.002
+            }
+          ],
+          "timeline": [
+            {
+              "at": "09:38",
+              "event": "Gateway connection-pool configuration deployed"
+            },
+            {
+              "at": "09:42",
+              "event": "EU checkout error budget burn alert fired"
+            },
+            {
+              "at": "09:48",
+              "event": "Rollback started; recovery not yet confirmed"
+            }
+          ],
+          "mitigations": {
+            "rollback": "in_progress",
+            "traffic_shift": "US gateway cannot process EU cards",
+            "customer_message": "Investigating payment failures in Europe"
+          },
+          "runbook": {
+            "critical": "All regions unavailable, data loss, or security compromise",
+            "major": "A revenue-critical journey is unavailable for a material subset of customers",
+            "degraded": "A workaround remains available for most affected customers"
+          }
         },
         "questions": {
           "severity": {
@@ -136,7 +290,7 @@
           }
         },
         "usage": {
-          "input_tokens": 180,
+          "input_tokens": 378,
           "output_tokens": 24
         }
       },
@@ -156,6 +310,66 @@
             "width": 1200,
             "height": 1600,
             "note": "Synthetic coordinates only; image bytes are not included."
+          },
+          "extraction": {
+            "supplier": "Northstar Office Supply",
+            "invoice_number": "NS-10482",
+            "currency": "USD",
+            "line_items": [
+              {
+                "description": "Ergonomic chairs",
+                "quantity": 6,
+                "unit_price": 129.0,
+                "line_total": 774.0
+              },
+              {
+                "description": "Delivery and assembly",
+                "quantity": 1,
+                "unit_price": 65.0,
+                "line_total": 65.0
+              }
+            ],
+            "subtotal": 839.0,
+            "tax": 67.12,
+            "total_due": 906.12
+          },
+          "ocr_blocks": [
+            {
+              "text": "Subtotal $839.00",
+              "bounds": [
+                760,
+                1210,
+                1120,
+                1250
+              ]
+            },
+            {
+              "text": "Tax $67.12",
+              "bounds": [
+                760,
+                1260,
+                1120,
+                1300
+              ]
+            },
+            {
+              "text": "TOTAL DUE $906.12",
+              "bounds": [
+                720,
+                1320,
+                1140,
+                1400
+              ]
+            }
+          ],
+          "coordinate_system": {
+            "origin": "top-left",
+            "units": "normalized 0..1",
+            "page": 1
+          },
+          "validation": {
+            "arithmetic_matches": true,
+            "currency_consistent": true
           }
         },
         "questions": {
@@ -172,16 +386,16 @@
           "total_region": {
             "type": "box",
             "box": {
-              "left": 0.61,
-              "top": 0.72,
-              "right": 0.93,
-              "bottom": 0.84
+              "left": 0.6,
+              "top": 0.825,
+              "right": 0.95,
+              "bottom": 0.875
             },
             "confidence": 0.96
           }
         },
         "usage": {
-          "input_tokens": 180,
+          "input_tokens": 263,
           "output_tokens": 24
         }
       },
@@ -207,7 +421,47 @@
             ],
             "delivered_days_ago": 4
           },
-          "message": "The lamp arrived with a broken shade. I would prefer a replacement."
+          "message": "The lamp arrived with a broken shade. I would prefer a replacement.",
+          "customer": {
+            "id": "cus_demo_204",
+            "previous_returns": 0,
+            "preference": "replacement",
+            "contact_channel": "chat"
+          },
+          "evidence": [
+            {
+              "type": "customer_photo_description",
+              "text": "Ceramic shade split across the rim; shipping carton has a dent on the same side."
+            },
+            {
+              "type": "carrier_scan",
+              "text": "Delivered Nov 3; no signature or damage exception recorded."
+            }
+          ],
+          "policy": {
+            "window_days": 30,
+            "damaged_on_arrival": "Replacement at no cost; waive return shipping. Request safe disposal for broken ceramic.",
+            "exclusions": [
+              "custom engraved products",
+              "normal wear after delivery"
+            ]
+          },
+          "fulfillment": {
+            "replacement_sku": "LAMP-01",
+            "available_stock": 12,
+            "warehouse": "US-EAST",
+            "estimated_delivery_days": 3
+          },
+          "conversation": [
+            {
+              "role": "customer",
+              "text": "The base is fine, but the shade is broken. Can you send a new lamp before Friday?"
+            },
+            {
+              "role": "agent",
+              "text": "I have the order and the damage description. We can check replacement availability and eligibility together."
+            }
+          ]
         },
         "questions": {
           "action": {
@@ -264,7 +518,7 @@
           }
         },
         "usage": {
-          "input_tokens": 180,
+          "input_tokens": 410,
           "output_tokens": 24
         }
       },
@@ -279,7 +533,37 @@
         "model": "message-classifier",
         "state": {
           "demo_case": "many-choices",
-          "message": "Keyboard focus disappears after I open the menu. Screen reader output also misses the selected item."
+          "message": "Keyboard focus disappears after I open the menu. Screen reader output also misses the selected item.",
+          "ticket": {
+            "id": "BUG-817",
+            "product": "Workspace dashboard",
+            "browser": "Firefox",
+            "os": "Windows 11",
+            "assistive_technology": "NVDA"
+          },
+          "steps_to_reproduce": [
+            "Navigate to the project menu with Tab",
+            "Press Enter to open the menu",
+            "Press Down to move to Rename",
+            "Press Escape; focus is no longer on the menu trigger"
+          ],
+          "expected": "Focus returns to the menu trigger and the selected option is announced.",
+          "observed": "Keyboard focus jumps to the page body; the selected option has no accessible state.",
+          "impact": {
+            "affected_users": "Keyboard and screen-reader users",
+            "workaround": "Reload the page and use the search command",
+            "frequency": "Every attempt"
+          },
+          "related_reports": [
+            {
+              "id": "BUG-802",
+              "title": "Menu selection missing from accessibility tree"
+            },
+            {
+              "id": "BUG-796",
+              "title": "Focus lost after closing a popover"
+            }
+          ]
         },
         "questions": {
           "topic": {
@@ -327,7 +611,7 @@
           }
         },
         "usage": {
-          "input_tokens": 480,
+          "input_tokens": 349,
           "output_tokens": 24
         }
       },
@@ -354,9 +638,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 0,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-000"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 0,
+                      "reference": "ORDER-1000"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-001",
@@ -366,9 +665,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 1,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-001"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 1,
+                      "reference": "ORDER-1001"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-002",
@@ -378,9 +692,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 2,
+                  "reorder_point": 20,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-002"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 2,
+                      "reference": "ORDER-1002"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-003",
@@ -390,9 +719,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 3,
+                  "reorder_point": 25,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-003"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 3,
+                      "reference": "ORDER-1003"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-004",
@@ -402,9 +746,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 4,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-004"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 4,
+                      "reference": "ORDER-1004"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-005",
@@ -414,9 +773,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 0,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-005"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 0,
+                      "reference": "ORDER-1005"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-006",
@@ -426,9 +800,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 1,
+                  "reorder_point": 20,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-006"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 1,
+                      "reference": "ORDER-1006"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-007",
@@ -438,9 +827,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 2,
+                  "reorder_point": 25,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-007"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 2,
+                      "reference": "ORDER-1007"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-008",
@@ -450,9 +854,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 3,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-008"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 3,
+                      "reference": "ORDER-1008"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-009",
@@ -462,9 +881,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 4,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-009"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 4,
+                      "reference": "ORDER-1009"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-010",
@@ -474,9 +908,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 0,
+                  "reorder_point": 20,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-010"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 0,
+                      "reference": "ORDER-1010"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-011",
@@ -486,9 +935,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 1,
+                  "reorder_point": 25,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-011"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 1,
+                      "reference": "ORDER-1011"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-012",
@@ -498,9 +962,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 2,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-012"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 2,
+                      "reference": "ORDER-1012"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-013",
@@ -510,9 +989,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 3,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-013"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 3,
+                      "reference": "ORDER-1013"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-014",
@@ -522,9 +1016,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 4,
+                  "reorder_point": 20,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-014"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 4,
+                      "reference": "ORDER-1014"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-015",
@@ -534,9 +1043,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 0,
+                  "reorder_point": 25,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-015"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 0,
+                      "reference": "ORDER-1015"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-016",
@@ -546,9 +1070,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 1,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-016"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 1,
+                      "reference": "ORDER-1016"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-017",
@@ -558,9 +1097,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 2,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-017"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 2,
+                      "reference": "ORDER-1017"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-018",
@@ -570,9 +1124,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 3,
+                  "reorder_point": 20,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-018"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 3,
+                      "reference": "ORDER-1018"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-019",
@@ -582,9 +1151,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 4,
+                  "reorder_point": 25,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-019"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 4,
+                      "reference": "ORDER-1019"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-020",
@@ -594,9 +1178,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 0,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-020"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 0,
+                      "reference": "ORDER-1020"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-0-021",
@@ -606,167 +1205,30 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-0-022",
-                  "stock": 66,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-0-023",
-                  "stock": 69,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-0-024",
-                  "stock": 72,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-0-025",
-                  "stock": 75,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-0-026",
-                  "stock": 78,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-0-027",
-                  "stock": 81,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-0-028",
-                  "stock": 84,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-0-029",
-                  "stock": 87,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-0-030",
-                  "stock": 90,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-0-031",
-                  "stock": 93,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-0-032",
-                  "stock": 96,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-0-033",
-                  "stock": 99,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-0-034",
-                  "stock": 102,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 1,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-1-021"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 1,
+                      "reference": "ORDER-1021"
+                    }
+                  ]
                 }
-              ]
+              ],
+              "location": {
+                "region": "US-EAST",
+                "last_count_at": "2026-11-06T18:00:00Z"
+              }
             },
             {
               "code": "DEMO-1",
@@ -779,9 +1241,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 0,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-000"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 0,
+                      "reference": "ORDER-1000"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-001",
@@ -791,9 +1268,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 1,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-001"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 1,
+                      "reference": "ORDER-1001"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-002",
@@ -803,9 +1295,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 2,
+                  "reorder_point": 20,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-002"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 2,
+                      "reference": "ORDER-1002"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-003",
@@ -815,9 +1322,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 3,
+                  "reorder_point": 25,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-003"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 3,
+                      "reference": "ORDER-1003"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-004",
@@ -827,9 +1349,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 4,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-004"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 4,
+                      "reference": "ORDER-1004"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-005",
@@ -839,9 +1376,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 0,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-005"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 0,
+                      "reference": "ORDER-1005"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-006",
@@ -851,9 +1403,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 1,
+                  "reorder_point": 20,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-006"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 1,
+                      "reference": "ORDER-1006"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-007",
@@ -863,9 +1430,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 2,
+                  "reorder_point": 25,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-007"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 2,
+                      "reference": "ORDER-1007"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-008",
@@ -875,9 +1457,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 3,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-008"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 3,
+                      "reference": "ORDER-1008"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-009",
@@ -887,9 +1484,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 4,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-009"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 4,
+                      "reference": "ORDER-1009"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-010",
@@ -899,9 +1511,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 0,
+                  "reorder_point": 20,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-010"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 0,
+                      "reference": "ORDER-1010"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-011",
@@ -911,9 +1538,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 1,
+                  "reorder_point": 25,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-011"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 1,
+                      "reference": "ORDER-1011"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-012",
@@ -923,9 +1565,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 2,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-012"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 2,
+                      "reference": "ORDER-1012"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-013",
@@ -935,9 +1592,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 3,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-013"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 3,
+                      "reference": "ORDER-1013"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-014",
@@ -947,9 +1619,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 4,
+                  "reorder_point": 20,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-014"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 4,
+                      "reference": "ORDER-1014"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-015",
@@ -959,9 +1646,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 0,
+                  "reorder_point": 25,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-015"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 0,
+                      "reference": "ORDER-1015"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-016",
@@ -971,9 +1673,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 1,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-016"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 1,
+                      "reference": "ORDER-1016"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-017",
@@ -983,9 +1700,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 2,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-017"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 2,
+                      "reference": "ORDER-1017"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-018",
@@ -995,9 +1727,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 3,
+                  "reorder_point": 20,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-018"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 3,
+                      "reference": "ORDER-1018"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-019",
@@ -1007,9 +1754,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 4,
+                  "reorder_point": 25,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-019"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 4,
+                      "reference": "ORDER-1019"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-020",
@@ -1019,9 +1781,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 0,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-020"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 0,
+                      "reference": "ORDER-1020"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-1-021",
@@ -1031,167 +1808,30 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-1-022",
-                  "stock": 66,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-1-023",
-                  "stock": 69,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-1-024",
-                  "stock": 72,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-1-025",
-                  "stock": 75,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-1-026",
-                  "stock": 78,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-1-027",
-                  "stock": 81,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-1-028",
-                  "stock": 84,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-1-029",
-                  "stock": 87,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-1-030",
-                  "stock": 90,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-1-031",
-                  "stock": 93,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-1-032",
-                  "stock": 96,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-1-033",
-                  "stock": 99,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-1-034",
-                  "stock": 102,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 1,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-2-021"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 1,
+                      "reference": "ORDER-1021"
+                    }
+                  ]
                 }
-              ]
+              ],
+              "location": {
+                "region": "EU-CENTRAL",
+                "last_count_at": "2026-11-06T18:00:00Z"
+              }
             },
             {
               "code": "DEMO-2",
@@ -1204,9 +1844,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 0,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-000"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 0,
+                      "reference": "ORDER-1000"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-001",
@@ -1216,9 +1871,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 1,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-001"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 1,
+                      "reference": "ORDER-1001"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-002",
@@ -1228,9 +1898,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 2,
+                  "reorder_point": 20,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-002"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 2,
+                      "reference": "ORDER-1002"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-003",
@@ -1240,9 +1925,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 3,
+                  "reorder_point": 25,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-003"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 3,
+                      "reference": "ORDER-1003"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-004",
@@ -1252,9 +1952,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 4,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-004"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 4,
+                      "reference": "ORDER-1004"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-005",
@@ -1264,9 +1979,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 0,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-005"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 0,
+                      "reference": "ORDER-1005"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-006",
@@ -1276,9 +2006,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 1,
+                  "reorder_point": 20,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-006"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 1,
+                      "reference": "ORDER-1006"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-007",
@@ -1288,9 +2033,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 2,
+                  "reorder_point": 25,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-007"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 2,
+                      "reference": "ORDER-1007"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-008",
@@ -1300,9 +2060,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 3,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-008"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 3,
+                      "reference": "ORDER-1008"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-009",
@@ -1312,9 +2087,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 4,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-009"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 4,
+                      "reference": "ORDER-1009"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-010",
@@ -1324,9 +2114,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 0,
+                  "reorder_point": 20,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-010"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 0,
+                      "reference": "ORDER-1010"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-011",
@@ -1336,9 +2141,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 1,
+                  "reorder_point": 25,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-011"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 1,
+                      "reference": "ORDER-1011"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-012",
@@ -1348,9 +2168,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 2,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-012"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 2,
+                      "reference": "ORDER-1012"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-013",
@@ -1360,9 +2195,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 3,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-013"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 3,
+                      "reference": "ORDER-1013"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-014",
@@ -1372,9 +2222,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 4,
+                  "reorder_point": 20,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-014"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 4,
+                      "reference": "ORDER-1014"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-015",
@@ -1384,9 +2249,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 0,
+                  "reorder_point": 25,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-015"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 0,
+                      "reference": "ORDER-1015"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-016",
@@ -1396,9 +2276,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 1,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-016"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 1,
+                      "reference": "ORDER-1016"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-017",
@@ -1408,9 +2303,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 2,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-017"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 2,
+                      "reference": "ORDER-1017"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-018",
@@ -1420,9 +2330,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 3,
+                  "reorder_point": 20,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-018"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 3,
+                      "reference": "ORDER-1018"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-019",
@@ -1432,9 +2357,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Harbor Lighting",
+                    "lead_time_days": 14,
+                    "description": "Modular desk light with dimmable LED driver. EU and US adapters ship separately; match the plug region to the order."
+                  },
+                  "reserved": 4,
+                  "reorder_point": 25,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-019"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 4,
+                      "reference": "ORDER-1019"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-020",
@@ -1444,9 +2384,24 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Fieldwork Textiles",
+                    "lead_time_days": 21,
+                    "description": "Woven cotton cushion cover, 45 × 45 cm. Color lots should not be mixed within a customer order."
+                  },
+                  "reserved": 0,
+                  "reorder_point": 10,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-020"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 0,
+                      "reference": "ORDER-1020"
+                    }
+                  ]
                 },
                 {
                   "sku": "SKU-2-021",
@@ -1456,169 +2411,40 @@
                     "seasonal"
                   ],
                   "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-2-022",
-                  "stock": 66,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-2-023",
-                  "stock": 69,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-2-024",
-                  "stock": 72,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-2-025",
-                  "stock": 75,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-2-026",
-                  "stock": 78,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-2-027",
-                  "stock": 81,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-2-028",
-                  "stock": 84,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-2-029",
-                  "stock": 87,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-2-030",
-                  "stock": 90,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-2-031",
-                  "stock": 93,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-2-032",
-                  "stock": 96,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-2-033",
-                  "stock": 99,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
-                },
-                {
-                  "sku": "SKU-2-034",
-                  "stock": 102,
-                  "tags": [
-                    "fragile",
-                    "seasonal"
-                  ],
-                  "metadata": {
-                    "supplier": "Synthetic supplier",
-                    "description": "A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. A deliberately long product description for JSON navigation and horizontal overflow. "
-                  }
+                    "supplier": "Northstar Ceramics",
+                    "lead_time_days": 7,
+                    "description": "Hand-finished ceramic table lamp with replaceable linen shade. Store upright; inspect ceramic components before dispatch."
+                  },
+                  "reserved": 1,
+                  "reorder_point": 15,
+                  "movements": [
+                    {
+                      "kind": "receipt",
+                      "quantity": 12,
+                      "reference": "PO-3-021"
+                    },
+                    {
+                      "kind": "reservation",
+                      "quantity": 1,
+                      "reference": "ORDER-1021"
+                    }
+                  ]
                 }
-              ]
+              ],
+              "location": {
+                "region": "AP-SOUTH",
+                "last_count_at": "2026-11-06T18:00:00Z"
+              }
             }
-          ]
+          ],
+          "audit_policy": {
+            "available": "stock minus reserved",
+            "flag_if": [
+              "available quantity is negative",
+              "available quantity is below reorder point"
+            ],
+            "scope": "Review all warehouses, preserving SKU and warehouse identifiers."
+          }
         },
         "questions": {
           "consistent": {
@@ -1637,7 +2463,7 @@
           }
         },
         "usage": {
-          "input_tokens": 3600,
+          "input_tokens": 7553,
           "output_tokens": 24
         }
       },
@@ -1654,13 +2480,37 @@
           "demo_case": "unicode",
           "message": "請求書の再発行をお願いします。",
           "customer": {
-            "display_name": "田中さくら",
-            "locale": "ja-JP"
+            "organization": "Étoile & 北斗 Support",
+            "locale": "ja-JP",
+            "fallback_locale": "fr-FR"
           },
           "notes": [
             "Español: devolución",
             "Français: remboursement"
-          ]
+          ],
+          "messages": [
+            {
+              "locale": "ja-JP",
+              "text": "請求書の宛名を「株式会社北斗」に変更できますか？ 注文番号は DEMO-2026-118 です。"
+            },
+            {
+              "locale": "fr-FR",
+              "text": "Merci de conserver les accents dans notre adresse : 18, allée des Érables, Montréal."
+            },
+            {
+              "locale": "ar",
+              "text": "يرجى إرسال نسخة من الفاتورة إلى فريق الحسابات."
+            }
+          ],
+          "constraints": {
+            "preserve_original_script": true,
+            "do_not_translate": [
+              "legal company name",
+              "postal address",
+              "order identifier"
+            ]
+          },
+          "preferred_reply": "Acknowledge the invoice update in Japanese; retain the legal names exactly as supplied."
         },
         "questions": {
           "language": {
@@ -1690,7 +2540,7 @@
           }
         },
         "usage": {
-          "input_tokens": 180,
+          "input_tokens": 235,
           "output_tokens": 24
         }
       },
@@ -1722,7 +2572,8 @@
           }
         ]
       },
-      "delay_ms": 90
+      "delay_ms": 90,
+      "qa_only": true
     },
     {
       "id": "rate-limit",
@@ -1776,7 +2627,8 @@
           "request_id": "demo-auth-error"
         }
       },
-      "delay_ms": 110
+      "delay_ms": 110,
+      "qa_only": true
     },
     {
       "id": "empty",
@@ -1792,7 +2644,8 @@
       },
       "status": 204,
       "response": null,
-      "delay_ms": 100
+      "delay_ms": 100,
+      "qa_only": true
     },
     {
       "id": "non-json",
@@ -1809,7 +2662,8 @@
       "status": 503,
       "response_text": "<html><body><h1>Service unavailable</h1><p>Synthetic maintenance response.</p></body></html>",
       "content_type": "text/html",
-      "delay_ms": 180
+      "delay_ms": 180,
+      "qa_only": true
     },
     {
       "id": "slow-analysis",
@@ -1870,7 +2724,45 @@
               "step": 11,
               "note": "Investigation note 11"
             }
-          ]
+          ],
+          "workspace": {
+            "id": "ws_demo_113",
+            "name": "Meridian Operations",
+            "plan": "Enterprise",
+            "active_users": 242
+          },
+          "request_context": {
+            "deadline": "2026-11-10T17:00:00Z",
+            "business_goal": "Complete a data migration before the quarterly financial close",
+            "blocking_teams": [
+              "Finance",
+              "Data engineering"
+            ],
+            "requested_by": "Operations lead"
+          },
+          "dependencies": [
+            {
+              "task": "Validate invoice totals",
+              "owner": "Finance",
+              "status": "waiting_for_export"
+            },
+            {
+              "task": "Import historical records",
+              "owner": "Data engineering",
+              "status": "blocked"
+            },
+            {
+              "task": "Run reconciliation",
+              "owner": "Operations",
+              "status": "not_started"
+            }
+          ],
+          "constraints": {
+            "data_residency": "EU",
+            "change_freeze_starts": "2026-11-09T20:00:00Z",
+            "rollback_required": true
+          },
+          "decision_context": "The export has failed twice at 87% with a timeout. The customer can export individual months, but doing this manually would take six hours and risks missing records. Prioritize the request using impact, deadline, and workaround cost."
         },
         "questions": {
           "priority": {
@@ -1900,7 +2792,7 @@
           }
         },
         "usage": {
-          "input_tokens": 2100,
+          "input_tokens": 458,
           "output_tokens": 24
         }
       },

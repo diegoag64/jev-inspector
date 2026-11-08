@@ -1,6 +1,6 @@
 # Explore example requests and motion
 
-The inspector includes 14 synthetic examples in
+The demo opens 10 synthetic Jev examples from
 [`examples/demo-requests.json`](../examples/demo-requests.json). The Rust offline
 showcase and Python mock server read the same catalog.
 
@@ -16,9 +16,20 @@ or opening Help or Export, stops playback.
 
 The catalog covers choice probabilities, likelihoods, numeric scores, normalized
 bounding boxes, mixed questions, twelve categories, a large nested inventory,
-multilingual input, a model list, HTTP 401/429/503 errors, an empty 204 response,
-HTML instead of JSON, and a slow analysis request. The inventory request contains
-about 40 KB of JSON; use its tree's **Expand all** control to explore it.
+multilingual input, and a slow analysis request. The examples include customer
+conversations, payment evidence, incident timelines, return policies, OCR blocks,
+and warehouse movements. Nine requests succeed; one demonstrates rate limiting.
+
+Four additional protocol fixtures (`models`, `auth-error`, `empty`, and `non-json`)
+are marked `qa_only` in the catalog. They remain available through
+`--fixture example-NAME` and the relay integration tests, but are not sent by the
+normal demo or shown by `--showcase`.
+
+Select a diagram card and choose **Inspect data**, or double-click its heading.
+The reader stays inside the canvas at a fixed text size. JSON view pages large
+values without dropping content; Tree provides nested disclosure. Copy always
+includes the full captured value. Escape or Close returns to the diagram without
+changing its zoom. The request list remains usable while the reader is open.
 
 Offline examples are completed captures. To watch an exchange while its response
 is pending, use the live demo below. Bounding-box previews show coordinates without

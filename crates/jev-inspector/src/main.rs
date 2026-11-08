@@ -334,7 +334,7 @@ fn main() {
             "--diagram" => state.tab = 3,
             "--help" | "-h" => {
                 println!(
-                    "Jev inspector\n  --connection-file PATH  Connection written by jev-bridge (default .jev/connection.json)\n  --demo                  Synthetic, offline UI fixture\n  --showcase              14 varied offline examples\n  --tour                  Open examples and cycle layouts automatically\n  --diagram               Start on the Diagram tab\nRune QA flags are also accepted, including --snap FILE and --tree FILE."
+                    "Jev inspector\n  --connection-file PATH  Connection written by jev-bridge (default .jev/connection.json)\n  --demo                  Synthetic, offline UI fixture\n  --showcase              10 realistic offline Jev examples\n  --tour                  Open examples and cycle layouts automatically\n  --diagram               Start on the Diagram tab\nRune QA flags are also accepted, including --snap FILE and --tree FILE."
                 );
                 return;
             }

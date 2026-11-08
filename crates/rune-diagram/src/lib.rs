@@ -2,6 +2,7 @@
 //! The caller supplies graph geometry and semantics; the renderer never infers execution.
 mod camera;
 mod content;
+mod inspector;
 mod model;
 mod result;
 mod theme;
@@ -10,6 +11,7 @@ mod view;
 pub use camera::Camera;
 pub use content::ContentState;
 pub use content::DiagramContent;
+pub use inspector::InspectionState;
 pub use model::CardStyle;
 pub use model::DiagramState;
 pub use model::Edge;

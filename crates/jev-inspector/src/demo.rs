@@ -74,7 +74,7 @@ pub fn populate(state: &mut State) {
 /// Deterministic renderer states. These never start the feed or load live preferences.
 pub fn scenario(s: &mut State, name: &str) -> Result<(), String> {
     if name == "nested-properties" {
-        crate::showcase::populate(s);
+        crate::showcase::populate_all(s);
         crate::showcase::select_example(s, "support-routing")?;
         let mut detail = s.detail.clone().unwrap();
         let nested: serde_json::Map<String, serde_json::Value> = (0..24)
@@ -98,7 +98,7 @@ pub fn scenario(s: &mut State, name: &str) -> Result<(), String> {
         return Ok(());
     }
     if let Some(slug) = name.strip_prefix("example-") {
-        crate::showcase::populate(s);
+        crate::showcase::populate_all(s);
         return crate::showcase::select_example(s, slug);
     }
     populate(s);
