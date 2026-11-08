@@ -117,6 +117,7 @@ fn populate_catalog(s: &mut State, include_qa: bool) {
             request_bytes: request.wire_bytes,
             response_bytes: response.wire_bytes,
             note: None,
+            usage: response.token_usage(),
         };
         let tab = match example.id.as_str() {
             "fraud-check" | "invoice-box" | "many-choices" | "support-routing" => 3,
@@ -198,6 +199,7 @@ pub fn tick(s: &mut State, now: f64, tx: &mut Tx) -> bool {
         || s.workspace.session_name.is_some()
         || s.workspace.help
         || s.workspace.export
+        || s.cost.settings
         || s.workspace.job.is_some()
         || s.visible.len() != playback.items.len()
         || s.filter.focused

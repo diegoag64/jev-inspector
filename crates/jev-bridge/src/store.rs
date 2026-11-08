@@ -92,6 +92,7 @@ pub fn worker(store: Arc<Mutex<Store>>) -> mpsc::SyncSender<Work> {
                 .expect("capture store")
                 .update(work.id, |entry| {
                     entry.request = request;
+                    entry.summary.usage = response.token_usage();
                     entry.response = response;
                     entry.summary.model = model;
                 });

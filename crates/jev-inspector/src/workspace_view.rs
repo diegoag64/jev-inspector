@@ -111,7 +111,11 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
     let mut root = col()
         .key("workspace")
         .on_key(|s: &mut State, event, _| {
-            if event.key == rune::Key::Tab && s.tab == 3 && !s.workspace.help && !s.workspace.export
+            if event.key == rune::Key::Tab
+                && s.tab == 3
+                && !s.workspace.help
+                && !s.workspace.export
+                && !s.cost.settings
             {
                 diagram::reveal_keyboard_card(s);
             }
@@ -254,6 +258,7 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
     );
     root = root.child(body).child(footer(s, &k));
     dialogs(s, &k, &mut layers);
+    cost::dialog(s, &k, &mut layers);
     root.children(layers)
 }
 
@@ -601,6 +606,9 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                 })),
         );
     }
+    if s.cost.enabled {
+        panel = panel.child(cost::summary(s, k));
+    }
     let list = if s.visible.is_empty() {
         empty(s, k)
     } else {
@@ -627,6 +635,11 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                         k.c.text_muted,
                     )
                     .grow(1.0),
+                )
+                .child(
+                    ui::button("Costs", "cost-mode", s.cost.enabled, k, cost::toggle)
+                        .checked(s.cost.enabled)
+                        .help("Show estimated cost and token usage for filtered Traffic"),
                 )
                 .child(
                     ui::button(
@@ -680,16 +693,30 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
             .sortable(),
     )
     .column(
-        TableColumn::new("time", "Elapsed")
-            .width(82.0)
-            .min(70.0)
-            .sortable(),
+        TableColumn::new(
+            if s.cost.enabled { "tokens" } else { "time" },
+            if s.cost.enabled {
+                "Input tokens"
+            } else {
+                "Elapsed"
+            },
+        )
+        .width(if s.cost.enabled { 108.0 } else { 82.0 })
+        .min(if s.cost.enabled { 100.0 } else { 70.0 })
+        .sortable(),
     )
     .column(
-        TableColumn::new("started", "Time · UTC")
-            .width(105.0)
-            .min(85.0)
-            .sortable(),
+        TableColumn::new(
+            if s.cost.enabled { "cost" } else { "started" },
+            if s.cost.enabled {
+                "Est. USD"
+            } else {
+                "Time · UTC"
+            },
+        )
+        .width(105.0)
+        .min(85.0)
+        .sortable(),
     )
     .cell(move |s, i, column| {
         let r = &s.visible[i];
@@ -760,6 +787,17 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
             .mono()
             .muted(),
             "started" => Cell::text(ui::time(r.started_at_ms)).mono().muted(),
+            "tokens" => Cell::text(
+                cost::usage(s, r)
+                    .and_then(|u| u.input_tokens)
+                    .map_or("—".into(), |v| v.to_string()),
+            )
+            .mono()
+            .muted(),
+            "cost" => Cell::el(
+                ui::mono(cost::estimate(s, r).display(), 12.0, k.c.text_base)
+                    .help(cost::row_help(s, r)),
+            ),
             _ => Cell::text(""),
         }
     })

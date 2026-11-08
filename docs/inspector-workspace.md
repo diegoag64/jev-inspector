@@ -36,6 +36,38 @@ The header metrics describe the visible rows, except **Observed**, which is the
 relay's lifetime counter. Median and P95 use visible rows that have an elapsed time.
 They describe relay-observed latency, including forwarding and upstream work.
 
+## Estimate request costs
+
+Click **Costs** in the Traffic footer. The list shows input tokens and estimated
+USD per request. Click either column heading to sort. The total covers all rows
+matching the current search and filters, including rows below the scroll viewport.
+Clear and Restore also change the total. Hidden and evicted requests are excluded.
+Pass `--costs` when starting the inspector to open this mode directly.
+
+Click **Pricing** to change the input and output rates in USD per million tokens.
+The default is $0.042 for input and $0 for output, based on
+[TypeSafe's model pricing](https://docs.typesafe.ai/models), checked November 7, 2026.
+The profile applies to `POST /v1/systemone`; other endpoints display **N/A**.
+Custom rates and the mode preference persist for live use. Offline demos start
+with defaults and use synthetic usage.
+
+The calculation uses reported `usage.input_tokens` and `usage.output_tokens`:
+`(input_tokens × input_rate + output_tokens × output_rate) / 1,000,000`.
+Missing output usage is acceptable when the output rate is zero. Missing required
+usage displays **No usage**, and unfinished requests display **Pending**. These
+rows are excluded from the total, which is labeled **Partial estimate**. Reported
+usage on an error response still counts. Small positive costs never display as zero.
+
+The relay publishes usage with every request summary after inspection finishes,
+so totals do not depend on selecting requests. Capture-disabled, dropped, or
+incomplete bodies may have no usage. Older relays need rebuilding to publish it.
+Older saved sessions can recover usage from their complete captured responses;
+summary-only sessions without usage remain unknown.
+
+Saved sessions retain usage, and reopening recalculates estimates using the current
+pricing profile. Rates are not a historical billing record. Estimates exclude any
+fees or discounts outside this token profile and do not query your account balance.
+
 ## Hold the view while investigating
 
 Click **Pause** to freeze the list. The relay continues forwarding and recording.

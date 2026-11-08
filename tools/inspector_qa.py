@@ -139,6 +139,11 @@ for fixture in ["diagram-disclosure", "cached-session", "setup-custom-upstream"]
 
 
 CASES["curated-demo"] = ["--showcase", "--size", "1100x700"]
+for mode in ["cost", "cost-light", "cost-pricing", "cost-errors"]:
+    CASES[mode] = ["--showcase", "--size", "1100x700", "--script", "tests/inspector-" + mode + ".script.json"]
+CASES["cost-wide"] = ["--showcase", "--size", "1600x1000", "--script", "tests/inspector-cost.script.json"]
+CASES["cost-empty"] = ["--fixture", "no-matches", "--size", "1100x700", "--script", "tests/inspector-cost.script.json"]
+CASES["cost-summary-only"] = ["--fixture", "summary-only", "--size", "1100x700", "--script", "tests/inspector-cost.script.json"]
 for name, fixture, script, size in [
     ("state", "support-routing", "state", "1100x700"),
     ("light", "support-routing", "light", "1100x700"),
@@ -164,6 +169,17 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
     keyed = {n["key"]: n for n in nodes if "key" in n}
     names = "\n".join(n.get("name", "") for n in nodes)
     errors = []
+    if name.startswith("cost"):
+        if name != "cost-pricing" and ("cost-total" not in keyed or "cost-coverage" not in keyed):
+            errors.append("Cost summary did not open")
+        if name in ("cost", "cost-light", "cost-wide") and "9 / 10 estimated" not in names:
+            errors.append("Cost coverage must distinguish the missing-usage rate limit")
+        if name == "cost-errors" and ("0 / 1 estimated" not in names or "Unavailable" not in names):
+            errors.append("Errors without usage must not be labeled free")
+        if name == "cost-pricing" and "cost-input-rate" not in keyed:
+            errors.append("Pricing dialog did not open")
+        if name == "cost-empty" and "0 / 0 estimated" not in names:
+            errors.append("Empty filtered cost total is stale")
     if name.startswith("card-reader-"):
         panel = keyed.get("request-diagram:inspector", {}).get("bounds")
         canvas = keyed.get("request-diagram:viewport", {}).get("bounds")

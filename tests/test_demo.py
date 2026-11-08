@@ -76,6 +76,12 @@ class DemoRelayTests(unittest.TestCase):
                                 self.assertEqual(detail["response"]["json"], case.get("response"))
                                 self.assertEqual(detail["response"]["wire_bytes"], len(response_bytes(case)))
                                 self.assertTrue(detail["response"]["complete"])
+                                expected_usage = (case.get("response") or {}).get("usage")
+                                self.assertEqual(detail["summary"].get("usage"), expected_usage)
+                                current = inspect("/api/requests")
+                                listed = next(r for r in current["requests"] if r["id"] == summary["id"])
+                                self.assertEqual(listed.get("usage"), expected_usage,
+                                                 "cost totals must work without fetching each detail")
                         self.assertEqual(snapshot["total_requests"], 14)
                     finally:
                         process.terminate()

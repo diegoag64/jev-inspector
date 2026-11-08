@@ -1,6 +1,7 @@
 mod answer_value;
 mod capture_context;
 mod compare;
+mod cost;
 mod demo;
 mod detail_states;
 #[cfg(test)]
@@ -72,6 +73,7 @@ struct State {
     offline_fixture: bool,
     showcase: Option<showcase::Playback>,
     workspace: workspace::Workspace,
+    cost: cost::CostState,
 }
 
 impl Default for State {
@@ -100,6 +102,7 @@ impl Default for State {
             offline_fixture: false,
             showcase: None,
             workspace: workspace::Workspace::default(),
+            cost: cost::CostState::default(),
         }
     }
 }
@@ -134,7 +137,8 @@ impl State {
             .cloned()
             .collect();
         let sort = self.table.sort().map(|(c, d)| (c.to_owned(), d));
-        self.visible.sort_by(|a, b| {
+        let mut visible = std::mem::take(&mut self.visible);
+        visible.sort_by(|a, b| {
             let (column, direction) = sort
                 .as_ref()
                 .map(|(c, d)| (c.as_str(), *d))
@@ -145,6 +149,13 @@ impl State {
                     .unwrap_or(-1.0)
                     .total_cmp(&b.duration_ms.unwrap_or(-1.0)),
                 "status" => a.status.cmp(&b.status),
+                "cost" => cost::estimate(self, a)
+                    .amount()
+                    .partial_cmp(&cost::estimate(self, b).amount())
+                    .unwrap_or(std::cmp::Ordering::Equal),
+                "tokens" => cost::usage(self, a)
+                    .and_then(|u| u.input_tokens)
+                    .cmp(&cost::usage(self, b).and_then(|u| u.input_tokens)),
                 "model" => a.model.cmp(&b.model),
                 "started" => a.started_at_ms.cmp(&b.started_at_ms),
                 "size" => {
@@ -154,6 +165,7 @@ impl State {
             };
             direction.apply(order).then_with(|| b.id.cmp(&a.id))
         });
+        self.visible = visible;
         if self.selected.is_some_and(|id| {
             !self
                 .snapshot
@@ -310,6 +322,7 @@ fn main() {
     let mut state = State::default();
     let mut rune_args = vec![];
     let mut fixture = None;
+    let mut start_costs = false;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--connection-file" => {
@@ -332,9 +345,10 @@ fn main() {
                 }));
             }
             "--diagram" => state.tab = 3,
+            "--costs" => start_costs = true,
             "--help" | "-h" => {
                 println!(
-                    "Jev inspector\n  --connection-file PATH  Connection written by jev-bridge (default .jev/connection.json)\n  --demo                  Synthetic, offline UI fixture\n  --showcase              10 realistic offline Jev examples\n  --tour                  Open examples and cycle layouts automatically\n  --diagram               Start on the Diagram tab\nRune QA flags are also accepted, including --snap FILE and --tree FILE."
+                    "Jev inspector\n  --connection-file PATH  Connection written by jev-bridge (default .jev/connection.json)\n  --demo                  Synthetic, offline UI fixture\n  --showcase              10 realistic offline Jev examples\n  --tour                  Open examples and cycle layouts automatically\n  --diagram               Start on the Diagram tab\n  --costs                 Show estimated cost in Traffic\nRune QA flags are also accepted, including --snap FILE and --tree FILE."
                 );
                 return;
             }
@@ -352,6 +366,7 @@ fn main() {
         state.workspace.prefs = rune::prefs::Prefs::open("dev.jev.inspector");
         state.dark = state.workspace.prefs.get("dark").unwrap_or(true);
         state.workspace.compact = state.workspace.prefs.get("compact").unwrap_or(false);
+        state.cost.load(&state.workspace.prefs);
         state.workspace.list_width = state
             .workspace
             .prefs
@@ -360,6 +375,7 @@ fn main() {
             .unwrap_or(550.0)
             .clamp(440.0, 800.0);
     }
+    state.cost.enabled |= start_costs;
     let app = App::new(AppSpec {
         setup: Some(setup),
         poll: Some(poll),

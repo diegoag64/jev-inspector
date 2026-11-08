@@ -292,7 +292,7 @@ impl State {
 pub fn on_key(s: &mut State, event: &rune::KeyEvent, tx: &mut Tx) -> bool {
     // Dialogs and the question menu own keyboard input until they close.
     // Returning false preserves their local Escape and navigation handlers.
-    if s.workspace.help || s.workspace.export || s.diagram_questions_open {
+    if s.workspace.help || s.workspace.export || s.cost.settings || s.diagram_questions_open {
         return false;
     }
     if s.tab == 3

@@ -33,6 +33,7 @@ pub fn exchange(id: u64) -> Exchange {
             request_bytes: 428,
             response_bytes: 316,
             note: None,
+            usage: jev_protocol::TokenUsage::from_json(&response),
         },
         request: Capture {
             content_type: "application/json".into(),
