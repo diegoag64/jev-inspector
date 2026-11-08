@@ -238,6 +238,9 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
         root = root.child(metrics(s, &k));
     }
     let mut body = row().grow(1.0).min_h(0.0).px(8.0).pb(6.0).gap(3.0);
+    if expanded {
+        body = body.pt(8.0).pb(8.0);
+    }
     if !expanded {
         body = body.child(traffic(s, &k, cx)).child(splitter(&k));
     }

@@ -159,7 +159,7 @@ pub fn detail_view(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> 
                 k.c.text_muted,
             ));
     };
-    let mut pane = col().min_h(0.0).padding(12.0).gap(8.0);
+    let mut pane = col().gap(8.0);
     let summary = s.snapshot.requests.iter().find(|r| r.id == id);
     pane = pane.child(exchange_header(s, summary, id, k));
     if !s.visible.iter().any(|r| r.id == id) {
@@ -212,7 +212,23 @@ pub fn detail_view(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> 
             .wrap(),
         );
     }
-    pane.child(content(s, k, cx, layers))
+    let expanded = s.workspace.detail_expanded;
+    let padding = if expanded { 20.0 } else { 12.0 };
+    let gutter = if expanded {
+        request_scroll::DETAIL_GUTTER
+    } else {
+        0.0
+    };
+    let body = content(s, k, cx, layers);
+    col()
+        .min_h(0.0)
+        .padding(padding)
+        // Overview already reserves a right-hand scrollbar gutter. Mirror it on
+        // the left, and align the fixed header and other tabs to the same edges.
+        .pl(padding + gutter)
+        .gap(8.0)
+        .child(pane.pr(gutter))
+        .child(if s.tab == 0 { body } else { body.pr(gutter) })
 }
 
 fn content(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> El {
@@ -263,7 +279,13 @@ fn content(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> El {
             }
             return scroll_overview(s, body.child(overview::summary(s, summary, k)), k, cx);
         }
-        return motion::detail(s, detail_states::missing(s, k));
+        return motion::detail(s, detail_states::missing(s, k)).pr(
+            if s.workspace.detail_expanded && s.tab == 0 {
+                request_scroll::DETAIL_GUTTER
+            } else {
+                0.0
+            },
+        );
     };
     if s.tab == 2 && detail.response.json.is_none() {
         if detail.summary.outcome == Outcome::Pending && !detail.response.complete {
