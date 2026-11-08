@@ -241,6 +241,12 @@ impl<'a, S: 'static> Diagram<'a, S> {
         let mut grid = Shape::new();
         let [w, h] = self.state.viewport;
         let node_prefix = format!("{}:node:", self.key);
+        // Separate the canvas from the surrounding panel while keeping the
+        // decorative dots quieter than card borders and connections.
+        let background = rune::color::hex(if k.dark { "#0b0b0b" } else { "#eeeeee" })
+            .expect("static canvas color");
+        let dot = rune::color::hex(if k.dark { "#555555" } else { "#aaaaaa" })
+            .expect("static grid color");
         // useDiagramViewport.ts thins the decorative grid at overview zooms.
         let spacing =
             (24.0 * cam.scale.max(1.0 / cam.scale.sqrt())).max(((w * h) / 12_000.0).sqrt());
@@ -253,14 +259,14 @@ impl<'a, S: 'static> Diagram<'a, S> {
                 grid = grid.line(
                     p,
                     p,
-                    1.6 * cam.scale.sqrt().clamp(0.5, 0.75),
+                    1.8 * cam.scale.sqrt().clamp(0.8, 1.0),
                     LineCap::Round,
-                    alpha(k.c.layer_02, 0.45 * cam.scale.sqrt().min(1.0)),
+                    alpha(dot, 0.7 * cam.scale.sqrt().clamp(0.75, 1.0)),
                 );
             }
         }
         let mut viewport = el().key(format!("{}:viewport", self.key)).w_full().grow(1.0).min_h(0.0)
-            .fill(k.c.layer_01).radius(8.0).clip_rounded(8.0).border(1.0,k.c.border_base)
+            .fill(background).radius(8.0).clip_rounded(8.0).border(1.0,k.c.border_base)
             .focusable(true).focus_ring(2.0, -2.0, k.c.text_base).role("group").label("Diagram canvas")
             .description("Drag background to pan. Wheel or pinch to zoom. Canvas arrow keys pan. Tab enters cards; Up and Down browse them. Plus and minus zoom, zero fits, one sets actual size.")
             .on_layout_tx(move |s: &mut S, [_,_,w,h], tx| {
@@ -297,7 +303,7 @@ impl<'a, S: 'static> Diagram<'a, S> {
                     Key::Text(t) if t=="0" => state.fit(size),
                     Key::Text(t) if t=="1" => state.zoom(1.0 / state.camera.scale), _ => { state.manual_view = was_manual; return false; },
                 } true
-            }).child(canvas(grid).absolute(0.0,0.0).size(w.max(1.0),h.max(1.0))).child(world);
+            }).child(canvas(grid).key(format!("{}:grid", self.key)).a11y_hidden().absolute(0.0,0.0).size(w.max(1.0),h.max(1.0))).child(world);
         let active_card = self
             .state
             .selected
