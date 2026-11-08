@@ -44,3 +44,7 @@ The patch also updates RuneKit Select labels to retain the beginning and end of
 long option names. Options expose their full names as wrapped hover help, while
 accessible names retain the original text. Diagram headings use the same visual
 truncation and full-name help in the reusable diagram crate.
+
+`Table::decorate_row` lets the inspector color each arriving request across the
+whole row. The callback keeps the table's cells, selection handlers, and virtual
+row identity. It must preserve row height so scrolling geometry stays correct.

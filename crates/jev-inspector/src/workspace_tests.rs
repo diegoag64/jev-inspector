@@ -47,6 +47,138 @@ fn request_scrollbar_drags_the_table_and_hides_when_rows_fit() {
         "no thumb without overflow"
     );
 }
+
+#[test]
+fn follow_returns_to_top_on_enable_and_arrivals_but_leaves_manual_browsing_alone() {
+    let mut rt = runtime((1100.0, 700.0));
+    rt.poll = Some(poll);
+    rt.update(|s, _| {
+        s.workspace.compact = false;
+        s.demo = false;
+    });
+    rt.frame(0.2);
+    let scroll_down = |rt: &mut rune::Runtime<State>| {
+        rt.update(|_, tx| tx.scroll_to_instant("requests/viewport", 0.0, 180.0));
+        rt.frame(0.2);
+        rt.frame(0.2);
+    };
+    let offset = |rt: &rune::Runtime<State>| {
+        let elements = rt.elements();
+        elements
+            .iter()
+            .find(|e| e.path.ends_with("requests/viewport/rows"))
+            .expect("request rows")
+            .scrolled[1]
+    };
+    scroll_down(&mut rt);
+    assert!(offset(&rt) > 100.0);
+    tap(&mut rt, "follow");
+    rt.frame(0.2);
+    assert!(
+        offset(&rt).abs() < 0.5,
+        "enabling Follow scrolls to the top"
+    );
+    scroll_down(&mut rt);
+    rt.update(|s, _| {
+        let mut snapshot = s.snapshot.clone();
+        snapshot.requests.insert(0, demo::exchange(13).summary);
+        s.apply_snapshot(snapshot);
+    });
+    rt.frame(0.2);
+    rt.frame(0.2);
+    assert_eq!(rt.state.selected, Some(13));
+    assert!(
+        offset(&rt).abs() < 0.5,
+        "new rows stay at the top while following"
+    );
+    tap(&mut rt, "follow");
+    scroll_down(&mut rt);
+    rt.update(|s, _| {
+        let mut snapshot = s.snapshot.clone();
+        snapshot.requests.insert(0, demo::exchange(14).summary);
+        s.apply_snapshot(snapshot);
+    });
+    rt.frame(0.2);
+    rt.frame(0.2);
+    assert!(
+        offset(&rt) > 100.0,
+        "arrivals must not reset manual scrolling"
+    );
+    assert_eq!(rt.state.selected, Some(13));
+}
+
+#[test]
+fn new_request_rows_start_in_opposite_theme_then_settle_in_both_densities() {
+    for dark in [true, false] {
+        for compact in [true, false] {
+            for reduced in [false, true] {
+                let mut rt = runtime((1100.0, 700.0));
+                rt.set_system_reduced_motion(reduced);
+                rt.update(|s, _| {
+                    s.dark = dark;
+                    s.workspace.compact = compact;
+                });
+                rt.frame(0.3);
+                rt.update(|s, _| {
+                    s.workspace.arrivals.tick(10.0);
+                    let mut snapshot = s.snapshot.clone();
+                    snapshot.requests.insert(0, demo::exchange(13).summary);
+                    s.apply_snapshot(snapshot);
+                    s.select(13);
+                });
+                rt.frame(0.0);
+                let row_color = |rt: &rune::Runtime<State>| {
+                    rt.elements()
+                        .iter()
+                        .find(|e| e.path.ends_with("/rows/13"))
+                        .expect("new row mounted")
+                        .fill
+                };
+                let expected =
+                    motion::traffic_selected(&ui::kit(if reduced { dark } else { !dark }));
+                assert_eq!(
+                    row_color(&rt),
+                    expected,
+                    "dark={dark}, compact={compact}, reduced={reduced}"
+                );
+                let elements = rt.elements();
+                let text = elements
+                    .iter()
+                    .find(|e| {
+                        e.path.contains("/rows/13/request/")
+                            && e.text.as_ref().is_some_and(|t| {
+                                if compact {
+                                    t != "#013"
+                                } else {
+                                    t.contains("POST")
+                                }
+                            })
+                    })
+                    .expect("request text");
+                assert_eq!(
+                    text.text_color,
+                    Some(ui::kit(if reduced { dark } else { !dark }).c.text_base)
+                );
+                rt.update(|s, _| {
+                    s.workspace.arrivals.tick(10.6);
+                });
+                rt.frame(0.0);
+                if !reduced {
+                    assert_ne!(
+                        row_color(&rt),
+                        expected,
+                        "row fades without another snapshot"
+                    );
+                }
+                rt.update(|s, _| {
+                    s.workspace.arrivals.tick(11.3);
+                });
+                rt.frame(0.3);
+                assert_eq!(row_color(&rt), motion::traffic_selected(&ui::kit(dark)));
+            }
+        }
+    }
+}
 fn tap(rt: &mut rune::Runtime<State>, key: &str) {
     let (x, y) = rt
         .find(key)

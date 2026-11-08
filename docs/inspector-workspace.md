@@ -81,8 +81,13 @@ Click **Pause** to freeze the list. The relay continues forwarding and recording
 The paused banner reports how many requests arrived. A selected exchange can finish
 updating while paused. Click **Resume** to load the latest retained list.
 
-Click **Follow** to select the newest matching request as it arrives. Selecting a
-different row or sorting turns Follow off.
+Click **Follow** to select the newest matching request and scroll to the top.
+New requests keep the list at the top while Follow is on. Selecting a different
+row or sorting turns Follow off.
+
+New live rows appear in the opposite theme, then fade into the selected theme
+over 1.2 seconds. Existing history and response updates do not repeat the cue.
+The cue is disabled when the system requests reduced motion.
 
 Click **Clear** to hide requests already in this window. **Restore** shows the ones
 the relay still retains. Clear does not delete relay history or stop capture.

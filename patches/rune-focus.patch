@@ -15,7 +15,7 @@
 -            || !self.keep_on_screen.is_empty() || !self.text_flights.is_empty() || !self.launches.is_empty() || self.select.is_some()
 +            || self.focus_request.is_some() || !self.keep_on_screen.is_empty() || !self.text_flights.is_empty() || !self.launches.is_empty() || self.select.is_some()
      }
- 
+
      /// An app marker on the next frame, e.g. `tx.trace_event(format_args!("lab:{step:?}"))`.
 @@ -258,7 +259,17 @@
      /// `focused` in the model without `on_edit` takes focus back on the next frame unless the
@@ -33,7 +33,7 @@
 +        self.blur = false;
 +        self.focus_request = Some(key.into());
      }
- 
+
      /// The [`El::selectable`] text selection as this event arrived: the texts it covers with
 --- a/crates/rune/src/runtime/frame.rs
 +++ b/crates/rune/src/runtime/frame.rs
@@ -156,7 +156,7 @@ diff --git a/crates/rune-kit/src/select.rs b/crates/rune-kit/src/select.rs
 +    value.graphemes(true).collect::<Vec<_>>().chunks(48)
 +        .map(|line| line.concat()).collect::<Vec<_>>().join("\n")
  }
- 
+
  impl Select {
 @@ -185,6 +191,7 @@
                  .role("option")
@@ -193,3 +193,61 @@ diff --git a/crates/rune-kit/src/select.rs b/crates/rune-kit/src/select.rs
                              .a11y_hidden(),
                      )
                      .child(
+--- a/crates/rune-kit/src/table.rs
++++ b/crates/rune-kit/src/table.rs
+@@ -462,6 +462,7 @@
+
+ /// Names row `i`.
+ type IdAt<'a> = dyn Fn(usize) -> Cow<'a, str> + 'a;
++type RowDecorateFn<S> = Rc<dyn Fn(&S, usize, El) -> El>;
+ type CellFn<S> = Rc<dyn Fn(&S, usize, &str) -> Cell>;
+ type RowIdFn<S> = for<'a> fn(&'a S, usize) -> Cow<'a, str>;
+
+@@ -473,6 +474,7 @@
+     row_id: RowIdFn<S>,
+     columns: Vec<TableColumn>,
+     cell: Option<CellFn<S>>,
++    decorate_row: Option<RowDecorateFn<S>>,
+     on_sort: Option<Rc<dyn Fn(&mut S, &str, SortDir, &mut Tx)>>,
+     on_select: Option<Rc<dyn Fn(&mut S, &str, &mut Tx)>>,
+     on_open: Option<Rc<dyn Fn(&mut S, &str, &mut Tx)>>,
+@@ -485,7 +487,7 @@
+     /// `get` and `get_mut` find the [`TableState`]; `len` counts the rows and `row_id` names
+     /// row `i` (in the app's current order) with an id unique among them.
+     pub fn new(get: fn(&S) -> &TableState, get_mut: fn(&mut S) -> &mut TableState, len: fn(&S) -> usize, row_id: RowIdFn<S>) -> Self {
+-        Table { get, get_mut, len, row_id, columns: Vec::new(), cell: None, on_sort: None, on_select: None, on_open: None, zebra: false, style: None, name: None }
++        Table { get, get_mut, len, row_id, columns: Vec::new(), cell: None, decorate_row: None, on_sort: None, on_select: None, on_open: None, zebra: false, style: None, name: None }
+     }
+     pub fn column(mut self, c: TableColumn) -> Self {
+         self.columns.push(c);
+@@ -494,6 +496,12 @@
+     /// What row `i` shows in column `col` (the column's id).
+     pub fn cell(mut self, f: impl Fn(&S, usize, &str) -> Cell + 'static) -> Self {
+         self.cell = Some(Rc::new(f));
++        self
++    }
++    /// Decorate a completed row without replacing its identity, cells or interaction handlers.
++    /// Keep the row height unchanged so virtualisation retains correct geometry.
++    pub fn decorate_row(mut self, f: impl Fn(&S, usize, El) -> El + 'static) -> Self {
++        self.decorate_row = Some(Rc::new(f));
+         self
+     }
+     /// A sortable column's header was clicked: the table already shows the new sort; reorder
+@@ -529,7 +537,7 @@
+
+     /// The table, filling the height its parent gives it.
+     pub fn build(self, s: &S, k: &Kit) -> El {
+-        let Table { get, get_mut, len, row_id, columns, cell, on_sort, on_select, on_open, zebra, style, name } = self;
++        let Table { get, get_mut, len, row_id, columns, cell, decorate_row, on_sort, on_select, on_open, zebra, style, name } = self;
+         let style = style.unwrap_or_else(|| TableStyle::from_kit(k));
+         let state = get(s);
+         let count = len(s);
+@@ -592,7 +600,7 @@
+                     }
+                 });
+             }
+-            r
++            if let Some(decorate) = &decorate_row { decorate(s, i, r) } else { r }
+         };
+         let rows = col()
+             .key("rows")

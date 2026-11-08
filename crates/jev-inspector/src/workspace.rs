@@ -12,6 +12,8 @@ pub enum Filter {
 pub struct Workspace {
     pub paused: bool,
     pub follow: bool,
+    pub follow_scroll_pending: bool,
+    pub arrivals: motion::Arrivals,
     pub pending: Option<Snapshot>,
     pub clear_before: u64,
     pub filter: Filter,
@@ -41,6 +43,8 @@ impl Default for Workspace {
         Self {
             paused: false,
             follow: false,
+            follow_scroll_pending: false,
+            arrivals: motion::Arrivals::default(),
             pending: None,
             clear_before: 0,
             filter: Filter::All,
@@ -83,6 +87,7 @@ impl State {
         self.diagram.request_fit();
     }
     pub fn apply_snapshot(&mut self, snapshot: Snapshot) {
+        self.workspace.arrivals.record(&self.snapshot, &snapshot);
         if self.snapshot.instance_id != snapshot.instance_id {
             if !self.snapshot.instance_id.is_empty() {
                 self.workspace.notice = Some(("Relay restarted. Previous stars and comparison baseline were cleared. Save a session to keep an investigation across restarts.".into(), false));
@@ -125,6 +130,14 @@ impl State {
         {
             self.apply_snapshot(snapshot);
             self.mailbox.lock().unwrap().refresh = true;
+        }
+    }
+    pub fn follow_scroll(&mut self, tx: &mut Tx) {
+        if std::mem::take(&mut self.workspace.follow_scroll_pending)
+            && self.workspace.follow
+            && !self.visible.is_empty()
+        {
+            tx.scroll_to_instant("requests/viewport", 0.0, 0.0);
         }
     }
     pub fn clear_view(&mut self) {
@@ -222,6 +235,7 @@ impl State {
                 ));
             }
             Ok(session::ResultValue::Loaded(session, path)) => {
+                self.workspace.arrivals.clear();
                 self.workspace.last_received = session.last_received;
                 self.workspace.comparison = compare::Comparison::default();
                 self.workspace.probability_limits.clear();
@@ -266,6 +280,7 @@ impl State {
         true
     }
     pub fn return_live(&mut self) {
+        self.workspace.arrivals.clear();
         self.workspace.comparison = compare::Comparison::default();
         self.workspace.probability_limits.clear();
         self.workspace.session_name = None;

@@ -448,12 +448,13 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                     .help(if s.workspace.follow {
                         "Stop following the newest matching request"
                     } else {
-                        "Select the newest matching request as it arrives"
+                        "Keep the newest matching request selected and visible at the top"
                     })
-                    .on_press(|s: &mut State| {
+                    .on_press_tx(|s: &mut State, tx| {
                         s.workspace.follow = !s.workspace.follow;
                         s.table.clear_sort();
                         s.filter_rows();
+                        s.follow_scroll(tx);
                     })
                     .build(k)
                     .key("follow")
@@ -647,9 +648,12 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
     style.cell_pad = 9.0;
     style.rule = k.c.border_base;
     // Opaque selection surfaces keep supporting text and semantic status readable.
-    style.selected = rune::color::hex(if k.dark { "#303030" } else { "#ededed" }).unwrap();
-    style.muted = rune::color::hex(if k.dark { "#b8b8b8" } else { "#5c5c5c" }).unwrap();
-    let supporting = style.muted;
+    style.selected = motion::traffic_selected(k);
+    style.muted = motion::traffic_muted(k);
+    let opposite = ui::kit(!k.dark);
+    let reduced = cx.is_reduced_motion();
+    let row_kit = k.clone();
+    let row_opposite = opposite.clone();
     let table_kit = k.clone();
     Table::new(
         |s: &State| &s.table,
@@ -704,6 +708,16 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
     .cell(move |s, i, column| {
         let r = &s.visible[i];
         let k = &table_kit;
+        let progress = s.workspace.arrivals.progress(r.id, reduced);
+        let color = |from: Color, to: Color| {
+            if progress >= 1.0 {
+                to
+            } else {
+                from.mix(to, progress)
+            }
+        };
+        let supporting = color(motion::traffic_muted(&opposite), motion::traffic_muted(k));
+        let foreground = color(opposite.c.text_base, k.c.text_base);
         match column {
             "star" => {
                 let starred = s.workspace.starred.contains(&r.id);
@@ -711,9 +725,9 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                     if starred { "\u{2605}" } else { "\u{00b7}" },
                     12.0,
                     if starred {
-                        k.c.text_accent
+                        color(opposite.c.text_accent, k.c.text_accent)
                     } else {
-                        k.c.text_faint
+                        color(opposite.c.text_faint, k.c.text_faint)
                     },
                 ));
                 if s.selected == Some(r.id) {
@@ -723,7 +737,7 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                             .absolute(-7.0, 1.0)
                             .size(3.0, 22.0)
                             .radius(1.5)
-                            .fill(k.c.text_base)
+                            .fill(foreground)
                             .motion(rune::Spring::new(0.24, 0.0))
                             .a11y_hidden(),
                     );
@@ -733,11 +747,7 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
             "request" if !s.workspace.compact => Cell::el(
                 col()
                     .gap(4.0)
-                    .child(label(
-                        format!("{}  {}", r.method, r.path),
-                        12.0,
-                        k.c.text_base,
-                    ))
+                    .child(label(format!("{}  {}", r.method, r.path), 12.0, foreground))
                     .child(label(
                         format!(
                             "#{:03} · {}",
@@ -759,7 +769,7 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                                 .clone()
                                 .unwrap_or_else(|| format!("{} {}", r.method, r.path)),
                             12.0,
-                            k.c.text_base,
+                            foreground,
                         )
                         .grow(1.0)
                         .min_w(0.0)
@@ -777,7 +787,10 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
             } else {
                 status(r)
             })
-            .color(ui::status_color(r, k))
+            .color(color(
+                ui::status_color(r, &opposite),
+                ui::status_color(r, k),
+            ))
             .mono(),
             "time" => Cell::text(
                 r.duration_ms
@@ -785,20 +798,44 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                     .unwrap_or_else(|| "—".into()),
             )
             .mono()
-            .muted(),
-            "started" => Cell::text(ui::time(r.started_at_ms)).mono().muted(),
+            .color(supporting),
+            "started" => Cell::text(ui::time(r.started_at_ms))
+                .mono()
+                .color(supporting),
             "tokens" => Cell::text(
                 cost::usage(s, r)
                     .and_then(|u| u.input_tokens)
                     .map_or("—".into(), |v| v.to_string()),
             )
             .mono()
-            .muted(),
+            .color(supporting),
             "cost" => Cell::el(
-                ui::mono(cost::estimate(s, r).display(), 12.0, k.c.text_base)
+                ui::mono(cost::estimate(s, r).display(), 12.0, foreground)
                     .help(cost::row_help(s, r)),
             ),
             _ => Cell::text(""),
+        }
+    })
+    .decorate_row(move |s, i, row| {
+        let id = s.visible[i].id;
+        let progress = s.workspace.arrivals.progress(id, reduced);
+        let background = |k: &Kit| {
+            if s.selected == Some(id) {
+                motion::traffic_selected(k)
+            } else {
+                k.c.layer_01
+            }
+        };
+        if progress < 1.0 {
+            let fill = background(&row_opposite).mix(background(&row_kit), progress);
+            // These colors already advance on the arrival clock; a second spring
+            // would delay the cue and replay it when virtual rows remount.
+            row.fill(fill)
+                .hover(fill)
+                .instant_changes()
+                .motion(rune::Spring::NONE)
+        } else {
+            row.instant_changes().motion(rune::Spring::NONE)
         }
     })
     .on_sort(|s, _, _, _| {

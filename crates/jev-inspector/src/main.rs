@@ -184,6 +184,7 @@ impl State {
         {
             self.select(first.id);
         }
+        self.workspace.follow_scroll_pending = self.workspace.follow;
     }
     fn select(&mut self, id: u64) {
         showcase::stop(self);
@@ -244,14 +245,15 @@ fn setup(state: &mut State, waker: rune::Waker) {
 }
 
 fn poll(state: &mut State, now: f64, tx: &mut Tx) -> bool {
-    let changed = state.poll_job() | showcase::tick(state, now, tx);
+    let changed =
+        state.workspace.arrivals.tick(now) | state.poll_job() | showcase::tick(state, now, tx);
     let update = state
         .mailbox
         .lock()
         .expect("inspector mailbox")
         .update
         .take();
-    match update {
+    let changed = match update {
         Some(Ok(update)) => {
             state.connected = true;
             state.connection_error = None;
@@ -288,7 +290,12 @@ fn poll(state: &mut State, now: f64, tx: &mut Tx) -> bool {
             changed || connection_changed
         }
         None => changed,
+    };
+    state.follow_scroll(tx);
+    if state.workspace.arrivals.active() {
+        tx.wake_after(std::time::Duration::from_millis(16));
     }
+    changed
 }
 
 fn clip(value: &str, limit: usize) -> String {
