@@ -5,18 +5,13 @@ use workspace::Filter;
 pub fn view(s: &State, cx: &mut Cx<State>) -> El {
     let k = ui::kit(s.dark);
     let header = row()
+        .key("workspace-header")
         .h(44.0)
-        .px(14.0)
+        .pl(cx.titlebar_inset() + 14.0)
+        .pr(14.0)
         .gap(9.0)
         .center_y()
-        .child(
-            el().size(24.0, 24.0)
-                .center()
-                .radius(5.0)
-                .fill(k.alpha(k.c.text_base, 0.08))
-                .child(label("j", 19.0, k.c.text_base)),
-        )
-        .child(label("jev", 16.0, k.c.text_base))
+        .child(label("jev", 16.0, k.c.text_base).key("workspace-title"))
         .child(label("inspector", 14.0, k.c.text_muted))
         .child(el().grow(1.0))
         .child(ui::badge(
@@ -103,6 +98,11 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
             .build(&k)
             .key("theme-toggle"),
         );
+    let header = if cfg!(target_os = "macos") {
+        header.window_drag()
+    } else {
+        header
+    };
     let mut root = col()
         .key("workspace")
         .on_key(|s: &mut State, event, _| {
@@ -123,6 +123,7 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
         })
         .w_full()
         .h_full()
+        .pb(8.0)
         .fill(k.c.bg_base)
         .child(header)
         .child(ui::rule(&k));
@@ -237,9 +238,15 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
     if !expanded {
         root = root.child(metrics(s, &k));
     }
-    let mut body = row().grow(1.0).min_h(0.0).px(8.0).pb(6.0).gap(3.0);
+    let mut body = row()
+        .key("workspace-body")
+        .grow(1.0)
+        .min_h(0.0)
+        .px(8.0)
+        .pb(8.0)
+        .gap(3.0);
     if expanded {
-        body = body.pt(8.0).pb(8.0);
+        body = body.pt(8.0);
     }
     if !expanded {
         body = body.child(traffic(s, &k, cx)).child(splitter(&k));
@@ -662,12 +669,6 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
         |s, i| s.visible[i].id.to_string().into(),
     )
     .column(
-        TableColumn::new("star", "")
-            .width(33.0)
-            .min(33.0)
-            .resizable(false),
-    )
-    .column(
         TableColumn::new("request", "Request")
             .flex(1.0)
             .min(135.0)
@@ -719,31 +720,6 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
         let supporting = color(motion::traffic_muted(&opposite), motion::traffic_muted(k));
         let foreground = color(opposite.c.text_base, k.c.text_base);
         match column {
-            "star" => {
-                let starred = s.workspace.starred.contains(&r.id);
-                let mut cell = row().h(24.0).center_y().child(label(
-                    if starred { "\u{2605}" } else { "\u{00b7}" },
-                    12.0,
-                    if starred {
-                        color(opposite.c.text_accent, k.c.text_accent)
-                    } else {
-                        color(opposite.c.text_faint, k.c.text_faint)
-                    },
-                ));
-                if s.selected == Some(r.id) {
-                    cell = cell.child(
-                        el().key("request-selection-marker")
-                            .matched("request-selection-marker")
-                            .absolute(-7.0, 1.0)
-                            .size(3.0, 22.0)
-                            .radius(1.5)
-                            .fill(foreground)
-                            .motion(rune::Spring::new(0.24, 0.0))
-                            .a11y_hidden(),
-                    );
-                }
-                Cell::el(cell)
-            }
             "request" if !s.workspace.compact => Cell::el(
                 col()
                     .gap(4.0)
@@ -937,6 +913,7 @@ fn empty(s: &State, k: &Kit) -> El {
 }
 fn footer(s: &State, k: &Kit) -> El {
     row()
+        .key("workspace-footer")
         .h(26.0)
         .px(14.0)
         .gap(14.0)

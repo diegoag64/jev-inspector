@@ -18,6 +18,57 @@ fn runtime(size: (f32, f32)) -> rune::Runtime<State> {
 }
 
 #[test]
+fn footer_keeps_bottom_inset_at_minimum_and_default_window_sizes() {
+    for size in [(1100.0, 700.0), (1440.0, 900.0)] {
+        let mut rt = runtime(size);
+        for expanded in [false, true] {
+            rt.update(|s, _| s.workspace.detail_expanded = expanded);
+            rt.frame(0.5);
+            let footer = rt.presented("workspace-footer").unwrap().0;
+            assert!((size.1 - footer[1] - footer[3] - 8.0).abs() < 0.5);
+            assert_eq!(footer[3], 26.0, "footer must not shrink or clip its badge");
+            if !expanded {
+                let panel = rt.presented("splitter").unwrap().0;
+                assert!((footer[1] - panel[1] - panel[3] - 8.0).abs() < 0.5);
+            }
+        }
+    }
+}
+
+#[test]
+fn header_reserves_native_button_space_and_releases_it_in_full_screen() {
+    let mut rt = runtime((1100.0, 700.0));
+    for inset in [74.0, 0.0, 74.0] {
+        rt.set_titlebar_inset(inset);
+        rt.frame(0.5);
+        let title = rt.presented("workspace-title").unwrap().0;
+        assert!((title[0] - inset - 14.0).abs() < 0.5);
+        assert_eq!(rt.presented("workspace-header").unwrap().0[3], 44.0);
+        let dark = rt.state.dark;
+        tap(&mut rt, "theme-toggle");
+        assert_ne!(rt.state.dark, dark, "toolbar actions remain clickable");
+    }
+}
+
+#[test]
+#[cfg(target_os = "macos")]
+fn mac_header_drags_only_outside_controls() {
+    let mut rt = runtime((1100.0, 700.0));
+    rt.set_titlebar_inset(window_chrome().titlebar_inset());
+    rt.frame(0.5);
+    // Empty header space between the branding and the connection badge.
+    rt.pointer_down(400.0, 22.0);
+    assert_eq!(rt.take_titlebar_action(), Some(rune::TitlebarAction::Drag));
+    rt.pointer_up(400.0, 22.0);
+    let (x, y) = rt.find("theme-toggle").unwrap();
+    rt.pointer_down(x, y);
+    assert_eq!(rt.take_titlebar_action(), None);
+    rt.pointer_up(x, y);
+    rt.frame(0.2);
+    assert!(!rt.state.dark);
+}
+
+#[test]
 fn request_scrollbar_drags_the_table_and_hides_when_rows_fit() {
     let mut rt = runtime((1100.0, 700.0));
     // Compact rows now fit this fixture; use roomy rows to exercise overflow.

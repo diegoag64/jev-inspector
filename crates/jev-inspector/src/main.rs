@@ -394,15 +394,20 @@ fn main() {
     .init(move || state)
     .args(rune_args)
     .tab_visits_controls(true)
-    .chrome(rune::Chrome {
-        full_size_content: false,
-        ..rune::Chrome::default()
-    });
+    .chrome(window_chrome());
     let result = app.try_run();
     mailbox.lock().expect("inspector mailbox").stop = true;
     if let Err(error) = result {
         eprintln!("Inspector window could not start: {error}");
         std::process::exit(1);
+    }
+}
+
+fn window_chrome() -> rune::Chrome {
+    rune::Chrome {
+        full_size_content: cfg!(target_os = "macos"),
+        traffic_lights: cfg!(target_os = "macos").then_some((14.0, 15.0)),
+        drag_regions: cfg!(target_os = "macos"),
     }
 }
 

@@ -4,6 +4,10 @@ Start the local demo with `python dev.py demo --skip-build`, or connect the insp
 to a relay as described in [the quickstart](bridge-quickstart.md). The demo generates
 one batch of synthetic requests, then stays idle. It does not contact TypeSafe.
 
+On macOS, the native window buttons sit inside the top toolbar. Drag an empty
+part of the toolbar to move the window. Double-click it to perform the titlebar
+action selected in macOS settings.
+
 The sun or moon button switches between neutral grayscale light and dark themes.
 Status colors distinguish errors and warnings; JSON keeps syntax colors. Toolbar
 actions use icons with hover labels and keyboard hints. In Traffic, the pause/play
