@@ -35,6 +35,14 @@ The first time it opens, the app walks you through setup:
 
 To change the port or capture mode later, click **Port 8787** in the toolbar, or **Relay settings…** in Connection setup. If the new port fails to start, the previous relay keeps running.
 
+## Stop and start the relay
+
+Click the stop button next to **Port 8787** in the toolbar, or **Stop relay** in Connection setup. The port is released right away, and your backend's requests to it fail until you start the relay again. The toolbar badge changes to **Relay stopped**, and a banner offers **Start relay**.
+
+Requests you already captured stay in the list. Exchanges you opened before stopping keep their details; others may show as unavailable, because the relay's history clears when it stops.
+
+**Start relay** (the banner, the toolbar play button, or Connection setup) restarts it on the saved port. If another app took the port while the relay was stopped, Relay settings opens so you can pick another. The app always starts the relay when it launches, even if you stopped it last time.
+
 ## Developer builds
 
 `cargo run -p jev-inspector` still connects to a separately started `jev-bridge` through its connection file, as described in the [bridge quickstart](bridge-quickstart.md). To try app mode from a terminal, run:

@@ -219,10 +219,10 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("jev-host-{}", jev_bridge::new_token()));
         let file = dir.join("connection.json");
         let host = Host::new(file.clone());
-        let blocker = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        // Stay below the ephemeral range, where parallel tests' port-0 binds land.
+        let free = suggest(21_000 + (std::process::id() % 2_000) as u16).expect("a free port");
+        let blocker = TcpListener::bind((Ipv4Addr::LOCALHOST, suggest(free).unwrap())).unwrap();
         let busy = blocker.local_addr().unwrap().port();
-        let free = suggest(busy).expect("a free port");
-        drop(TcpListener::bind((Ipv4Addr::LOCALHOST, free)).unwrap());
 
         let first = Settings {
             port: free,

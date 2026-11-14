@@ -80,3 +80,7 @@ glyph!(
     RELAY,
     r#"<circle cx="12" cy="12" r="4"/><path d="M3 12h5M16 12h5"/><circle cx="12" cy="12" r="1" fill="currentColor"/>"#
 );
+glyph!(
+    STOP,
+    r#"<rect x="6" y="6" width="12" height="12" rx="2.5"/>"#
+);

@@ -123,12 +123,24 @@ fn app_guide(s: &State, k: &Kit) -> El {
             k,
         ))
         .child(label("If your code sets baseUrl, baseURL, or Python base_url explicitly, use this relay URL instead. Do not append /v1.", 12.0, k.c.text_muted).wrap())
-        .child(label(format!("Relay: {relay} · {}", if settings.capture_bodies { "full capture" } else { "metadata only" }), 12.0, k.c.text_muted).selectable(true))
-        .child(row().child(ui::button("Relay settings…", "setup-relay-settings", true, k, |s| {
+        .child(label(format!("Relay: {relay} · {} · {}", if settings.capture_bodies { "full capture" } else { "metadata only" }, if s.onboarding.stopped { "stopped" } else { "running" }), 12.0, k.c.text_muted).selectable(true))
+        .child(row().gap(8.0).child(ui::button("Relay settings…", "setup-relay-settings", true, k, |s| {
             s.workspace.help = false;
             s.workspace.setup_help = false;
             crate::onboarding::open(s, crate::onboarding::PORT);
-        })))
+        })).child(ui::button(
+            if s.onboarding.stopped { "Start relay" } else { "Stop relay" },
+            "setup-relay-toggle",
+            false,
+            k,
+            |s| {
+                if s.onboarding.stopped {
+                    crate::onboarding::resume_relay(s);
+                } else {
+                    crate::onboarding::stop_relay(s);
+                }
+            },
+        )))
 }
 
 pub fn guide(s: &State, k: &Kit) -> El {

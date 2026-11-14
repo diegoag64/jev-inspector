@@ -36,6 +36,8 @@ pub struct Onboarding {
     /// count as the first request.
     pub previous_instance: Option<String>,
     pub copied: bool,
+    /// The user stopped the hosted relay, or it could not start at launch.
+    pub stopped: bool,
 }
 
 impl Default for Onboarding {
@@ -53,6 +55,7 @@ impl Default for Onboarding {
             settings: Settings::default(),
             previous_instance: None,
             copied: false,
+            stopped: false,
         }
     }
 }
@@ -137,6 +140,10 @@ fn start_relay(s: &mut State) {
         s.mailbox.lock().expect("inspector mailbox").refresh = true;
     }
     s.onboarding.settings = settings;
+    if s.onboarding.stopped {
+        s.onboarding.stopped = false;
+        s.connection_error = None;
+    }
     let prefs = &mut s.workspace.prefs;
     if let Err(e) = prefs
         .set("relay", &settings)
@@ -146,6 +153,39 @@ fn start_relay(s: &mut State) {
     }
     s.onboarding.copied = false;
     go(s, CONNECT);
+}
+
+pub fn stopped_message(s: &State) -> String {
+    format!(
+        "Relay stopped. Requests to {} fail until you start it again. Captured requests stay visible.",
+        relay_host::relay_url(s.onboarding.settings.port)
+    )
+}
+
+/// Stop the hosted relay. The workspace keeps the requests it already received.
+pub fn stop_relay(s: &mut State) {
+    if let Some(host) = &s.relay {
+        host.stop();
+    }
+    s.onboarding.stopped = true;
+    s.connected = false;
+    s.connection_error = Some(stopped_message(s));
+}
+
+/// Start the hosted relay again with the saved settings. If the port was taken
+/// in the meantime, open Relay settings with the error.
+pub fn resume_relay(s: &mut State) {
+    if let Some(host) = &s.relay
+        && let Err(error) = host.start(s.onboarding.settings)
+    {
+        s.onboarding.first_run = false;
+        open(s, PORT);
+        s.onboarding.error = Some(format!("{error} Choose another port to start capturing."));
+        return;
+    }
+    s.onboarding.stopped = false;
+    s.connection_error = None;
+    s.mailbox.lock().expect("inspector mailbox").refresh = true;
 }
 
 pub fn finish(s: &mut State) {
@@ -1056,6 +1096,74 @@ mod tests {
         press(&mut rt, "onboarding-finish", 4.0);
         assert!(!rt.state.onboarding.open);
         assert!(rt.find("workspace").is_some());
+    }
+
+    #[test]
+    fn toolbar_stops_and_restarts_the_hosted_relay() {
+        let dir = std::env::temp_dir().join(format!("jev-stop-{}", jev_bridge::new_token()));
+        let host = relay_host::Host::new(dir.join("connection.json"));
+        let port =
+            relay_host::suggest(24_000 + (std::process::id() % 2_000) as u16).expect("a free port");
+        let settings = Settings {
+            port,
+            capture_bodies: true,
+        };
+        host.start(settings).unwrap();
+        let mut s = State::default();
+        s.onboarding.app = true;
+        s.onboarding.settings = settings;
+        s.offline_fixture = true;
+        s.relay = Some(host.clone());
+        let mut rt = rune::Runtime::new(
+            s,
+            crate::view,
+            (1100.0, 700.0),
+            rune::Env {
+                system_dark: true,
+                scale: 1.0,
+            },
+        );
+        rt.frame(0.0);
+        let press = |rt: &mut rune::Runtime<State>, key: &str, t: f64| {
+            let (x, y) = rt
+                .find(key)
+                .unwrap_or_else(|| panic!("{key} is not on screen"));
+            rt.pointer_down(x, y);
+            rt.pointer_up(x, y);
+            rt.frame(t);
+        };
+        press(&mut rt, "relay-toggle", 0.5);
+        assert!(rt.state.onboarding.stopped);
+        assert_eq!(host.running(), None);
+        assert!(relay_host::check(port).is_ok(), "stopping frees the port");
+        assert!(
+            rt.find("relay-stopped").is_some(),
+            "the stopped banner explains the state"
+        );
+
+        press(&mut rt, "relay-start", 1.0);
+        assert!(!rt.state.onboarding.stopped);
+        assert_eq!(host.running(), Some(settings));
+        assert!(rt.find("relay-stopped").is_none());
+
+        // A port taken while stopped sends the user to Relay settings.
+        press(&mut rt, "relay-toggle", 1.5);
+        let blocker = std::net::TcpListener::bind(("127.0.0.1", port)).unwrap();
+        press(&mut rt, "relay-toggle", 2.0);
+        assert!(rt.state.onboarding.stopped);
+        assert!(rt.state.onboarding.open);
+        assert_eq!(rt.state.onboarding.step, PORT);
+        assert!(
+            rt.state
+                .onboarding
+                .error
+                .as_deref()
+                .unwrap()
+                .contains(&port.to_string())
+        );
+        drop(blocker);
+        host.stop();
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

@@ -5,7 +5,8 @@ to a relay as described in [the quickstart](bridge-quickstart.md). The demo gene
 one batch of synthetic requests, then stays idle. It does not contact TypeSafe.
 
 The [Mac app](macos-app.md) runs its own relay. Its toolbar shows **Port 8787** (or
-the port you chose); click it to change the relay port or capture mode.
+the port you chose); click it to change the relay port or capture mode. The button
+next to it stops the relay, and then starts it again.
 
 On macOS, the native window buttons sit inside the top toolbar. Drag an empty
 part of the toolbar to move the window. Double-click it to perform the titlebar

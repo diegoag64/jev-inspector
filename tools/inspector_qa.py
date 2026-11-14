@@ -162,6 +162,8 @@ for step, number in ONBOARDING.items():
     CASES["onboarding-" + step + "-light"] = ["--onboarding-step", number, "--size", "1100x700",
         "--script", "tests/inspector-theme-light.script.json"]
 CASES["onboarding-received"] = ["--onboarding-step", "3", "--onboarding-received", "--size", "1100x700"]
+for name in ["relay-stopped", "relay-stopped-light"]:
+    CASES[name] = ["--onboarding-step", "3", "--size", "1100x700", "--script", f"tests/inspector-{name}.script.json"]
 
 
 def verify_state(name: str, tree_path: Path) -> list[str]:
@@ -188,6 +190,13 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
             errors.append("Connect step must wait for the first request")
         if name.endswith("-light") and keyed.get("theme-toggle", {}).get("name") != "Switch to dark theme":
             errors.append("Light onboarding fixture did not switch theme")
+    if name.startswith("relay-stopped"):
+        if "relay-stopped" not in keyed or "Relay stopped" not in names:
+            errors.append("Stopped relay banner or badge is missing")
+        if keyed.get("relay-toggle", {}).get("name") != "Start relay":
+            errors.append("Relay toggle must offer Start relay while stopped")
+        if name.endswith("-light") and keyed.get("theme-toggle", {}).get("name") != "Switch to dark theme":
+            errors.append("Light stopped-relay fixture did not switch theme")
     if name.startswith("cost"):
         if name != "cost-pricing" and ("cost-total" not in keyed or "cost-coverage" not in keyed):
             errors.append("Cost summary did not open")

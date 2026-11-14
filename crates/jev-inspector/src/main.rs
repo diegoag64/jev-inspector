@@ -290,6 +290,12 @@ fn poll(state: &mut State, now: f64, tx: &mut Tx) -> bool {
             true
         }
         Some(Err(message)) => {
+            // A relay the user stopped has no connection file; say so plainly.
+            let message = if state.onboarding.stopped {
+                onboarding::stopped_message(state)
+            } else {
+                message
+            };
             let connection_changed =
                 state.connected || state.connection_error.as_ref() != Some(&message);
             state.connected = false;
@@ -479,6 +485,7 @@ fn start_app(state: &mut State) -> relay_host::Host {
         onboarding::open(state, onboarding::WELCOME);
     } else if let Err(error) = host.start(state.onboarding.settings) {
         state.onboarding.first_run = false;
+        state.onboarding.stopped = true;
         onboarding::open(state, onboarding::PORT);
         state.onboarding.error = Some(format!("{error} Choose another port to start capturing."));
     } else {
