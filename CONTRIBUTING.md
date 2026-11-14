@@ -1,12 +1,24 @@
 # Contributing
 
-Keep changes small enough to explain and verify locally. This project is a Rust
-desktop app and relay, with Python tools for demos and QA. There are no CI or
-deployment workflows.
+Thanks for helping. Keep changes small enough to explain and verify locally. This
+project is a Rust desktop app and relay, with Python tools for demos and QA.
+
+Open an issue before starting a large change, so we can agree on the direction
+first. Report security problems privately; see [SECURITY.md](SECURITY.md). By
+taking part, you agree to follow the [code of conduct](CODE_OF_CONDUCT.md).
+
+## Workflow
+
+1. Fork the repository, or create a branch from current `main` if you have write
+   access. Don't push directly to `main`.
+2. Make one focused change and run the [checks](#verify) it needs.
+3. Add an entry under **Unreleased** in [CHANGELOG.md](CHANGELOG.md) for
+   user-visible changes.
+4. Open a pull request against `main` using the [template](.github/pull_request_template.md).
 
 ## Build
 
-Install the prerequisites in [README.md](README.md), then run from the repository
+Install the [prerequisites](README.md#try-it-locally), then run from the repository
 root:
 
 ```sh
@@ -78,13 +90,27 @@ changes.
 
 ## Commit convention
 
-Use this format for new commits. Existing history does not need rewriting.
+Use the same format as PR titles for commit subjects:
 
 ```text
 type(scope): describe the change
 ```
 
-Use a short imperative summary. Choose the type by the purpose of the change:
+Keep each commit focused and runnable. Add a body when the reason or tradeoff is
+not clear from the diff. Do not rewrite shared history to improve old commit
+wording.
+
+## Pull requests
+
+Use `<type>(<scope>): <summary>` for every PR title, within 72 characters:
+
+```text
+fix(diagram): fit the graph on first open
+feat(inspector): add saved-session search
+docs(repo): explain setup and local checks
+```
+
+Use a lowercase type and choose it by the purpose of the change:
 
 | Type | Use |
 | --- | --- |
@@ -94,28 +120,27 @@ Use a short imperative summary. Choose the type by the purpose of the change:
 | `refactor` | Code structure without a behavior change |
 | `test` | Test coverage or fixtures |
 | `perf` | Measured performance improvement |
-| `chore` | Dependencies, tooling, or repository maintenance |
+| `build` | Build scripts, Rune preparation, or dependencies |
+| `chore` | Repository maintenance |
 
 Scopes include `inspector`, `bridge`, `protocol`, `diagram`, `qa`, and `repo`.
-Omit the scope when a change spans the project and no single scope fits.
+Choose the primary area when a change spans several. Write the summary as an
+imperative phrase with no trailing period. For a breaking change, put `!` before
+the colon and explain the migration in the description.
 
-```text
-fix(diagram): fit the graph on first open
-feat(inspector): add saved-session search
-docs(repo): explain setup and local checks
-```
+Fill in the [PR template](.github/pull_request_template.md):
 
-Keep each commit focused and runnable. Add a body when the reason or tradeoff is
-not clear from the diff. Mention a breaking change explicitly and explain how
-users migrate. Avoid claims such as "fully tested" or "production ready" without
-evidence. Do not rewrite shared history to improve old commit wording.
+- **Summary:** the problem and the resulting behavior. Link related issues.
+- **Screenshots:** before and after images for visible changes, at the same window
+  size, scale, and theme. Attach them to the PR rather than committing them.
+  Intentional documentation images belong under `docs/images/`.
+- **Validation:** the commands and interactions you checked, with results. Name the
+  OS and whether UI checks were native or headless. State what you didn't test.
 
-## Describe the result
+There is no hosted CI, so the Validation section is the verification record. Avoid
+claims such as "fully tested" without evidence. Keep generated QA reports out of
+Git unless a small, reviewed fixture is needed to reproduce a bug. Update the title
+and description to match the final scope before requesting review.
 
-For a PR or handoff, explain the problem, the resulting behavior, and the checks
-you ran. Include before/after images for visible changes when they help a reviewer.
-List known limitations and untested environments. Keep generated QA reports out
-of Git unless a small, reviewed fixture is needed to reproduce a bug.
-
-Pushing publishes your commits; it does not deploy the app. Do not add Actions,
-release automation, or automatic screenshot approval as part of routine changes.
+If an AI agent did some or all of the work, name the model and tool at the end of
+the description. Agent instructions live in [AGENTS.md](AGENTS.md).

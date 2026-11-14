@@ -56,7 +56,7 @@ After changing the tracked crate, run:
 python tools/install_rune_diagram.py
 ```
 
-On this Windows machine, use `.venv\Scripts\python.exe` if Python is not on PATH.
+On Windows, use `.venv\Scripts\python.exe` if Python is not on PATH.
 The script requires an existing Rune checkout. `--checkout PATH` selects another
 local checkout. It copies the source and license, translates dependencies to
 local Rune paths, registers the workspace member, and adds a changelog entry.

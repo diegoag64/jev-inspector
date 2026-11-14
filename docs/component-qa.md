@@ -5,7 +5,7 @@ Run these commands from the repository root.
 
 Run Rune's native components on Windows and macOS, reproduce interactions, and compare screenshots and performance. This project runs the **actual upstream gallery**, pinned to a commit, with no changes to Rune.
 
-Start here on this Windows machine:
+Start here on Windows:
 
 ```powershell
 .\.venv\Scripts\python.exe qa.py gallery --filter button

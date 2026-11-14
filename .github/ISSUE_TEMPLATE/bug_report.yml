@@ -1,0 +1,99 @@
+name: Bug report
+description: Report broken behavior, a regression, or a crash in the inspector or relay.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues first and keep each report to one problem.
+        Report security problems privately instead. See SECURITY.md.
+        Don't paste real request bodies or API keys. Reproduce with the demo or synthetic data when you can.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and found no duplicate.
+          required: true
+        - label: I reproduced this on the latest `main`.
+          required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Traffic list, filters, or search
+        - Request, Response, or JSON tree
+        - Diagram
+        - Compare
+        - Costs
+        - Export or saved sessions
+        - Relay (jev-bridge)
+        - Window, keyboard, or accessibility
+        - Performance
+        - Setup or build
+        - Docs
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The shortest sequence that triggers the problem.
+      placeholder: |
+        1. Run `python3 dev.py demo`.
+        2. Select a request and open the Diagram tab.
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: Output of `git rev-parse --short HEAD`.
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system and version, CPU architecture, and `rustc --version`.
+      placeholder: macOS 26.1 (Apple silicon), rustc 1.96.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: The most relevant terminal output only, such as `artifacts/demo/inspector.log`. Redact anything private.
+      render: text
+
+  - type: upload
+    id: attachments
+    attributes:
+      label: Screenshots or recording
+      description: Attach images or a short video when the problem is visible.
+    validations:
+      required: false
+      accept: ".png,.jpg,.jpeg,.gif,.webp,.mp4,.mov,.webm,.log,.txt"

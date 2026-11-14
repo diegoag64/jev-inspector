@@ -77,7 +77,7 @@ chunk rejected by the transport limit. Elapsed time is relay-observed time, not
 pure inference time. The current relay supports the documented HTTP body protocol;
 upgrades, WebSockets and forwarding HTTP trailers are not implemented.
 
-## Validation on this Windows machine
+## Validation on Windows
 
 The local Rust suite and Clippy checks pass. Protocol tests cover:
 
