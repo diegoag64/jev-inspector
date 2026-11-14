@@ -29,7 +29,7 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for local checks and commit convention
 
 ## Set up a new machine
 
-Install Git, Python 3.11 or later, and Rust through [rustup](https://rustup.rs/). The tested compiler is Rust 1.96.0. Use the same compiler version on both machines when comparing performance.
+Install Git, Python 3.11.4 or later, and Rust through [rustup](https://rustup.rs/). The tested compiler is Rust 1.96.0. Use the same compiler version on both machines when comparing performance.
 
 On Windows, install Visual Studio Build Tools with **Desktop development with C++** and a Windows SDK. On macOS, install Xcode Command Line Tools with `xcode-select --install`.
 

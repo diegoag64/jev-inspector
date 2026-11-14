@@ -7,10 +7,12 @@ import tempfile
 import threading
 import time
 import unittest
+from unittest import mock
 from http.server import ThreadingHTTPServer
 from urllib.error import HTTPError
 from urllib.request import Request
 
+import dev
 from dev import LOCAL_HTTP, MockHandler
 from tools.demo_catalog import load_cases, response_bytes
 
@@ -89,3 +91,26 @@ class DemoRelayTests(unittest.TestCase):
         finally:
             mock.shutdown()
             mock.server_close()
+
+
+class StartupCheckTests(unittest.TestCase):
+    def test_old_python_stops_with_a_clear_message(self):
+        with self.assertRaises(SystemExit) as stop:
+            dev.require_python((3, 11, 3))
+        self.assertIn("Python 3.11.4 or newer; this is 3.11.3", str(stop.exception))
+        dev.require_python((3, 11, 4))
+
+    def test_cargo_falls_back_to_rustup_home(self):
+        with tempfile.TemporaryDirectory() as home, mock.patch("dev.shutil.which", return_value=None), \
+                mock.patch("builtins.print"):
+            cargo = Path(home) / ".cargo" / "bin" / ("cargo.exe" if os.name == "nt" else "cargo")
+            with self.assertRaises(SystemExit) as stop:
+                dev.find_cargo(home)
+            self.assertIn("rustup", str(stop.exception))
+            cargo.parent.mkdir(parents=True)
+            cargo.touch()
+            self.assertEqual(dev.find_cargo(home), str(cargo))
+
+    def test_cargo_on_path_wins(self):
+        with mock.patch("dev.shutil.which", return_value="/opt/cargo"):
+            self.assertEqual(dev.find_cargo("/nonexistent"), "/opt/cargo")
