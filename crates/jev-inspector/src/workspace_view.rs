@@ -9,22 +9,23 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
         .h(44.0)
         .pl(cx.titlebar_inset() + 14.0)
         .pr(14.0)
-        .gap(9.0)
+        .gap(5.0)
         .center_y()
-        .child(label("jev", 16.0, k.c.text_base).key("workspace-title"))
-        .child(label("inspector", 14.0, k.c.text_muted))
+        .child(ui::heading("jev", 15.0, k.c.text_base).key("workspace-title"))
+        .child(label("inspector", 15.0, k.c.text_muted))
+        .child(el().w(4.0))
         .child(el().grow(1.0))
         .child(ui::badge(
             if s.workspace.session_name.is_some() {
-                "SAVED SESSION"
+                "Saved session"
             } else if s.showcase.is_some() {
-                "EXAMPLES"
+                "Examples"
             } else if s.demo {
-                "SYNTHETIC FIXTURE"
+                "Synthetic fixture"
             } else if s.connected {
-                "LOCAL CONNECTED"
+                "Connected"
             } else {
-                "RECONNECTING"
+                "Reconnecting"
             },
             if s.connected || s.demo {
                 k.c.success.fg
@@ -257,8 +258,8 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
             .grow(1.0)
             .min_w(0.0)
             .h_full()
-            .radius(7.0)
-            .border(1.0, k.c.border_base)
+            .radius(ui::PANEL_RADIUS)
+            .continuous_corners()
             .fill(k.c.layer_01),
     );
     root = root.child(body).child(footer(s, &k));
@@ -333,19 +334,19 @@ fn metrics(s: &State, k: &Kit) -> El {
     let mut bar = row().px(16.0).h(34.0).center_y().gap(18.0);
     for (title, value, sub, color) in [
         (
-            "OBSERVED",
+            "Observed",
             s.snapshot.total_requests.to_string(),
             "relay lifetime",
             k.c.text_base,
         ),
         (
-            "VISIBLE",
+            "Visible",
             s.visible.len().to_string(),
             "current filters",
             k.c.text_base,
         ),
         (
-            "ERRORS",
+            "Errors",
             failures.to_string(),
             "visible requests",
             if failures > 0 {
@@ -361,7 +362,7 @@ fn metrics(s: &State, k: &Kit) -> El {
             k.c.warning.fg,
         ),
         (
-            "MEDIAN",
+            "Median",
             if times.is_empty() {
                 "—".into()
             } else {
@@ -384,9 +385,9 @@ fn metrics(s: &State, k: &Kit) -> El {
         bar = bar.child(
             row()
                 .grow(1.0)
-                .gap(7.0)
+                .gap(6.0)
                 .center_y()
-                .child(label(title, 10.0, k.c.text_faint))
+                .child(label(title, 11.0, k.c.text_faint))
                 .child(motion::metric(title, value, 13.0, color, k))
                 .help(format!("{title}: {sub}")),
         );
@@ -400,9 +401,9 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
             .min((s.workspace.window_width - 530.0).max(440.0)))
         .h_full()
         .min_h(0.0)
-        .radius(7.0)
-        .clip_rounded(7.0)
-        .border(1.0, k.c.border_base)
+        .radius(ui::PANEL_RADIUS)
+        .continuous_corners()
+        .clip_rounded(ui::PANEL_RADIUS)
         .fill(k.c.layer_01)
         .child(
             row()
@@ -410,7 +411,7 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                 .py(7.0)
                 .center_y()
                 .gap(6.0)
-                .child(label("Traffic", 15.0, k.c.text_base).grow(1.0))
+                .child(ui::heading("Traffic", 15.0, k.c.text_base).grow(1.0))
                 .child(
                     ui::action(
                         if s.workspace.paused {
@@ -492,7 +493,7 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                     .on_edit(|s: &mut State| &mut s.filter)
                     .on_change(|s: &mut State, _| s.filter_rows())
                     .on_key(workspace::on_key)
-                    .build(k)
+                    .build(&ui::field_kit(k))
                     .key("request-filter"),
             ),
         );
@@ -509,65 +510,64 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
         );
     }
     panel = panel.child(
-        row()
-            .px(10.0)
-            .py(6.0)
-            .gap(3.0)
-            .child(ui::button(
-                "All",
-                "all-filter",
-                !s.errors_only && s.workspace.filter == Filter::All,
-                k,
-                |s| {
-                    s.errors_only = false;
-                    s.workspace.filter = Filter::All;
-                    s.filter_rows();
-                },
-            ))
-            .child(ui::button(
-                "Errors",
-                "errors-filter",
-                s.errors_only,
-                k,
-                |s| {
-                    s.errors_only = !s.errors_only;
-                    s.workspace.filter = Filter::All;
-                    s.filter_rows();
-                },
-            ))
-            .child(ui::button(
-                "Success",
-                "success-filter",
-                s.workspace.filter == Filter::Success,
-                k,
-                |s| {
-                    s.errors_only = false;
-                    s.workspace.filter = Filter::Success;
-                    s.filter_rows();
-                },
-            ))
-            .child(ui::button(
-                crate::capture_context::pending(s).filter_label(),
-                "pending-filter",
-                s.workspace.filter == Filter::Pending,
-                k,
-                |s| {
-                    s.errors_only = false;
-                    s.workspace.filter = Filter::Pending;
-                    s.filter_rows();
-                },
-            ))
-            .child(ui::button(
-                "Starred",
-                "starred-filter",
-                s.workspace.filter == Filter::Starred,
-                k,
-                |s| {
-                    s.errors_only = false;
-                    s.workspace.filter = Filter::Starred;
-                    s.filter_rows();
-                },
-            )),
+        row().px(10.0).py(4.0).child(
+            ui::segmented(k)
+                .child(ui::segment(
+                    "All",
+                    "all-filter",
+                    !s.errors_only && s.workspace.filter == Filter::All,
+                    k,
+                    |s| {
+                        s.errors_only = false;
+                        s.workspace.filter = Filter::All;
+                        s.filter_rows();
+                    },
+                ))
+                .child(ui::segment(
+                    "Errors",
+                    "errors-filter",
+                    s.errors_only,
+                    k,
+                    |s| {
+                        s.errors_only = !s.errors_only;
+                        s.workspace.filter = Filter::All;
+                        s.filter_rows();
+                    },
+                ))
+                .child(ui::segment(
+                    "Success",
+                    "success-filter",
+                    s.workspace.filter == Filter::Success,
+                    k,
+                    |s| {
+                        s.errors_only = false;
+                        s.workspace.filter = Filter::Success;
+                        s.filter_rows();
+                    },
+                ))
+                .child(ui::segment(
+                    crate::capture_context::pending(s).filter_label(),
+                    "pending-filter",
+                    s.workspace.filter == Filter::Pending,
+                    k,
+                    |s| {
+                        s.errors_only = false;
+                        s.workspace.filter = Filter::Pending;
+                        s.filter_rows();
+                    },
+                ))
+                .child(ui::segment(
+                    "Starred",
+                    "starred-filter",
+                    s.workspace.filter == Filter::Starred,
+                    k,
+                    |s| {
+                        s.errors_only = false;
+                        s.workspace.filter = Filter::Starred;
+                        s.filter_rows();
+                    },
+                )),
+        ),
     );
     if s.workspace.paused {
         let newer = s.workspace.pending.as_ref().map_or(0, |p| {
@@ -611,7 +611,7 @@ fn traffic(s: &State, k: &Kit, cx: &Cx<State>) -> El {
         .child(ui::rule(k))
         .child(
             row()
-                .px(12.0)
+                .px(10.0)
                 .py(5.0)
                 .center_y()
                 .gap(8.0)
@@ -654,6 +654,10 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
     style.header_height = 29.0;
     style.cell_pad = 9.0;
     style.rule = k.c.border_base;
+    style.font = ui::text_style(13.0);
+    style.mono = ui::text_style(12.0).features("'tnum' 1");
+    style.header_font = rune::TextStyle::new(12.0, 590.0);
+    style.header_text = k.c.text_faint;
     // Opaque selection surfaces keep supporting text and semantic status readable.
     style.selected = motion::traffic_selected(k);
     style.muted = motion::traffic_muted(k);
@@ -723,14 +727,14 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
             "request" if !s.workspace.compact => Cell::el(
                 col()
                     .gap(4.0)
-                    .child(label(format!("{}  {}", r.method, r.path), 12.0, foreground))
+                    .child(label(format!("{}  {}", r.method, r.path), 13.0, foreground))
                     .child(label(
                         format!(
                             "#{:03} · {}",
                             r.id,
                             r.model.as_deref().unwrap_or("Model unavailable")
                         ),
-                        10.0,
+                        11.0,
                         supporting,
                     )),
             ),
@@ -738,13 +742,13 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
                 row()
                     .center_y()
                     .gap(8.0)
-                    .child(ui::mono(format!("#{:03}", r.id), 11.0, supporting).w(34.0))
+                    .child(ui::figure(format!("#{:03}", r.id), 12.0, 400.0, supporting).w(34.0))
                     .child(
                         label(
                             r.model
                                 .clone()
                                 .unwrap_or_else(|| format!("{} {}", r.method, r.path)),
-                            12.0,
+                            13.0,
                             foreground,
                         )
                         .grow(1.0)
@@ -786,7 +790,7 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
             .mono()
             .color(supporting),
             "cost" => Cell::el(
-                ui::mono(cost::estimate(s, r).display(), 12.0, foreground)
+                ui::figure(cost::estimate(s, r).display(), 12.0, 400.0, foreground)
                     .help(cost::row_help(s, r)),
             ),
             _ => Cell::text(""),
@@ -840,7 +844,7 @@ fn empty(s: &State, k: &Kit) -> El {
         .padding(24.0)
         .gap(10.0)
         .child(
-            label(
+            ui::heading(
                 if cleared {
                     "View cleared"
                 } else if waiting {
@@ -850,7 +854,7 @@ fn empty(s: &State, k: &Kit) -> El {
                 } else {
                     "No matching requests"
                 },
-                18.0,
+                17.0,
                 k.c.text_base,
             )
             .wrap(),
@@ -925,18 +929,18 @@ fn footer(s: &State, k: &Kit) -> El {
                     .values()
                     .any(|e| e.request.json.is_some() || e.response.json.is_some())
                 {
-                    "SAVED WITH BODIES"
+                    "Saved with bodies"
                 } else {
-                    "SAVED METADATA"
+                    "Saved metadata"
                 }
             } else if s.demo {
-                "SYNTHETIC DATA"
+                "Synthetic data"
             } else if !s.connected {
-                "CAPTURE UNKNOWN"
+                "Capture unknown"
             } else if s.snapshot.capture_bodies {
-                "CAPTURE ON"
+                "Capture on"
             } else {
-                "METADATA ONLY"
+                "Metadata only"
             },
             if s.workspace.session_name.is_some() || s.demo {
                 k.c.text_muted
@@ -993,7 +997,7 @@ fn footer(s: &State, k: &Kit) -> El {
 fn dialogs(s: &State, k: &Kit, layers: &mut Vec<El>) {
     let mut help = col().gap(13.0).padding(20.0);
     if s.tab == 3 {
-        help = help.child(label("Diagram controls", 14.0, k.c.text_base))
+        help = help.child(ui::heading("Diagram controls", 14.0, k.c.text_base))
             .child(label("Drag the background to pan. Wheel or pinch to zoom. Tab enters cards; Up and Down browse them. Canvas arrow keys pan, + and - zoom, 0 fits the graph, and 1 restores actual size. Fit graph shows relationships; Actual size makes cards readable. Focus a card's properties to scroll them with Page Up, Page Down, Home, or End.", 12.0, k.c.text_muted).wrap())
             .child(ui::rule(k));
     }
@@ -1020,7 +1024,7 @@ fn dialogs(s: &State, k: &Kit, layers: &mut Vec<El>) {
         ),
     ] {
         help = help
-            .child(label(title, 13.0, k.c.text_base))
+            .child(ui::heading(title, 13.0, k.c.text_base))
             .child(label(body, 12.0, k.c.text_muted).wrap());
     }
     if s.workspace.setup_help {
@@ -1040,23 +1044,23 @@ fn dialogs(s: &State, k: &Kit, layers: &mut Vec<El>) {
     .fit()
     .on_close(|s: &mut State| s.workspace.help = false)
     .child(
-        row()
-            .px(20.0)
-            .gap(8.0)
-            .child(ui::button(
-                "Shortcuts",
-                "help-shortcuts",
-                !s.workspace.setup_help,
-                k,
-                |s| s.workspace.setup_help = false,
-            ))
-            .child(ui::button(
-                "Connection setup",
-                "help-setup",
-                s.workspace.setup_help,
-                k,
-                |s| s.workspace.setup_help = true,
-            )),
+        row().px(20.0).child(
+            ui::segmented(k)
+                .child(ui::segment(
+                    "Shortcuts",
+                    "help-shortcuts",
+                    !s.workspace.setup_help,
+                    k,
+                    |s| s.workspace.setup_help = false,
+                ))
+                .child(ui::segment(
+                    "Connection setup",
+                    "help-setup",
+                    s.workspace.setup_help,
+                    k,
+                    |s| s.workspace.setup_help = true,
+                )),
+        ),
     )
     .child(
         rune_kit::scroll_bar(

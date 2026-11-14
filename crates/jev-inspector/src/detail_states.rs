@@ -24,18 +24,15 @@ fn line(width: f32, height: f32, k: &Kit) -> El {
     el().w(width)
         .max_w(width)
         .h(height)
-        .radius(4.0)
-        .fill(k.c.border_base)
+        .radius(height / 2.0)
+        .fill(k.c.layer_03)
 }
 
 fn surface(k: &Kit) -> El {
-    col()
+    ui::surface(col(), ui::CARD_RADIUS, k.c.bg_deep)
         .w_full()
         .gap(16.0)
         .padding(18.0)
-        .radius(10.0)
-        .fill(k.c.bg_deep)
-        .border(1.0, k.c.border_base)
 }
 
 fn progress(title: &str, note: &str, k: &Kit) -> El {
@@ -97,14 +94,13 @@ fn message(s: &State, k: &Kit, title: &str, description: &str, note: &str, retry
                 .gap(12.0)
                 .center_y()
                 .child(
-                    el().size(32.0, 32.0)
-                        .radius(8.0)
-                        .fill(k.c.layer_02)
+                    ui::surface(el(), ui::INSET_RADIUS, k.c.layer_03)
+                        .size(32.0, 32.0)
                         .child(rune::icon(&rune_kit::glyphs::FILE_TEXT, 18.0).color(k.c.text_muted))
                         .center(),
                 )
                 .child(
-                    label(title, 16.0, k.c.text_base)
+                    ui::heading(title, 16.0, k.c.text_base)
                         .wrap()
                         .grow(1.0)
                         .min_w(0.0),
@@ -192,13 +188,11 @@ pub fn loading(s: &State, k: &Kit) -> El {
             let mut tiles = row().gap(8.0);
             for _ in 0..3 {
                 tiles = tiles.child(
-                    col()
+                    ui::surface(col(), ui::CARD_RADIUS, k.c.bg_deep)
                         .grow(1.0)
                         .min_w(0.0)
                         .padding(10.0)
                         .gap(12.0)
-                        .radius(6.0)
-                        .fill(k.c.layer_02)
                         .child(line(54.0, 8.0, k))
                         .child(line(76.0, 18.0, k)),
                 );
@@ -208,7 +202,7 @@ pub fn loading(s: &State, k: &Kit) -> El {
                 .child(
                     surface(k)
                         .child(line(110.0, 10.0, k))
-                        .child(el().w_full().h(7.0).radius(4.0).fill(k.c.layer_02))
+                        .child(el().w_full().h(6.0).radius(3.0).fill(k.c.layer_03))
                         .child(
                             row()
                                 .gap(24.0)

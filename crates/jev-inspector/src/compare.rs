@@ -257,12 +257,9 @@ pub fn view(s: &State, current: &Exchange, k: &Kit, cx: &Cx<State>) -> El {
     for name in &cmp.outside_preview {
         let request = name == "request.json";
         panel = panel.child(
-            col()
+            ui::surface(col(), ui::CARD_RADIUS, k.c.bg_deep)
                 .gap(8.0)
                 .padding(12.0)
-                .radius(8.0)
-                .fill(k.c.bg_deep)
-                .border(1.0, k.c.border_base)
                 .key(format!("comparison-outside-preview-{name}"))
                 .child(
                     row()

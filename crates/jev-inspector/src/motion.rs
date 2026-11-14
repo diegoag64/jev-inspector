@@ -54,11 +54,11 @@ impl Arrivals {
 }
 
 pub fn traffic_selected(k: &Kit) -> Color {
-    rune::color::hex(if k.dark { "#303030" } else { "#ededed" }).unwrap()
+    rune::color::hex(if k.dark { "#303032" } else { "#e8e8ed" }).unwrap()
 }
 
 pub fn traffic_muted(k: &Kit) -> Color {
-    rune::color::hex(if k.dark { "#b8b8b8" } else { "#5c5c5c" }).unwrap()
+    k.c.text_muted
 }
 
 /// Keep the pane's geometry stable. Replace its contents as one surface so long JSON,
@@ -103,7 +103,7 @@ pub fn detail(s: &State, body: El) -> El {
 
 pub fn metric(key: &str, value: String, size: f32, color: Color, k: &Kit) -> El {
     rune_kit::RollingText::new(format!("inspector-metric-{key}"), value.clone())
-        .font(rune::TextStyle { size, ..k.ty.ui })
+        .font(rune::TextStyle::new(size, 590.0).features("'tnum' 1"))
         .color(color)
         .spring(rune::Spring::new(0.28, 0.0))
         .build(k)

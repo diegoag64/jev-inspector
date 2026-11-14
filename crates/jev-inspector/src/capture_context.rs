@@ -43,9 +43,9 @@ impl PendingContext {
     }
     pub fn count_label(self) -> &'static str {
         match self {
-            Self::Live => "IN FLIGHT",
-            Self::Saved => "INCOMPLETE",
-            Self::Disconnected => "LAST KNOWN PENDING",
+            Self::Live => "In flight",
+            Self::Saved => "Incomplete",
+            Self::Disconnected => "Last known pending",
         }
     }
     pub fn filter_label(self) -> &'static str {

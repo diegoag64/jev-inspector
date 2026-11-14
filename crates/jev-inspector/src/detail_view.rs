@@ -39,7 +39,8 @@ fn exchange_header(s: &State, summary: Option<&Summary>, id: u64, k: &Kit) -> El
         .grow(1.0)
         .min_w(0.0)
         .gap(4.0)
-        .child(label(format!("Exchange #{id:03}"), 16.0, k.c.text_base).truncate());
+        .gap(2.0)
+        .child(ui::heading(format!("Exchange #{id:03}"), 17.0, k.c.text_base).truncate());
     if let Some(r) = summary {
         let endpoint = format!("{} {}", r.method, r.path);
         title = title.child(
@@ -152,7 +153,7 @@ pub fn detail_view(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> 
         return col()
             .padding(28.0)
             .gap(14.0)
-            .child(label("No request selected", 20.0, k.c.text_base).wrap())
+            .child(ui::heading("No request selected", 20.0, k.c.text_base).wrap())
             .child(label(
                 "Select a request from the list to view its details.",
                 14.0,
@@ -187,19 +188,20 @@ pub fn detail_view(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> 
     }
     pane = pane.child(
         row()
-            .key("detail-tabs")
-            .role("tablist")
-            .label("Exchange details")
-            .focus_group()
-            .gap(3.0)
-            .child(tab("Overview", 0, s.tab, k))
-            .child(tab("Request", 1, s.tab, k))
-            .child(tab("Response", 2, s.tab, k))
-            .child(tab("Diagram", 3, s.tab, k))
-            .child(tab("Compare", 4, s.tab, k))
+            .child(
+                ui::segmented(k)
+                    .key("detail-tabs")
+                    .role("tablist")
+                    .label("Exchange details")
+                    .focus_group()
+                    .child(tab("Overview", 0, s.tab, k))
+                    .child(tab("Request", 1, s.tab, k))
+                    .child(tab("Response", 2, s.tab, k))
+                    .child(tab("Diagram", 3, s.tab, k))
+                    .child(tab("Compare", 4, s.tab, k)),
+            )
             .child(el().grow(1.0)),
     );
-    pane = pane.child(ui::rule(k));
     if s.detail.is_some()
         && let Some(error) = &s.detail_error
     {
@@ -257,7 +259,7 @@ fn content(s: &State, k: &Kit, cx: &Cx<State>, layers: &mut Vec<El>) -> El {
             };
             let mut body = col()
                 .gap(14.0)
-                .child(label(title, 15.0, k.c.warning.fg).key("detail-unavailable"))
+                .child(ui::heading(title, 15.0, k.c.warning.fg).key("detail-unavailable"))
                 .child(label(explanation, 12.0, k.c.text_muted).wrap());
             if s.workspace.session_name.is_none()
                 && let Some(error) = &s.connection_error
@@ -410,23 +412,20 @@ fn scroll_overview(s: &State, body: El, k: &Kit, cx: &Cx<State>) -> El {
 }
 
 fn tab(name: &str, value: u8, current: u8, k: &Kit) -> El {
-    Button::new(name)
-        .variant(if value == current {
-            ButtonVariant::Neutral
-        } else {
-            ButtonVariant::Ghost
-        })
-        .on_press(move |s: &mut State| {
-            showcase::stop(s);
-            s.select_tab(value);
-        })
-        .build(k)
-        .fill(if value == current {
-            k.c.layer_03
-        } else {
-            Color::TRANSPARENT
-        })
-        .role("tab")
-        .focus_selected(value == current)
-        .key(format!("tab-{value}"))
+    ui::segment_lift(
+        Button::new(name)
+            .control_size(rune_kit::ControlSize::Regular)
+            .variant(ButtonVariant::Ghost)
+            .on_press(move |s: &mut State| {
+                showcase::stop(s);
+                s.select_tab(value);
+            })
+            .build(k)
+            .px(14.0),
+        value == current,
+        k,
+    )
+    .role("tab")
+    .focus_selected(value == current)
+    .key(format!("tab-{value}"))
 }

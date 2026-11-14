@@ -11,7 +11,12 @@ pub fn view(kind: &str, value: &Value, k: &Kit) -> El {
                 row()
                     .center_y()
                     .gap(12.0)
-                    .child(label(rune_diagram::percent(p), 24.0, k.c.text_base))
+                    .child(ui::figure(
+                        rune_diagram::percent(p),
+                        24.0,
+                        600.0,
+                        k.c.text_base,
+                    ))
                     .child(label("Probability of true", 12.0, k.c.text_muted)),
             )
             .child(
@@ -32,8 +37,8 @@ pub fn view(kind: &str, value: &Value, k: &Kit) -> El {
             )
             .child(
                 row()
-                    .child(label("False: 0%", 10.0, k.c.text_faint).grow(1.0))
-                    .child(label("True: 100%", 10.0, k.c.text_faint)),
+                    .child(label("False: 0%", 11.0, k.c.text_faint).grow(1.0))
+                    .child(label("True: 100%", 11.0, k.c.text_faint)),
             );
     }
     if kind == "box" {
@@ -51,8 +56,8 @@ pub fn view(kind: &str, value: &Value, k: &Kit) -> El {
                 facts = facts.child(
                     row()
                         .gap(10.0)
-                        .child(label(*name, 11.0, k.c.text_muted).grow(1.0))
-                        .child(ui::mono(format!("{v:.3}"), 12.0, k.c.text_base)),
+                        .child(label(*name, 12.0, k.c.text_muted).grow(1.0))
+                        .child(ui::figure(format!("{v:.3}"), 13.0, 400.0, k.c.text_base)),
                 );
             }
             return col()
@@ -62,9 +67,8 @@ pub fn view(kind: &str, value: &Value, k: &Kit) -> El {
                         .gap(18.0)
                         .center_y()
                         .child(
-                            el().size(200.0, 100.0)
-                                .radius(5.0)
-                                .fill(k.c.layer_02)
+                            ui::surface(el(), 6.0, k.c.layer_02)
+                                .size(200.0, 100.0)
                                 .border(1.0, k.c.border_base)
                                 .a11y_hidden()
                                 .child(
@@ -94,9 +98,10 @@ pub fn view(kind: &str, value: &Value, k: &Kit) -> El {
         .as_str()
         .map(str::to_owned)
         .unwrap_or_else(|| value.to_string());
-    label(
+    ui::figure(
         clip(&text, 500),
         if kind == "score" { 28.0 } else { 20.0 },
+        600.0,
         k.c.text_base,
     )
     .wrap()

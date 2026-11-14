@@ -194,10 +194,10 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
         if name == "card-reader-paged" and "Page 2 /" not in names:
             errors.append("Large capture did not reach its second page")
     if name == "curated-demo":
-        if "OBSERVED" not in names or any(v in names for v in ["/v1/models", "auth-demo", "maintenance-demo"]):
+        if "Observed" not in names or any(v in names for v in ["/v1/models", "auth-demo", "maintenance-demo"]):
             errors.append("Curated demo contains protocol-only samples")
     if name.startswith("example-"):
-        if "EXAMPLES" not in names:
+        if "Examples" not in names:
             errors.append("Example did not reach the offline showcase")
         if "showcase-tour" in keyed:
             errors.append("Removed Tour control is still visible")
@@ -293,12 +293,12 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
         errors.append("Expected split comparison mode")
     if name == "compare-small-expanded" and "requests" in keyed:
         errors.append("Expected expanded comparison")
-    required_text = {"saved-session": "SAVED WITH BODIES", "summary-only": "Summary only",
-                     "disconnected": "CAPTURE UNKNOWN", "paused": "List paused",
+    required_text = {"saved-session": "Saved with bodies", "summary-only": "Summary only",
+                     "disconnected": "Capture unknown", "paused": "List paused",
                      "missing-compare": "No captured bodies available to compare",
                      "invalid-query": "Use status:200", "long-json-small": "Find and Copy use the full capture",
                      "export-progress": "Working", "export-cancelled": "File operation cancelled",
-                     "upstream-error": "429", "export-failed": "Could not save session", "long-labels-small": "SAVED SESSION"}
+                     "upstream-error": "429", "export-failed": "Could not save session", "long-labels-small": "Saved session"}
     if name in required_text and required_text[name] not in names:
         errors.append(f"Missing state text: {required_text[name]}")
     if name.startswith("unicode-find"):

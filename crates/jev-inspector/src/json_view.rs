@@ -137,14 +137,11 @@ impl JsonDocument {
         cx: &rune::Cx<State>,
     ) -> El {
         let Some(source) = &self.source else {
-            return col()
+            return crate::ui::surface(col(), crate::ui::CARD_RADIUS, k.c.bg_deep)
                 .w_full()
                 .padding(20.0)
                 .gap(8.0)
-                .radius(8.0)
-                .fill(k.c.layer_01)
-                .border(1.0, k.c.border_base)
-                .child(label("No captured JSON", 14.0, k.c.text_base))
+                .child(crate::ui::heading("No captured JSON", 14.0, k.c.text_base))
                 .child(
                     label(
                         "This body has no JSON inspection copy. Check the capture notes above.",
@@ -300,8 +297,9 @@ impl JsonDocument {
             .w_full()
             .grow(1.0)
             .min_h(0.0)
-            .radius(9.0)
-            .clip_rounded(9.0)
+            .radius(crate::ui::CARD_RADIUS)
+            .continuous_corners()
+            .clip_rounded(crate::ui::CARD_RADIUS)
             .border(1.0, k.c.border_base)
             .fill(k.c.bg_deep)
             .child(header);
@@ -348,7 +346,7 @@ impl JsonDocument {
                                 crate::workspace::on_key(s, ev, tx)
                             }
                         })
-                        .build(k)
+                        .build(&crate::ui::field_kit(k))
                         .grow(1.0)
                         .min_w(0.0)
                         .key(format!("{key}:search")),

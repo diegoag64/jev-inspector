@@ -2,12 +2,9 @@ use super::*;
 
 fn command(title: &str, value: String, key: &'static str, k: &Kit) -> El {
     let copied = value.clone();
-    col()
+    ui::surface(col(), ui::CARD_RADIUS, k.c.bg_deep)
         .gap(6.0)
         .padding(12.0)
-        .radius(8.0)
-        .fill(k.c.bg_deep)
-        .border(1.0, k.c.border_base)
         .child(
             row()
                 .center_y()
