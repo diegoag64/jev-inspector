@@ -7,13 +7,16 @@ python tools/prepare_rune.py
 cargo build --workspace --locked
 ```
 
-The script exports Rune revision `781e2b6d87cd5f32d6f4365956fad4baaf24ee50`
+The script exports Rune revision `d77610b546ce70ca3d8ffcb22e078278d2bb79b7`
 to `.upstream/rune-inspector` and applies `patches/rune-focus.patch`. It reuses
 the pinned QA checkout or Cargo cache when available; otherwise it downloads
 the pinned repository. The original `.upstream/rune` gallery source is unchanged.
 Cargo patches all five Rune packages to the prepared workspace to keep their
-shared types consistent. The exported sources are ignored by Git; the patch,
-setup script, and dependency lockfile are tracked.
+shared types consistent. The root Cargo manifest also repeats Rune's required
+vendored patches for `wgpu-hal`, `winit`, `parley_engine`, and
+`accesskit_windows`; Cargo does not inherit dependency workspace patches.
+The exported sources are ignored by Git; the patch, setup script, and dependency
+lockfile are tracked.
 
 `python dev.py demo` prepares the source automatically. To install the reusable
 diagram crate into this workspace, run `python tools/install_rune_diagram.py`.
@@ -48,3 +51,21 @@ truncation and full-name help in the reusable diagram crate.
 `Table::decorate_row` lets the inspector color each arriving request across the
 whole row. The callback keeps the table's cells, selection handlers, and virtual
 row identity. It must preserve row height so scrolling geometry stays correct.
+
+## Update an existing prepared checkout
+
+When the pinned revision or patch changes, preserve the existing generated
+directory before preparing the new source:
+
+```sh
+mv .upstream/rune-inspector .upstream/rune-inspector-backup
+python tools/prepare_rune.py
+cargo clean -p rune -p rune-kit -p rune-motion -p rune-staging -p rune-taffy
+cargo build --workspace --locked
+```
+
+Choose an unused backup name and retain any local edits. The preparation script
+refuses to overwrite an existing directory with a different patch receipt.
+
+Clear the Rune build cache after replacing sources. Git archives preserve source
+timestamps, so Cargo can otherwise reuse artifacts from the previous revision.

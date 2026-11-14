@@ -9,7 +9,7 @@ import tarfile
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = ROOT / ".upstream" / "rune-inspector"
 PATCH = ROOT / "patches" / "rune-focus.patch"
-REVISION = "781e2b6d87cd5f32d6f4365956fad4baaf24ee50"
+REVISION = "d77610b546ce70ca3d8ffcb22e078278d2bb79b7"
 
 
 def digest(path):

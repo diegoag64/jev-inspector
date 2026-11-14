@@ -17,8 +17,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "=0.13.5", default-features = false, features = ["rustls", "http2", "stream", "json"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time"] }
-rune = { git = "https://github.com/anomalyco/rune", rev = "781e2b6d87cd5f32d6f4365956fad4baaf24ee50", default-features = false, features = ["accessibility", "embedded-fonts", "metal-backend", "native-file-dialog"] }
-rune-kit = { git = "https://github.com/anomalyco/rune", rev = "781e2b6d87cd5f32d6f4365956fad4baaf24ee50" }
+rune = { git = "https://github.com/anomalyco/rune", rev = "d77610b546ce70ca3d8ffcb22e078278d2bb79b7", default-features = false, features = ["accessibility", "embedded-fonts", "metal-backend", "native-file-dialog"] }
+rune-kit = { git = "https://github.com/anomalyco/rune", rev = "d77610b546ce70ca3d8ffcb22e078278d2bb79b7" }
 
 [profile.dev]
 debug = 0
@@ -30,6 +30,13 @@ rune-kit = { path = ".upstream/rune-inspector/crates/rune-kit" }
 rune-motion = { path = ".upstream/rune-inspector/crates/rune-motion" }
 rune-staging = { path = ".upstream/rune-inspector/crates/rune-staging" }
 rune-taffy = { path = ".upstream/rune-inspector/crates/rune-taffy" }
+
+# Rune requires consumers to repeat its vendored dependency patches.
+[patch.crates-io]
+wgpu-hal = { path = ".upstream/rune-inspector/vendor/wgpu-hal" }
+winit = { path = ".upstream/rune-inspector/vendor/winit" }
+parley_engine = { path = ".upstream/rune-inspector/vendor/parley_engine" }
+accesskit_windows = { path = ".upstream/rune-inspector/vendor/accesskit_windows" }
 
 [profile.dev.package."*"]
 opt-level = 2

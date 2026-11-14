@@ -1,14 +1,14 @@
 --- a/crates/rune/src/el/tx.rs
 +++ b/crates/rune/src/el/tx.rs
-@@ -24,6 +24,7 @@
+@@ -27,6 +27,7 @@
      pub(crate) physical_key: Option<crate::PhysicalKeyCode>,
      pub(crate) key_base: Option<char>,
      pub(crate) focused: Option<String>,
 +    pub(crate) focus_request: Option<String>,
-     pub(crate) instant: bool,
-     pub(crate) motion: Option<Spring>,
-     /// The layout curve from [`Tx::motion_curve`]; `motion` holds its spring stand-in.
-@@ -151,7 +152,7 @@
+     /// What this change does with motion ([`Tx::instant`], [`Tx::animated`], [`Tx::settle`]).
+     pub(crate) commit: Commit,
+     /// The motion this change's layout moves on ([`Tx::motion`], [`Tx::motion_curve`]).
+@@ -309,7 +310,7 @@
      /// or a text flight. A `wake_after` only schedules.
      pub(crate) fn frame_work(&self) -> bool {
          !self.pick_reads.is_empty() || !self.scroll_to.is_empty() || !self.scroll_bottom.is_empty() || !self.scroll_pages.is_empty() || !self.scroll_offsets.is_empty()
@@ -17,7 +17,7 @@
      }
 
      /// An app marker on the next frame, e.g. `tx.trace_event(format_args!("lab:{step:?}"))`.
-@@ -258,7 +259,17 @@
+@@ -479,7 +480,17 @@
      /// `focused` in the model without `on_edit` takes focus back on the next frame unless the
      /// model clears it too. Does nothing when nothing has focus.
      pub fn blur(&mut self) {
@@ -34,19 +34,19 @@
 +        self.focus_request = Some(key.into());
      }
 
-     /// The [`El::selectable`] text selection as this event arrived: the texts it covers with
+     /// Focus the element keyed `key` once this handler's change is on screen, as a web page's
 --- a/crates/rune/src/runtime/frame.rs
 +++ b/crates/rune/src/runtime/frame.rs
-@@ -197,6 +197,8 @@
+@@ -256,6 +256,8 @@
          if let Some(srgb) = tx.srgb_blend.take() { self.set_srgb_blend(srgb); }
          if let Some(rewind) = tx.rewind.take() { self.rewind = rewind; }
          if std::mem::take(&mut tx.blur) {
 +            // A later host update cancels focus deferred by an earlier update.
 +            self.pending.focus_request = None;
-             if self.focused.is_some() {
-                 self.set_focus(None, self.keyboard_focus);
+             if self.focus.path().is_some() {
+                 self.set_focus(None, self.focus.keyboard());
                  self.dirty = true;
-@@ -483,6 +485,7 @@
+@@ -581,6 +583,7 @@
                      }
                  }
              }
@@ -54,7 +54,7 @@
              // A selection an earlier handler asked for is what this key copies.
              if matches!(action, Action::Key { .. } | Action::Physical(..)) && let Some(request) = tx.select.take() {
                  let from_change = std::mem::take(&mut tx.select_from_change);
-@@ -559,6 +562,7 @@
+@@ -664,6 +667,7 @@
          }
          #[cfg(debug_assertions)]
          { self.live_check = None; }
@@ -64,16 +64,16 @@
          for (path, v) in &mut self.virtuals {
 --- a/crates/rune/src/runtime/input/action.rs
 +++ b/crates/rune/src/runtime/input/action.rs
-@@ -201,7 +201,8 @@
+@@ -220,7 +220,8 @@
      tx.font_smoothing = one.font_smoothing.or(tx.font_smoothing);
      if one.font_families.is_some() { tx.font_families = one.font_families; }
      if one.rewind.is_some() { tx.rewind = one.rewind; }
 -    tx.blur |= one.blur;
 +    if one.blur { tx.blur = true; tx.focus_request = None; }
 +    if one.focus_request.is_some() { tx.focus_request = one.focus_request; tx.blur = false; }
+     if one.focus_to.is_some() { tx.focus_to = one.focus_to; }
      if one.select.is_some() {
          tx.select = one.select;
-         tx.select_from_change = one.select_from_change;
 --- /dev/null
 +++ b/changelog/unreleased/2026-11-06-control-focus.md
 @@ -0,0 +1 @@
@@ -120,10 +120,10 @@
  edition.workspace = true
 --- a/crates/rune/src/runtime/input/focus.rs
 +++ b/crates/rune/src/runtime/input/focus.rs
-@@ -79,6 +79,20 @@
-     /// Input may reach node `i`: it's outside any `El::inert` subtree and not behind a modal.
-     pub(super) fn allowed(&self, i: usize) -> bool {
-         !self.nodes.get(i).is_some_and(|n| n.inert) && (self.active_modal().is_none() || self.modal_members.get(i).copied().unwrap_or(false))
+@@ -106,6 +106,20 @@
+     /// `El::focusable`, or under `Cx::web_focus` a pressable control that didn't opt out.
+     pub(super) fn takes_focus(&self, n: &Node) -> bool {
+         n.focus.enabled || (self.defaults.web_focus && !n.focus.opt_out && n.handlers.on_press.is_some() && PRESSABLE_ROLES.contains(&n.role))
 +    }
 +    /// Resolve against the current tree, after state changes mount or enable controls.
 +    pub(super) fn apply_control_focus(&mut self, tx: &mut Tx) {
@@ -134,18 +134,16 @@
 +                    && self.can_focus(i)
 +            });
 +            if let Some(i) = target {
-+                self.set_focus(Some(self.nodes[i].path.clone()), self.keyboard_focus);
++                self.set_focus(Some(self.nodes[i].path.clone()), self.focus.keyboard());
 +                self.dirty = true;
 +            }
 +        }
      }
      pub(super) fn can_focus(&self, i: usize) -> bool {
          let n = &self.nodes[i];
-
-diff --git a/crates/rune-kit/src/select.rs b/crates/rune-kit/src/select.rs
 --- a/crates/rune-kit/src/select.rs
 +++ b/crates/rune-kit/src/select.rs
-@@ -40,6 +40,12 @@
+@@ -46,6 +46,12 @@
      choose: Option<Choose>,
      toggle: Option<Box<dyn FnOnce(El) -> El>>,
      dismiss: Option<(El, Modal)>,
@@ -158,7 +156,7 @@ diff --git a/crates/rune-kit/src/select.rs b/crates/rune-kit/src/select.rs
  }
 
  impl Select {
-@@ -185,6 +191,7 @@
+@@ -191,6 +197,7 @@
                  .role("option")
                  .focusable(true).focus_selected(selected)
                  .label(o.clone())
@@ -166,7 +164,7 @@ diff --git a/crates/rune-kit/src/select.rs b/crates/rune-kit/src/select.rs
                  .position_in_set(i + 1, count)
                  .h(28.0)
                  .pl(12.0)
-@@ -194,7 +201,7 @@
+@@ -200,7 +207,7 @@
                  .radius(4.0)
                  .mt(if after_item { 2.0 } else { 0.0 })
                  .child(
@@ -175,7 +173,7 @@ diff --git a/crates/rune-kit/src/select.rs b/crates/rune-kit/src/select.rs
                  )
                  .child(el().key("indicator").size(16.0, 16.0).center().a11y_hidden().child(
                      icon(k.glyph.check_small, 14.0).color(c.icon_base).opacity(if selected { 1.0 } else { 0.0 }),
-@@ -266,7 +273,7 @@
+@@ -274,7 +281,7 @@
                      .py(4.0)
                      .gap(4.0)
                      .radius(k.radius.sm)
@@ -184,7 +182,7 @@ diff --git a/crates/rune-kit/src/select.rs b/crates/rune-kit/src/select.rs
                      .child(icon(chevron, 16.0).key("chevron").color(c.icon_muted).a11y_hidden());
                  if hover {
                      t = t.fill(c.hover);
-@@ -292,7 +299,7 @@
+@@ -299,7 +306,7 @@
                              .grow(1.0)
                              .shrink()
                              .pl(8.0)
@@ -195,7 +193,7 @@ diff --git a/crates/rune-kit/src/select.rs b/crates/rune-kit/src/select.rs
                      .child(
 --- a/crates/rune-kit/src/table.rs
 +++ b/crates/rune-kit/src/table.rs
-@@ -462,6 +462,7 @@
+@@ -463,6 +463,7 @@
 
  /// Names row `i`.
  type IdAt<'a> = dyn Fn(usize) -> Cow<'a, str> + 'a;
@@ -203,7 +201,7 @@ diff --git a/crates/rune-kit/src/select.rs b/crates/rune-kit/src/select.rs
  type CellFn<S> = Rc<dyn Fn(&S, usize, &str) -> Cell>;
  type RowIdFn<S> = for<'a> fn(&'a S, usize) -> Cow<'a, str>;
 
-@@ -473,6 +474,7 @@
+@@ -474,6 +475,7 @@
      row_id: RowIdFn<S>,
      columns: Vec<TableColumn>,
      cell: Option<CellFn<S>>,
@@ -211,7 +209,7 @@ diff --git a/crates/rune-kit/src/select.rs b/crates/rune-kit/src/select.rs
      on_sort: Option<Rc<dyn Fn(&mut S, &str, SortDir, &mut Tx)>>,
      on_select: Option<Rc<dyn Fn(&mut S, &str, &mut Tx)>>,
      on_open: Option<Rc<dyn Fn(&mut S, &str, &mut Tx)>>,
-@@ -485,7 +487,7 @@
+@@ -486,7 +488,7 @@
      /// `get` and `get_mut` find the [`TableState`]; `len` counts the rows and `row_id` names
      /// row `i` (in the app's current order) with an id unique among them.
      pub fn new(get: fn(&S) -> &TableState, get_mut: fn(&mut S) -> &mut TableState, len: fn(&S) -> usize, row_id: RowIdFn<S>) -> Self {
@@ -220,7 +218,7 @@ diff --git a/crates/rune-kit/src/select.rs b/crates/rune-kit/src/select.rs
      }
      pub fn column(mut self, c: TableColumn) -> Self {
          self.columns.push(c);
-@@ -494,6 +496,12 @@
+@@ -495,6 +497,12 @@
      /// What row `i` shows in column `col` (the column's id).
      pub fn cell(mut self, f: impl Fn(&S, usize, &str) -> Cell + 'static) -> Self {
          self.cell = Some(Rc::new(f));
@@ -233,7 +231,7 @@ diff --git a/crates/rune-kit/src/select.rs b/crates/rune-kit/src/select.rs
          self
      }
      /// A sortable column's header was clicked: the table already shows the new sort; reorder
-@@ -529,7 +537,7 @@
+@@ -530,7 +538,7 @@
 
      /// The table, filling the height its parent gives it.
      pub fn build(self, s: &S, k: &Kit) -> El {
@@ -242,7 +240,7 @@ diff --git a/crates/rune-kit/src/select.rs b/crates/rune-kit/src/select.rs
          let style = style.unwrap_or_else(|| TableStyle::from_kit(k));
          let state = get(s);
          let count = len(s);
-@@ -592,7 +600,7 @@
+@@ -593,7 +601,7 @@
                      }
                  });
              }
