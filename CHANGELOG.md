@@ -8,6 +8,7 @@ Notable user-visible changes. This project has not published a versioned release
 
 - **First public release.** Native inspector for TypeSafe API traffic with a local capture relay (`jev-bridge`), live traffic filters and search, formatted JSON and property trees, answer diagrams, exchange comparison, cost estimates, and session export.
 - **Synthetic demo.** `dev.py demo` runs a mock API, the relay, and the inspector with no API key.
+- **Mac app.** `tools/bundle_macos.py` builds `Jev Inspector.app`, which runs its own relay so it opens with a double-click. First launch walks through choosing the relay port, which checks whether the port is free and suggests another if it isn't, then the capture mode and routing your backend. Change either later from **Port** in the toolbar, and stop or restart the relay with the button beside it. See [docs/macos-app.md](docs/macos-app.md).
 
 ### Changed
 

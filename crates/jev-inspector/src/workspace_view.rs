@@ -3,6 +3,9 @@ use rune_kit::{Cell, ControlSize, Dialog, Table, TableColumn, TableStyle, TextIn
 use workspace::Filter;
 
 pub fn view(s: &State, cx: &mut Cx<State>) -> El {
+    if s.onboarding.open {
+        return onboarding::view(s, cx);
+    }
     let k = ui::kit(s.dark);
     let header = row()
         .key("workspace-header")
@@ -20,6 +23,8 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
                 "Saved session"
             } else if s.showcase.is_some() {
                 "Examples"
+            } else if s.onboarding.stopped {
+                "Relay stopped"
             } else if s.demo {
                 "Synthetic fixture"
             } else if s.connected {
@@ -27,7 +32,9 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
             } else {
                 "Reconnecting"
             },
-            if s.connected || s.demo {
+            if s.onboarding.stopped {
+                k.c.text_muted
+            } else if s.connected || s.demo {
                 k.c.success.fg
             } else {
                 k.c.warning.fg
@@ -77,6 +84,23 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
                     .key("export-menu")
             },
         )
+        .child(if s.onboarding.app {
+            Button::new(format!("Port {}", s.onboarding.settings.port))
+                .icon(&icons::RELAY)
+                .variant(ButtonVariant::Ghost)
+                .control_size(ControlSize::Large)
+                .help("Relay settings: port and capture mode")
+                .on_press(|s: &mut State| onboarding::open(s, onboarding::PORT))
+                .build(&k)
+                .key("relay-settings")
+        } else {
+            el()
+        })
+        .child(if s.onboarding.app {
+            relay_toggle(s, &k)
+        } else {
+            el()
+        })
         .child(
             ui::action(&icons::HELP, "Help", s.workspace.help)
                 .help("Search syntax and keyboard shortcuts")
@@ -164,6 +188,29 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
                     false,
                     &k,
                     State::return_live,
+                )),
+        );
+    } else if s.onboarding.stopped {
+        root = root.child(
+            row()
+                .key("relay-stopped")
+                .px(22.0)
+                .py(6.0)
+                .gap(12.0)
+                .center_y()
+                .fill(k.c.layer_02)
+                .child(
+                    label(onboarding::stopped_message(s), 12.0, k.c.text_muted)
+                        .wrap()
+                        .grow(1.0)
+                        .min_w(0.0),
+                )
+                .child(ui::button(
+                    "Start relay",
+                    "relay-start",
+                    true,
+                    &k,
+                    onboarding::resume_relay,
                 )),
         );
     } else if let Some(error) = &s.connection_error {
@@ -836,6 +883,30 @@ fn table(s: &State, k: &Kit, cx: &Cx<State>) -> El {
     .pr(16.0)
     .child(request_scroll::view(cx, k, style.header_height))
 }
+/// Stop or start the relay this app hosts.
+pub fn relay_toggle(s: &State, k: &Kit) -> El {
+    let stopped = s.onboarding.stopped;
+    ui::action(
+        if stopped { &icons::PLAY } else { &icons::STOP },
+        if stopped { "Start relay" } else { "Stop relay" },
+        false,
+    )
+    .help(if stopped {
+        "Start capturing on the saved port again"
+    } else {
+        "Stop the relay. Your backend's requests to it fail until you start it again; captured requests stay visible."
+    })
+    .on_press(move |s: &mut State| {
+        if s.onboarding.stopped {
+            onboarding::resume_relay(s);
+        } else {
+            onboarding::stop_relay(s);
+        }
+    })
+    .build(k)
+    .key("relay-toggle")
+}
+
 fn empty(s: &State, k: &Kit) -> El {
     let waiting = s.snapshot.requests.is_empty() && s.workspace.session_name.is_none();
     let empty_session = s.snapshot.requests.is_empty() && s.workspace.session_name.is_some();

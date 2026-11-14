@@ -59,3 +59,28 @@ glyph!(
     DOWN,
     r#"<path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" d="m6 10 6 6 6-6"/>"#
 );
+glyph!(PULSE, r#"<path d="M3 12h4l3-7 4 14 3-7h4"/>"#);
+glyph!(
+    NODES,
+    r#"<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7.4 8.2 10.6 15.8M16.6 8.2 13.4 15.8M8.5 6h7"/>"#
+);
+glyph!(
+    SHIELD,
+    r#"<path d="M12 3 19 6v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6Z"/><path d="m9 12 2 2 4-4"/>"#
+);
+glyph!(
+    SERVER,
+    r#"<rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/><path d="M8 7.5h.01M8 16.5h.01"/>"#
+);
+glyph!(
+    CLOUD,
+    r#"<path d="M7 18h10a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.1 11.6 3.25 3.25 0 0 0 7 18Z"/>"#
+);
+glyph!(
+    RELAY,
+    r#"<circle cx="12" cy="12" r="4"/><path d="M3 12h5M16 12h5"/><circle cx="12" cy="12" r="1" fill="currentColor"/>"#
+);
+glyph!(
+    STOP,
+    r#"<rect x="6" y="6" width="12" height="12" rx="2.5"/>"#
+);

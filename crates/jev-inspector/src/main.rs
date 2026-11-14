@@ -14,8 +14,10 @@ mod json_search;
 mod json_tree;
 mod json_view;
 mod motion;
+mod onboarding;
 mod overview;
 mod query;
+mod relay_host;
 mod request_scroll;
 #[cfg(test)]
 mod scroll_focus_tests;
@@ -74,6 +76,9 @@ struct State {
     showcase: Option<showcase::Playback>,
     workspace: workspace::Workspace,
     cost: cost::CostState,
+    onboarding: onboarding::Onboarding,
+    /// The relay this process hosts in desktop app mode.
+    relay: Option<relay_host::Host>,
 }
 
 impl Default for State {
@@ -103,6 +108,8 @@ impl Default for State {
             showcase: None,
             workspace: workspace::Workspace::default(),
             cost: cost::CostState::default(),
+            onboarding: onboarding::Onboarding::default(),
+            relay: None,
         }
     }
 }
@@ -283,6 +290,12 @@ fn poll(state: &mut State, now: f64, tx: &mut Tx) -> bool {
             true
         }
         Some(Err(message)) => {
+            // A relay the user stopped has no connection file; say so plainly.
+            let message = if state.onboarding.stopped {
+                onboarding::stopped_message(state)
+            } else {
+                message
+            };
             let connection_changed =
                 state.connected || state.connection_error.as_ref() != Some(&message);
             state.connected = false;
@@ -328,6 +341,10 @@ fn main() {
     let mut rune_args = vec![];
     let mut fixture = None;
     let mut start_costs = false;
+    // A double-clicked bundle hosts its own relay; `--app` does the same from a terminal.
+    let mut app_mode = bundled();
+    let mut onboarding_step = None;
+    let mut onboarding_received = false;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--connection-file" => {
@@ -351,9 +368,22 @@ fn main() {
             }
             "--diagram" => state.tab = 3,
             "--costs" => start_costs = true,
+            "--app" => app_mode = true,
+            "--onboarding" => onboarding_step = Some(onboarding::WELCOME),
+            "--onboarding-received" => onboarding_received = true,
+            "--onboarding-step" => {
+                onboarding_step = args
+                    .next()
+                    .and_then(|v| v.parse().ok())
+                    .filter(|v| *v <= onboarding::CONNECT);
+                if onboarding_step.is_none() {
+                    eprintln!("--onboarding-step requires a step from 0 to 3");
+                    std::process::exit(2);
+                }
+            }
             "--help" | "-h" => {
                 println!(
-                    "Jev inspector\n  --connection-file PATH  Connection written by jev-bridge (default .jev/connection.json)\n  --demo                  Synthetic, offline UI fixture\n  --showcase              10 realistic offline Jev examples\n  --tour                  Open examples and cycle layouts automatically\n  --diagram               Start on the Diagram tab\n  --costs                 Show estimated cost in Traffic\nRune QA flags are also accepted, including --snap FILE and --tree FILE."
+                    "Jev inspector\n  --connection-file PATH  Connection written by jev-bridge (default .jev/connection.json)\n  --demo                  Synthetic, offline UI fixture\n  --showcase              10 realistic offline Jev examples\n  --tour                  Open examples and cycle layouts automatically\n  --diagram               Start on the Diagram tab\n  --costs                 Show estimated cost in Traffic\n  --app                   Host the relay in this window, as the macOS app does\n  --onboarding            Preview first-run setup without starting a relay\n  --onboarding-step N     Preview setup at step N (0 welcome, 1 port, 2 capture, 3 connect)\n  --onboarding-received   With --demo, preview Connect after the first request arrived\nRune QA flags are also accepted, including --snap FILE and --tree FILE."
                 );
                 return;
             }
@@ -365,6 +395,17 @@ fn main() {
     {
         eprintln!("{error}");
         std::process::exit(2);
+    }
+    if let Some(step) = onboarding_step {
+        // Preview: no relay, no feed, no saved preferences.
+        state.onboarding.app = true;
+        state.onboarding.preview = true;
+        state.offline_fixture |= !state.demo;
+        onboarding::open(&mut state, step);
+        if !onboarding_received {
+            // Treat the fixture's history as older than the previewed relay.
+            state.onboarding.previous_instance = Some(state.snapshot.instance_id.clone());
+        }
     }
     let mailbox = state.mailbox.clone();
     if !state.demo && !state.offline_fixture {
@@ -381,13 +422,23 @@ fn main() {
             .clamp(440.0, 800.0);
     }
     state.cost.enabled |= start_costs;
+    let host = (app_mode && onboarding_step.is_none()).then(|| start_app(&mut state));
     let app = App::new(AppSpec {
         setup: Some(setup),
         poll: Some(poll),
         on_key: Some(workspace::on_key),
         min_size: Some((1100.0, 700.0)),
         families: ui::FAMILIES,
-        ..AppSpec::new("Jev inspector", (1440.0, 900.0), State::default, view)
+        ..AppSpec::new(
+            if app_mode {
+                "Jev Inspector"
+            } else {
+                "Jev inspector"
+            },
+            (1440.0, 900.0),
+            State::default,
+            view,
+        )
     })
     .init(move || state)
     .args(rune_args)
@@ -395,10 +446,52 @@ fn main() {
     .chrome(window_chrome());
     let result = app.try_run();
     mailbox.lock().expect("inspector mailbox").stop = true;
+    if let Some(host) = host {
+        host.stop();
+    }
     if let Err(error) = result {
         eprintln!("Inspector window could not start: {error}");
         std::process::exit(1);
     }
+}
+
+/// Whether this executable runs from inside a macOS `.app` bundle.
+fn bundled() -> bool {
+    std::env::current_exe().is_ok_and(|exe| {
+        exe.parent()
+            .is_some_and(|dir| dir.ends_with("Contents/MacOS"))
+            && exe
+                .ancestors()
+                .any(|dir| dir.extension().is_some_and(|e| e == "app"))
+    })
+}
+
+/// Desktop app mode: host the relay with the saved settings, or start onboarding.
+fn start_app(state: &mut State) -> relay_host::Host {
+    let connection_file = state
+        .workspace
+        .prefs
+        .path()
+        .and_then(|p| p.parent())
+        .map(|dir| dir.join("connection.json"))
+        .unwrap_or_else(|| std::env::temp_dir().join("jev-inspector-connection.json"));
+    let host = relay_host::Host::new(connection_file.clone());
+    state.connection_file = connection_file;
+    state.relay = Some(host.clone());
+    state.onboarding.app = true;
+    let prefs = &state.workspace.prefs;
+    state.onboarding.settings = prefs.get("relay").unwrap_or_default();
+    if !prefs.get::<bool>("onboarded").unwrap_or(false) {
+        onboarding::open(state, onboarding::WELCOME);
+    } else if let Err(error) = host.start(state.onboarding.settings) {
+        state.onboarding.first_run = false;
+        state.onboarding.stopped = true;
+        onboarding::open(state, onboarding::PORT);
+        state.onboarding.error = Some(format!("{error} Choose another port to start capturing."));
+    } else {
+        state.onboarding.first_run = false;
+    }
+    host
 }
 
 fn window_chrome() -> rune::Chrome {
