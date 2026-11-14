@@ -257,8 +257,9 @@ CPU times measure forced headless frames, including scripted transitions. They a
 not interactive FPS, GPU completion times, or TypeSafe latency.
 
 The Rust tests exercise Rune controls and file-dialog callbacks, real temporary
-files, and a synthetic HTTP inspection API. This Windows run does not establish
-macOS behavior or OS-level mouse, clipboard, and native-dialog integration.
+files, and a synthetic HTTP inspection API. Record the OS and revision for each
+run. Headless results do not establish behavior on another OS or native mouse,
+clipboard, and file-dialog integration.
 
 ## Keep investigation context
 

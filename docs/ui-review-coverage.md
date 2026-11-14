@@ -94,8 +94,9 @@ and text contrast. Check headings and properties in both themes, at Fit and
 working zoom, and at renderer scales 1 and 1.5. Preserve keyboard-only visibility.
 Run `python tools/inspector_focus_contrast.py --packet <main-packet> --packet
 <dpi-packet> --out <report.json>` after rendering the eight focus cases at both
-scales. It samples actual stroke and neighboring background pixels and requires
-at least 3:1 contrast; it does not establish native or complete accessibility.
+scales. It samples the expected top-stroke area and a neighboring background
+pixel. See [the measurement limits](#focus-contrast-measurement-limits) before
+interpreting a pass.
 Also batch separate host updates before a frame: a later blur must cancel an
 earlier pending focus request, while a subsequent focus request must still work.
 
@@ -212,13 +213,49 @@ For each finding, inventory every place that displays or acts on the same data:
 
 Target scrollbar keys instead of fixed screen coordinates. Use End when a case
 checks the final property; Page Down checks one viewport of movement. Before
-checking both tall-card reveal directions, zoom until the card exceeds the
-viewport. Keep the assertions for the resulting focus and visible content.
+checking both tall-card reveal directions, verify overflow in the element tree
+and PNG at the chosen zoom. Keep the ordinary-size fit case as well. The current
+reveal scripts use 120% zoom; their automated assertions check the resulting
+Show top or Show bottom label, not the full card geometry. Inspect that the
+requested end of the card is visible.
 
 Rune treats a control inside a focused scroll region as a separate Tab stop.
 Use Tab to enter its nested disclosures, and include every toolbar stop when
 testing keyboard entry into the diagram.
 
-The focus-contrast check counts all sampled pixels with at least 3:1 contrast
-against the adjacent background. At least half the sample must qualify.
-Antialiased pixels can have different colors without reducing stroke coverage.
+## Focus-contrast measurement limits
+
+Use a Python environment with `requirements.txt` installed. Render both packets
+before measuring their focus cases:
+
+```sh
+python tools/inspector_qa.py --out artifacts/inspector-qa
+python tools/inspector_qa.py --scale 1.5 --out artifacts/inspector-qa-1_5
+python tools/inspector_focus_contrast.py --packet artifacts/inspector-qa --packet artifacts/inspector-qa-1_5 --out artifacts/inspector-focus.json
+```
+
+The checker requires one focused diagram element with a visible keyboard focus
+indicator. It samples the middle half of the expected top stroke, from two
+points above the element to its top edge. The comparison background is one pixel
+at the horizontal center, four points above that edge. Coordinates are converted
+to device pixels using the recorded renderer scale.
+
+At least half the sample pixels must have 3:1 contrast against that background.
+Antialiased pixels can have different colors and still qualify. `stroke_fraction`
+is the fraction of pixels meeting the threshold. `contrast` and `stroke_rgb`
+describe the most common qualifying color, not the average contrast of the strip.
+If no color qualifies, they describe the most common sampled color and the check
+fails.
+
+This is a bounded pixel check, not proof that the pixels belong to a focus ring.
+Nearby text, a border, a shadow, or an unrepresentative background pixel can
+produce a false positive. The checker does not enforce color consistency or row
+continuity. Inspect the PNG to distinguish the focus indicator from those
+features, and confirm that the sample is clear of unrelated content. A pass does
+not establish complete accessibility, native keyboard delivery, or OS scaling.
+
+The synthetic unit tests cover antialiased strokes in both themes, absent rings
+on a uniform background, faint strokes, and insufficient coverage. They do not
+cover unrelated contrasting content or a contaminated background sample. That
+limitation remains open; documentation and passing fixture results do not resolve
+it.

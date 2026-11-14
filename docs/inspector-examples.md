@@ -41,8 +41,8 @@ inventing or retaining an original document image.
 python dev.py demo
 ```
 
-On this Windows workspace, use `.venv\Scripts\python.exe` instead of `python`.
-The launcher starts a local mock API and the actual Rust relay. It sends the 14
+On Windows, use `.venv\Scripts\python.exe` instead of `python`.
+The launcher starts a local mock API and the actual Rust relay. It sends the 10
 requests once, then waits with the inspector open. The slow request waits 2.4
 seconds before returning. No TypeSafe account, real API key, or external request
 is used. Close the inspector to stop the owned helper processes.
@@ -53,7 +53,11 @@ requests. These are separate controls.
 
 ## Check transitions and compare machines
 
+Use the virtual environment from [Contributing](../CONTRIBUTING.md#build) so
+Pillow-dependent checks run rather than skip. Prepare Rune before the build.
+
 ```sh
+python tools/prepare_rune.py
 cargo build --workspace --locked
 python tools/inspector_qa.py
 python tools/inspector_motion.py
