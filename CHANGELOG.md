@@ -11,4 +11,4 @@ Notable user-visible changes. This project has not published a versioned release
 
 ### Fixed
 
-- **Demo startup.** `dev.py demo` now stops with a clear message on Python older than 3.11, finds cargo in `~/.cargo/bin` when the shell hasn't added it to PATH, and reports a missing cargo or failed build without a traceback.
+- **Demo startup.** `dev.py demo` now stops with a clear message on Python older than 3.11.4, finds cargo in `~/.cargo/bin` when the shell hasn't added it to PATH, and reports a missing cargo or failed build without a traceback.

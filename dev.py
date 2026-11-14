@@ -19,15 +19,13 @@ ROOT = Path(__file__).resolve().parent
 LOCAL_HTTP = build_opener(ProxyHandler({}))
 DEMO_CASES = load_cases()
 DEMO_BY_ID = {case["id"]: case for case in load_cases(include_qa=True)}
-MIN_PYTHON = (3, 11)
+MIN_PYTHON = (3, 11, 4)  # tarfile extraction filters
 
 
 def require_python(version=sys.version_info):
-    if tuple(version[:2]) < MIN_PYTHON:
-        raise SystemExit(
-            f"dev.py needs Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]} or newer; this is {version[0]}.{version[1]}.\n"
-            "On macOS the built-in python3 is too old. Install a newer one (for example, brew install python) "
-            "and run it explicitly, such as python3.13 dev.py demo.")
+    if tuple(version[:3]) < MIN_PYTHON:
+        raise SystemExit(f"dev.py needs Python 3.11.4 or newer; this is {'.'.join(map(str, version[:3]))}. "
+                         "Install a supported Python and run dev.py with that interpreter.")
 
 
 def find_cargo(home=None):
@@ -38,7 +36,7 @@ def find_cargo(home=None):
     suffix = ".exe" if os.name == "nt" else ""
     fallback = Path(home or Path.home()) / ".cargo" / "bin" / ("cargo" + suffix)
     if fallback.is_file():
-        print(f"cargo is not on PATH; using {fallback}. Run . \"$HOME/.cargo/env\" or restart your shell to fix PATH.", flush=True)
+        print(f"cargo is not on PATH; using {fallback}. Restart your terminal or add that folder to PATH.", flush=True)
         return str(fallback)
     raise SystemExit("cargo was not found. Install Rust with rustup (https://rustup.rs/), then open a new terminal.")
 
@@ -133,8 +131,9 @@ def run_demo(args):
     inspector = binary_dir / ("jev-inspector" + suffix)
     if not args.skip_build:
         from tools.prepare_rune import prepare
+        cargo = find_cargo()
         prepare()
-        command = [find_cargo(), "build", "--locked", "--workspace"]
+        command = [cargo, "build", "--locked", "--workspace"]
         if args.profile != "debug":
             command += ["--profile", args.profile]
         if subprocess.run(command, cwd=ROOT).returncode:

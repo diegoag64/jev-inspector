@@ -96,9 +96,9 @@ class DemoRelayTests(unittest.TestCase):
 class StartupCheckTests(unittest.TestCase):
     def test_old_python_stops_with_a_clear_message(self):
         with self.assertRaises(SystemExit) as stop:
-            dev.require_python((3, 9, 6))
-        self.assertIn("Python 3.11 or newer; this is 3.9", str(stop.exception))
-        dev.require_python((3, 11, 0))
+            dev.require_python((3, 11, 3))
+        self.assertIn("Python 3.11.4 or newer; this is 3.11.3", str(stop.exception))
+        dev.require_python((3, 11, 4))
 
     def test_cargo_falls_back_to_rustup_home(self):
         with tempfile.TemporaryDirectory() as home, mock.patch("dev.shutil.which", return_value=None), \

@@ -48,7 +48,7 @@ Export a session, CSV summaries, or a single exchange, and reopen saved sessions
 
 ## Try it locally
 
-You need Git, Python 3.11+, and Rust through [rustup](https://rustup.rs/).
+You need Git, Python 3.11.4+, and Rust through [rustup](https://rustup.rs/).
 
 - **macOS:** Xcode Command Line Tools (`xcode-select --install`).
 - **Windows:** Visual Studio Build Tools with **Desktop development with C++** and a Windows SDK.
