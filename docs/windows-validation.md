@@ -1,5 +1,8 @@
 # Initial Windows validation
 
+This is a historical report, not validation of the current Rune pin. Rerun the
+checks on Windows before claiming that a dependency update passes there.
+
 Rune revision: `781e2b6d87cd5f32d6f4365956fad4baaf24ee50`.
 
 The setup uses upstream Rune without patches. The optimized `perf` build succeeded on this Windows x64 machine with Rust 1.96.0. One upstream dead-code warning appeared during compilation.

@@ -156,7 +156,8 @@ fn paging_nested_disclosure_moves_focus_to_visible_properties() {
     assert_eq!(rt.state.diagram.camera.scale, zoom);
     press(&mut rt, rune::Key::Home, false);
     settle(&mut rt);
-    press(&mut rt, rune::Key::Down, false);
+    // A disclosure inside the focused scroll region is its own Tab stop.
+    press(&mut rt, rune::Key::Tab, false);
     assert!(rt.elements().iter().any(|e| {
         e.focused
             && e.key

@@ -197,6 +197,11 @@ On macOS, use Command where this table says Ctrl.
 When the request table has focus, its native arrow, Home, End, and Page Up/Down
 navigation also works. Tab visits controls throughout the app.
 
+In a diagram card, Home and End scroll the focused properties region to its
+first or last property. Page Up and Page Down move one viewport at a time.
+Press Tab to enter a nested disclosure from the focused properties region;
+arrow keys navigate the diagram card group.
+
 ## Display and file limits
 
 The relay retains 100 exchanges by default, with a configurable maximum of 200.
@@ -252,8 +257,9 @@ CPU times measure forced headless frames, including scripted transitions. They a
 not interactive FPS, GPU completion times, or TypeSafe latency.
 
 The Rust tests exercise Rune controls and file-dialog callbacks, real temporary
-files, and a synthetic HTTP inspection API. This Windows run does not establish
-macOS behavior or OS-level mouse, clipboard, and native-dialog integration.
+files, and a synthetic HTTP inspection API. Record the OS and revision for each
+run. Headless results do not establish behavior on another OS or native mouse,
+clipboard, and file-dialog integration.
 
 ## Keep investigation context
 

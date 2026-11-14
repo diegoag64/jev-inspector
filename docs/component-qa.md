@@ -66,7 +66,10 @@ python qa.py gallery motion-focus-modal --kit neutral
 python qa.py gallery rune-combobox--searchable
 ```
 
-The pinned gallery exposes 119 scenes. `list` reads the scene names from the built binary. Each window isolates one upstream scene. The gallery's default index stacks every scene without a useful viewport, so the runner asks you to select one instead.
+`list` reads the available scene names from the built binary. The set can change
+when the pinned revision changes. Each window isolates one upstream scene.
+The gallery's default index stacks every scene without a useful viewport, so the
+runner asks you to select one instead.
 
 Some upstream scenes show forced visual states or read-only examples. For editable text, use `ui-text-input--playground` or `ui-textarea--playground`. For switches, checkboxes, segments, and modal focus, use `motion-focus-modal`. Use the [native checklist](native-checklist.md) to record desktop behavior.
 
@@ -166,4 +169,4 @@ Run the checks and performance comparisons on your Windows and macOS machines. T
 
 See [the initial Windows validation](windows-validation.md) for what was exercised here and what still needs manual testing.
 
-Upstream references: [Rune](https://github.com/anomalyco/rune), [component documentation](https://github.com/anomalyco/rune/blob/781e2b6d87cd5f32d6f4365956fad4baaf24ee50/crates/rune-kit/README.md), and [headless tooling](https://github.com/anomalyco/rune/blob/781e2b6d87cd5f32d6f4365956fad4baaf24ee50/crates/rune/README.md#agent-tooling-headless-no-window-same-renderer-fixed-virtual-clock).
+Upstream references: [Rune](https://github.com/anomalyco/rune), [component documentation](https://github.com/anomalyco/rune/blob/d77610b546ce70ca3d8ffcb22e078278d2bb79b7/crates/rune-kit/README.md), and [headless tooling](https://github.com/anomalyco/rune/blob/d77610b546ce70ca3d8ffcb22e078278d2bb79b7/crates/rune/README.md#agent-tooling-headless-no-window-same-renderer-fixed-virtual-clock).

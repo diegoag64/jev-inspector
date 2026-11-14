@@ -11,6 +11,8 @@ Notable user-visible changes. This project has not published a versioned release
 
 ### Changed
 
+- Update Rune to upstream revision `d77610b5`, retaining the inspector focus, Select label, and table row patches.
+- In diagram cards, use Tab to enter nested disclosure controls from a focused properties region. Arrow keys continue to navigate the enclosing card group.
 - **Native look on macOS.** The inspector uses the system font (SF Pro, with SF Mono for code) and falls back to Inter elsewhere. Panes, cards and tiles use larger continuous corners and Apple's grouped light and dark surfaces. Detail tabs, Traffic filters and Help sections are segmented controls. Labels and badges use sentence case, numbers use tabular figures, and scrollbar thumbs are slimmer.
 
 ### Fixed

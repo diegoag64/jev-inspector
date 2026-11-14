@@ -24,7 +24,9 @@ to zoom. Fit restores the overview. With the canvas focused, arrow keys pan,
 +/− zoom, and 0 fits. Click card headings to select a node. Nested JSON objects
 expand inside their own scrollable cards; scrolling inside a card scrolls its
 content instead of zooming the canvas. Tab enters the card selection group. Arrow
-keys browse cards and the active card's controls; Space activates a disclosure.
+keys browse the card group. From a focused properties region, Tab enters nested
+disclosure controls; Space activates a disclosure. Home and End move to the first
+and last property, while Page Up and Page Down scroll one viewport.
 Selecting a card reveals it without changing zoom. Other cards remain available
 through arrow navigation, pointer input, and their accessibility actions.
 

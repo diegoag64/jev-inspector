@@ -35,10 +35,10 @@ On macOS, use `python3` if needed. The script uses only Python's standard librar
 
 The command builds the binaries, starts a loopback mock API, starts the real Rust
 relay, generates synthetic requests, and opens the inspector. It does not contact
-TypeSafe or use a real API key. The mock intentionally produces some 401 and 429
-responses so the error filter has data. The catalog also includes mixed answer
-types, nested and multilingual input, an empty response, non-JSON output, and a
-slow request. It sends one batch of 14 requests, then stops generating traffic.
+TypeSafe or use a real API key. The demo includes one 429 response so the error
+filter has data, plus mixed answer types, nested and multilingual input, and a slow request. It sends one
+batch of 10 requests, then stops generating traffic. Four additional protocol
+cases, including 401, empty, and non-JSON responses, remain available as QA fixtures and in the relay integration tests.
 Add `--continuous` to keep generating requests. For offline layout playback, see
 [the offline examples](inspector-examples.md).
 

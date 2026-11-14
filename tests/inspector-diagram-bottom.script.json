@@ -5,6 +5,11 @@
     "key": "request-diagram:actual-size"
   },
   {
+    "t": 0.25,
+    "type": "tap",
+    "key": "request-diagram:zoom-in"
+  },
+  {
     "t": 0.4,
     "type": "tap",
     "key": "request-diagram:card-reveal"
