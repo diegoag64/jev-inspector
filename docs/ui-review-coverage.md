@@ -207,3 +207,18 @@ For each finding, inventory every place that displays or acts on the same data:
   Compare. Each side must retain its capture context even when captured JSON is equal.
 - Reopen a saved summary-only request with an existing live connection error,
   then reconnect. Historical details must never promise automatic completion.
+
+## Keep scripted navigation tied to its purpose
+
+Target scrollbar keys instead of fixed screen coordinates. Use End when a case
+checks the final property; Page Down checks one viewport of movement. Before
+checking both tall-card reveal directions, zoom until the card exceeds the
+viewport. Keep the assertions for the resulting focus and visible content.
+
+Rune treats a control inside a focused scroll region as a separate Tab stop.
+Use Tab to enter its nested disclosures, and include every toolbar stop when
+testing keyboard entry into the diagram.
+
+The focus-contrast check counts all sampled pixels with at least 3:1 contrast
+against the adjacent background. At least half the sample must qualify.
+Antialiased pixels can have different colors without reducing stroke coverage.

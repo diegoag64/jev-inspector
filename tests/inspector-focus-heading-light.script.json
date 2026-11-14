@@ -33,5 +33,10 @@
     "t": 0.8,
     "type": "key",
     "name": "Tab"
+  },
+  {
+    "t": 0.9,
+    "type": "key",
+    "name": "Tab"
   }
 ]

@@ -197,6 +197,11 @@ On macOS, use Command where this table says Ctrl.
 When the request table has focus, its native arrow, Home, End, and Page Up/Down
 navigation also works. Tab visits controls throughout the app.
 
+In a diagram card, Home and End scroll the focused properties region to its
+first or last property. Page Up and Page Down move one viewport at a time.
+Press Tab to enter a nested disclosure from the focused properties region;
+arrow keys navigate the diagram card group.
+
 ## Display and file limits
 
 The relay retains 100 exchanges by default, with a configurable maximum of 200.

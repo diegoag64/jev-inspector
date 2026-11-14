@@ -44,11 +44,18 @@ def measure(packet: Path, case: str) -> dict:
                 0 <= background_point[1] < strip[1] < strip[3] <= image.height):
             raise ValueError(f"{packet}/{case}: focus sample is clipped")
         colors = Counter(image.crop(strip).getdata())
-        stroke, count = colors.most_common(1)[0]
         background = image.getpixel(background_point)
-    low, high = sorted((luminance(stroke), luminance(background)))
-    ratio = (high + .05) / (low + .05)
-    coverage = count / sum(colors.values())
+    def contrast(color):
+        low, high = sorted((luminance(color), luminance(background)))
+        return (high + .05) / (low + .05)
+
+    # Fractional device-pixel positions split a stroke across solid and
+    # antialiased colors. Count every pixel that meets the contrast threshold,
+    # rather than requiring one exact RGB value to cover half the sample.
+    contrasting = [(color, count) for color, count in colors.items() if contrast(color) >= 3]
+    coverage = sum(count for _, count in contrasting) / sum(colors.values())
+    stroke = max(contrasting, key=lambda item: item[1])[0] if contrasting else colors.most_common(1)[0][0]
+    ratio = contrast(stroke)
     return {"packet": str(packet), "case": case, "scale": scale,
             "key": element["key"], "strip_px": strip, "background_px": background_point,
             "stroke_rgb": stroke, "background_rgb": background, "contrast": ratio,

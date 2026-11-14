@@ -7,8 +7,7 @@
   {
     "t": 0.6,
     "type": "tap",
-    "x": 713.33,
-    "y": 434.06
+    "key": "request-diagram:node:5:state:scrollbar"
   },
   {
     "t": 1.0,

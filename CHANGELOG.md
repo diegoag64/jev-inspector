@@ -17,4 +17,7 @@ Notable user-visible changes. This project has not published a versioned release
 
 ### Fixed
 
+- Count all sufficiently contrasting antialiased pixels when checking focus-ring coverage.
+- Update diagram QA fixtures for Rune's nested-control Tab navigation and current text layout. Scrollbar checks target controls by key instead of fixed coordinates.
+
 - **Demo startup.** `dev.py demo` now stops with a clear message on Python older than 3.11.4, finds cargo in `~/.cargo/bin` when the shell hasn't added it to PATH, and reports a missing cargo or failed build without a traceback.
