@@ -263,11 +263,11 @@ pub fn dialog(s: &State, k: &Kit, layers: &mut Vec<El>) {
             .child(col().grow(1.0).min_w(0.0).gap(6.0)
                 .child(label("Input rate", 12.0, k.c.text_muted))
                 .child(TextInput::new(&s.cost.input).width(None).label("Input USD per million tokens")
-                    .on_edit(|s: &mut State| &mut s.cost.input).invalid(invalid).build(k).key("cost-input-rate")))
+                    .on_edit(|s: &mut State| &mut s.cost.input).invalid(invalid).build(&ui::field_kit(k)).key("cost-input-rate")))
             .child(col().grow(1.0).min_w(0.0).gap(6.0)
                 .child(label("Output rate", 12.0, k.c.text_muted))
                 .child(TextInput::new(&s.cost.output).width(None).label("Output USD per million tokens")
-                    .on_edit(|s: &mut State| &mut s.cost.output).invalid(invalid).build(k).key("cost-output-rate"))))
+                    .on_edit(|s: &mut State| &mut s.cost.output).invalid(invalid).build(&ui::field_kit(k)).key("cost-output-rate"))))
         .child(label(if invalid { "Enter a number from 0 to 1,000,000 for each rate." } else { "Default: Jev $0.042 input / $0 output. Verified Nov 7, 2026." }, 12.0,
             if invalid { k.c.danger.fg } else { k.c.text_muted }).wrap())
         .child(label("Source: docs.typesafe.ai/models. Custom rates are saved locally for live use. No request is sent when you change pricing.", 11.0, k.c.text_muted).wrap())

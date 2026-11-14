@@ -307,9 +307,7 @@ fn clip(value: &str, limit: usize) -> String {
 }
 
 fn label(value: impl Into<String>, size: f32, color: Color) -> El {
-    text(value)
-        .font(rune::TextStyle::new(size, 450.0))
-        .color(color)
+    text(value).font(ui::text_style(size)).color(color)
 }
 
 fn status(s: &Summary) -> String {
@@ -388,7 +386,7 @@ fn main() {
         poll: Some(poll),
         on_key: Some(workspace::on_key),
         min_size: Some((1100.0, 700.0)),
-        families: ("Inter", "ui-monospace"),
+        families: ui::FAMILIES,
         ..AppSpec::new("Jev inspector", (1440.0, 900.0), State::default, view)
     })
     .init(move || state)

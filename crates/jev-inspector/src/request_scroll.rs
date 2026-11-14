@@ -4,6 +4,11 @@ const TRACK_WIDTH: f32 = 16.0;
 const CONTENT_GAP: f32 = 12.0;
 pub const DETAIL_GUTTER: f32 = TRACK_WIDTH + CONTENT_GAP;
 
+/// A translucent resting thumb that stays visible on every surface.
+fn thumb(k: &Kit) -> Color {
+    k.alpha(k.c.text_base, if k.dark { 0.32 } else { 0.3 })
+}
+
 // Rune's Table owns its viewport and does not expose a scrollbar builder. Keep
 // its virtual rows, selection and keyboard handling; attach a separate gutter
 // that reads the viewport's actual geometry and scrolls that same viewport.
@@ -48,7 +53,7 @@ pub fn vertical(
         .w(TRACK_WIDTH)
         .h(v[3])
         .radius(8.0)
-        .fill(k.alpha(k.c.border_base, 0.3))
+        .fill(Color::TRANSPARENT)
         .a11y_hidden()
         .on_drag(move |_: &mut State, d, tx| {
             if d.phase == rune::Phase::Down {
@@ -62,11 +67,11 @@ pub fn vertical(
         })
         .child(
             el().key(thumb_key)
-                .absolute(4.0, top)
-                .size(8.0, height)
-                .radius(4.0)
-                .fill(k.c.text_faint)
-                .hover(k.c.text_muted)
+                .absolute(5.0, top)
+                .size(6.0, height)
+                .radius(3.0)
+                .fill(thumb(k))
+                .hover(k.alpha(k.c.text_base, 0.5))
                 .on_drag(move |_: &mut State, d, tx| {
                     if d.cancelled() || travel <= 0.0 {
                         return;
@@ -133,7 +138,7 @@ fn horizontal(cx: &Cx<State>, k: &Kit, viewport: &'static str, content: &'static
         .pin(Some(0.0), None, Some(DETAIL_GUTTER), Some(0.0))
         .h(TRACK_WIDTH)
         .radius(8.0)
-        .fill(k.alpha(k.c.border_base, 0.3))
+        .fill(Color::TRANSPARENT)
         .a11y_hidden()
         .on_drag(move |_: &mut State, d, tx| {
             if d.phase == rune::Phase::Down {
@@ -147,11 +152,11 @@ fn horizontal(cx: &Cx<State>, k: &Kit, viewport: &'static str, content: &'static
         })
         .child(
             el().key("detail-horizontal-thumb")
-                .absolute(left, 4.0)
-                .size(width, 8.0)
-                .radius(4.0)
-                .fill(k.c.text_faint)
-                .hover(k.c.text_muted)
+                .absolute(left, 5.0)
+                .size(width, 6.0)
+                .radius(3.0)
+                .fill(thumb(k))
+                .hover(k.alpha(k.c.text_base, 0.5))
                 .on_drag(move |_: &mut State, d, tx| {
                     if d.cancelled() || travel <= 0.0 {
                         return;

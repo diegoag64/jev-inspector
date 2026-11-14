@@ -325,7 +325,7 @@ fn pending_context_is_consistent_across_overview_headers_filters_and_counts() {
         }
         if fixture == "disconnected-pending" {
             assert!(
-                tree.contains("LAST KNOWN PENDING")
+                tree.contains("Last known pending")
                     && tree.contains("Pending (offline)")
                     && tree.contains("Status unknown")
             );

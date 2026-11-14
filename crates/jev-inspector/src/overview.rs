@@ -31,13 +31,10 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
             .map(str::to_owned)
             .unwrap_or_else(|| error.to_string());
         body = body.child(
-            col()
+            ui::surface(col(), ui::CARD_RADIUS, k.alpha(k.c.danger.fg, 0.1))
                 .padding(14.0)
-                .radius(8.0)
                 .gap(6.0)
-                .fill(k.alpha(k.c.danger.fg, 0.09))
-                .border(1.0, k.alpha(k.c.danger.fg, 0.2))
-                .child(label("Upstream error", 13.0, k.c.danger.fg))
+                .child(ui::heading("Upstream error", 13.0, k.c.danger.fg))
                 .child(
                     label(clip(&message, 1000), 13.0, k.c.text_base)
                         .wrap()
@@ -62,7 +59,7 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
     {
         body = body.child(
             row()
-                .child(label("Answers", 15.0, k.c.text_base).grow(1.0))
+                .child(ui::heading("Answers", 15.0, k.c.text_base).grow(1.0))
                 .child(label(
                     format!(
                         "{} {}",
@@ -86,18 +83,15 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
                 "box" => &answer["box"],
                 _ => answer,
             };
-            let mut card = col()
+            let mut card = ui::surface(col(), ui::CARD_RADIUS, k.c.bg_deep)
                 .gap(8.0)
-                .padding(12.0)
-                .radius(6.0)
-                .fill(k.c.bg_deep)
-                .border(1.0, k.c.border_base)
+                .padding(14.0)
                 .child(
                     row()
                         .center_y()
                         .gap(8.0)
                         .child(
-                            label(name, 12.0, k.c.text_muted)
+                            label(name, 13.0, k.c.text_muted)
                                 .grow(1.0)
                                 .min_w(0.0)
                                 .truncate_middle()
@@ -110,7 +104,7 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
                                         .join("\n"),
                                 ),
                         )
-                        .child(ui::badge(kind.to_uppercase(), k.c.text_accent, k)),
+                        .child(ui::badge(kind_label(kind), k.c.text_accent, k)),
                 )
                 .child(answer_value::view(kind, value, k));
             let mut probability_shown = 0;
@@ -155,20 +149,25 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
                             .child(
                                 row()
                                     .grow(1.0)
-                                    .h(4.0)
-                                    .radius(2.0)
-                                    .clip_rounded(2.0)
-                                    .fill(k.c.layer_02)
+                                    .h(5.0)
+                                    .radius(2.5)
+                                    .clip_rounded(2.5)
+                                    .fill(k.c.layer_03)
                                     .child(el().grow(p.max(0.0001)).h_full().fill(k.c.text_accent))
                                     .child(
                                         el().grow((1.0 - p).max(0.0001))
                                             .h_full()
-                                            .fill(k.c.layer_02),
+                                            .fill(k.c.layer_03),
                                     ),
                             )
                             .child(
-                                ui::mono(rune_diagram::percent(probability), 11.0, k.c.text_base)
-                                    .w(55.0),
+                                ui::figure(
+                                    rune_diagram::percent(probability),
+                                    12.0,
+                                    400.0,
+                                    k.c.text_base,
+                                )
+                                .w(55.0),
                             ),
                     );
                 }
@@ -222,16 +221,13 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
             .child(label(heading, 14.0, k.c.text_muted))
             .child(label(explanation, 12.0, k.c.text_faint).wrap());
     }
-    let mut timing = col()
+    let mut timing = ui::surface(col(), ui::CARD_RADIUS, k.c.bg_deep)
         .gap(12.0)
-        .padding(16.0)
-        .radius(8.0)
-        .fill(k.c.bg_deep)
-        .border(1.0, k.c.border_base)
+        .padding(14.0)
         .child(
             row()
                 .center_y()
-                .child(label("Request timing", 13.0, k.c.text_base).grow(1.0))
+                .child(ui::heading("Request timing", 13.0, k.c.text_base).grow(1.0))
                 .child(ui::badge(
                     if r.outcome == Outcome::Pending {
                         pending_context(s).0.into()
@@ -248,7 +244,7 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
             .child(
                 row()
                     .w_full()
-                    .h(7.0)
+                    .h(6.0)
                     .radius(3.0)
                     .clip_rounded(3.0)
                     .child(el().grow(ratio.max(0.001)).h_full().fill(k.c.text_accent))
@@ -332,7 +328,7 @@ pub fn view(s: &State, detail: &Exchange, k: &Kit) -> El {
     }
     body = body
         .child(ui::rule(k))
-        .child(label("Capture details", 13.0, k.c.text_base));
+        .child(ui::heading("Capture details", 13.0, k.c.text_base));
     for (name, capture) in [("Request", &detail.request), ("Response", &detail.response)] {
         body = body.child(
             label(
@@ -398,19 +394,18 @@ pub fn summary(s: &State, r: &Summary, k: &Kit) -> El {
 }
 fn tile(name: &str, value: String, k: &Kit) -> El {
     let size = if value.chars().count() > 10 {
-        14.0
+        15.0
     } else {
-        18.0
+        20.0
     };
-    col()
+    ui::surface(col(), ui::CARD_RADIUS, k.c.bg_deep)
         .grow(1.0)
         .min_w(0.0)
-        .gap(4.0)
-        .padding(10.0)
-        .radius(6.0)
-        .fill(k.c.layer_02)
-        .child(label(name.to_uppercase(), 10.0, k.c.text_muted))
-        .child(ui::mono(value, size, k.c.text_base).wrap())
+        .gap(2.0)
+        .px(12.0)
+        .py(10.0)
+        .child(label(name, 12.0, k.c.text_muted))
+        .child(ui::figure(value, size, 600.0, k.c.text_base).wrap())
 }
 fn fact(name: &str, value: &str, k: &Kit) -> El {
     col()
@@ -419,9 +414,9 @@ fn fact(name: &str, value: &str, k: &Kit) -> El {
         .child(
             row()
                 .gap(12.0)
-                .child(label(name, 11.0, k.c.text_faint).w(104.0))
+                .child(label(name, 12.0, k.c.text_muted).w(104.0))
                 .child(
-                    label(value, 12.0, k.c.text_base)
+                    label(value, 13.0, k.c.text_base)
                         .grow(1.0)
                         .min_w(0.0)
                         .wrap_anywhere()
@@ -429,4 +424,12 @@ fn fact(name: &str, value: &str, k: &Kit) -> El {
                 ),
         )
         .child(ui::rule(k))
+}
+
+/// Answer types are protocol identifiers; show them as title-case tags.
+fn kind_label(kind: &str) -> String {
+    let mut chars = kind.chars();
+    chars.next().map_or_else(String::new, |first| {
+        first.to_uppercase().chain(chars).collect()
+    })
 }

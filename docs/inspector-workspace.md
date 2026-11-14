@@ -8,11 +8,13 @@ On macOS, the native window buttons sit inside the top toolbar. Drag an empty
 part of the toolbar to move the window. Double-click it to perform the titlebar
 action selected in macOS settings.
 
-The sun or moon button switches between neutral grayscale light and dark themes.
-Status colors distinguish errors and warnings; JSON keeps syntax colors. Toolbar
-actions use icons with hover labels and keyboard hints. In Traffic, the pause/play
-icon holds or resumes the list, the labeled tracking icon toggles Follow, and the
-labeled eraser clears the view. Active tabs and filters use a filled neutral surface.
+The sun or moon button switches between neutral light and dark themes. On macOS
+the inspector uses the system font; other platforms use Inter. Status colors
+distinguish errors and warnings; JSON keeps syntax colors. Toolbar actions use
+icons with hover labels and keyboard hints. In Traffic, the pause/play icon holds
+or resumes the list, the labeled tracking icon toggles Follow, and the labeled
+eraser clears the view. Detail tabs, Traffic filters, and Help sections are
+segmented controls; the selected option is raised above its track.
 
 Traffic starts with compact, single-line rows. Each row shows its exchange ID and
 model, with the method and endpoint available on hover. Rows without a captured
