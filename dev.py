@@ -5,7 +5,9 @@ import argparse
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -17,6 +19,28 @@ ROOT = Path(__file__).resolve().parent
 LOCAL_HTTP = build_opener(ProxyHandler({}))
 DEMO_CASES = load_cases()
 DEMO_BY_ID = {case["id"]: case for case in load_cases(include_qa=True)}
+MIN_PYTHON = (3, 11)
+
+
+def require_python(version=sys.version_info):
+    if tuple(version[:2]) < MIN_PYTHON:
+        raise SystemExit(
+            f"dev.py needs Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]} or newer; this is {version[0]}.{version[1]}.\n"
+            "On macOS the built-in python3 is too old. Install a newer one (for example, brew install python) "
+            "and run it explicitly, such as python3.13 dev.py demo.")
+
+
+def find_cargo(home=None):
+    """Return cargo from PATH, or from rustup's default location when the shell has not loaded it."""
+    found = shutil.which("cargo")
+    if found:
+        return found
+    suffix = ".exe" if os.name == "nt" else ""
+    fallback = Path(home or Path.home()) / ".cargo" / "bin" / ("cargo" + suffix)
+    if fallback.is_file():
+        print(f"cargo is not on PATH; using {fallback}. Run . \"$HOME/.cargo/env\" or restart your shell to fix PATH.", flush=True)
+        return str(fallback)
+    raise SystemExit("cargo was not found. Install Rust with rustup (https://rustup.rs/), then open a new terminal.")
 
 
 class MockHandler(BaseHTTPRequestHandler):
@@ -110,10 +134,11 @@ def run_demo(args):
     if not args.skip_build:
         from tools.prepare_rune import prepare
         prepare()
-        command = ["cargo", "build", "--locked", "--workspace"]
+        command = [find_cargo(), "build", "--locked", "--workspace"]
         if args.profile != "debug":
             command += ["--profile", args.profile]
-        subprocess.run(command, cwd=ROOT, check=True)
+        if subprocess.run(command, cwd=ROOT).returncode:
+            raise SystemExit("The build failed; see the cargo output above.")
     if not bridge.exists() or (not args.no_ui and not inspector.exists()):
         raise SystemExit("Build the binaries first with cargo build --workspace --locked.")
 
@@ -235,6 +260,7 @@ def main():
     parser.add_argument("--continuous", action="store_true", help="Keep sending examples after the initial varied batch")
     parser.add_argument("--duration", type=float, default=0, help="Stop the demo after this many seconds; 0 waits for the window to close")
     args = parser.parse_args()
+    require_python()
     try:
         run_demo(args)
     except KeyboardInterrupt:
