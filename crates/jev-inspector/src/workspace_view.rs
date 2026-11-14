@@ -3,6 +3,9 @@ use rune_kit::{Cell, ControlSize, Dialog, Table, TableColumn, TableStyle, TextIn
 use workspace::Filter;
 
 pub fn view(s: &State, cx: &mut Cx<State>) -> El {
+    if s.onboarding.open {
+        return onboarding::view(s, cx);
+    }
     let k = ui::kit(s.dark);
     let header = row()
         .key("workspace-header")
@@ -77,6 +80,18 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
                     .key("export-menu")
             },
         )
+        .child(if s.onboarding.app {
+            Button::new(format!("Port {}", s.onboarding.settings.port))
+                .icon(&icons::RELAY)
+                .variant(ButtonVariant::Ghost)
+                .control_size(ControlSize::Large)
+                .help("Relay settings: port and capture mode")
+                .on_press(|s: &mut State| onboarding::open(s, onboarding::PORT))
+                .build(&k)
+                .key("relay-settings")
+        } else {
+            el()
+        })
         .child(
             ui::action(&icons::HELP, "Help", s.workspace.help)
                 .help("Search syntax and keyboard shortcuts")

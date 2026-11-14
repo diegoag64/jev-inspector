@@ -97,7 +97,44 @@ pub(super) fn commands(s: &State) -> (String, String, String, String) {
     (bridge, inspector, route, relay)
 }
 
+/// App mode hosts the relay, so the guide only covers routing and relay settings.
+fn app_guide(s: &State, k: &Kit) -> El {
+    let settings = s.onboarding.settings;
+    let relay = crate::relay_host::relay_url(settings.port);
+    col()
+        .w_full()
+        .gap(12.0)
+        .child(label("Connect your backend", 20.0, k.c.text_base).wrap())
+        .child(
+            label(
+                format!(
+                    "Jev Inspector runs the relay on port {} while the app is open. Your backend keeps its existing API key.",
+                    settings.port
+                ),
+                13.0,
+                k.c.text_muted,
+            )
+            .wrap(),
+        )
+        .child(command(
+            "Set the URL in your backend's terminal",
+            crate::onboarding::route_command(&relay),
+            "setup-route",
+            k,
+        ))
+        .child(label("If your code sets baseUrl, baseURL, or Python base_url explicitly, use this relay URL instead. Do not append /v1.", 12.0, k.c.text_muted).wrap())
+        .child(label(format!("Relay: {relay} · {}", if settings.capture_bodies { "full capture" } else { "metadata only" }), 12.0, k.c.text_muted).selectable(true))
+        .child(row().child(ui::button("Relay settings…", "setup-relay-settings", true, k, |s| {
+            s.workspace.help = false;
+            s.workspace.setup_help = false;
+            crate::onboarding::open(s, crate::onboarding::PORT);
+        })))
+}
+
 pub fn guide(s: &State, k: &Kit) -> El {
+    if s.onboarding.app {
+        return app_guide(s, k);
+    }
     let (bridge, inspector, route, relay) = commands(s);
     let mut guide = col().w_full().gap(12.0)
         .child(label(if s.connected { "Route your backend" } else { "Connect your backend" }, 20.0, k.c.text_base).wrap())

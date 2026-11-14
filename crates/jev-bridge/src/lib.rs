@@ -23,7 +23,7 @@ use axum::{
     routing::{get, post},
 };
 use futures_util::StreamExt;
-use jev_protocol::{Outcome, Summary};
+use jev_protocol::{Connection, Outcome, Summary};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 use capture::RawCapture;
@@ -136,6 +136,90 @@ impl Bridge {
                 inspector_access,
             ))
             .with_state(self.clone())
+    }
+
+    /// Serve the relay and inspector listeners until `shutdown` resolves, then let
+    /// in-flight requests finish for up to five seconds. The CLI stops on Ctrl+C; the
+    /// desktop app stops when it quits or the user picks another port.
+    pub async fn serve(
+        &self,
+        relay: tokio::net::TcpListener,
+        inspector: tokio::net::TcpListener,
+        shutdown: impl std::future::Future<Output = ()>,
+    ) -> std::io::Result<()> {
+        let (stop, receiver) = tokio::sync::watch::channel(false);
+        let mut relay_stop = receiver.clone();
+        let mut inspector_stop = receiver;
+        let servers = async {
+            tokio::try_join!(
+                axum::serve(relay, self.relay_router()).with_graceful_shutdown(async move {
+                    let _ = relay_stop.changed().await;
+                }),
+                axum::serve(inspector, self.inspector_router()).with_graceful_shutdown(
+                    async move {
+                        let _ = inspector_stop.changed().await;
+                    }
+                )
+            )
+        };
+        tokio::pin!(servers);
+        tokio::select! {
+            result = &mut servers => result.map(|_| ()),
+            () = shutdown => {
+                let _ = stop.send(true);
+                let _ = tokio::time::timeout(Duration::from_secs(5), &mut servers).await;
+                Ok(())
+            }
+        }
+    }
+}
+
+/// A fresh bearer token for the inspector API.
+pub fn new_token() -> String {
+    format!(
+        "{}{}",
+        uuid::Uuid::new_v4().simple(),
+        uuid::Uuid::new_v4().simple()
+    )
+}
+
+/// Atomically write the inspector connection file, readable by the owner only.
+pub fn write_connection(path: &std::path::Path, connection: &Connection) -> std::io::Result<()> {
+    use std::io::Write;
+    let parent = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(std::path::Path::new("."));
+    std::fs::create_dir_all(parent)?;
+    let temp = parent.join(format!(".connection-{}.tmp", uuid::Uuid::new_v4()));
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let result = (|| {
+        let mut file = options.open(&temp)?;
+        file.write_all(&serde_json::to_vec_pretty(connection)?)?;
+        file.sync_all()?;
+        drop(file);
+        std::fs::rename(&temp, path)
+    })();
+    if result.is_err() {
+        let _ = std::fs::remove_file(temp);
+    }
+    result
+}
+
+/// Remove the connection file unless another relay instance has since replaced it.
+pub fn remove_connection(path: &std::path::Path, token: &str) {
+    if std::fs::read(path)
+        .ok()
+        .and_then(|b| serde_json::from_slice::<Connection>(&b).ok())
+        .is_some_and(|current| current.token == token)
+    {
+        let _ = std::fs::remove_file(path);
     }
 }
 

@@ -156,6 +156,13 @@ for name, fixture, script, size in [
     CASES["card-reader-" + name] = ["--fixture", "example-" + fixture, "--size", size,
         "--script", "tests/inspector-reader-" + script + ".script.json"]
 
+ONBOARDING = {"welcome": "0", "port": "1", "capture": "2", "connect": "3"}
+for step, number in ONBOARDING.items():
+    CASES["onboarding-" + step] = ["--onboarding-step", number, "--size", "1100x700"]
+    CASES["onboarding-" + step + "-light"] = ["--onboarding-step", number, "--size", "1100x700",
+        "--script", "tests/inspector-theme-light.script.json"]
+CASES["onboarding-received"] = ["--onboarding-step", "3", "--onboarding-received", "--size", "1100x700"]
+
 
 def verify_state(name: str, tree_path: Path) -> list[str]:
     """A rendered PNG is not enough: verify the scripted workflow reached its destination."""
@@ -169,6 +176,18 @@ def verify_state(name: str, tree_path: Path) -> list[str]:
     keyed = {n["key"]: n for n in nodes if "key" in n}
     names = "\n".join(n.get("name", "") for n in nodes)
     errors = []
+    if name.startswith("onboarding-"):
+        expected = {"welcome": "Welcome to Jev Inspector", "port": "Choose a port for the relay",
+                    "capture": "What should the relay keep?", "connect": "Point your backend at the relay",
+                    "received": "First request received"}[name.removeprefix("onboarding-").removesuffix("-light")]
+        if "onboarding" not in keyed or expected not in names:
+            errors.append(f"Onboarding did not show {expected!r}")
+        if "workspace" in keyed:
+            errors.append("Workspace must stay hidden during onboarding")
+        if name == "onboarding-connect" and "onboarding-waiting" not in keyed:
+            errors.append("Connect step must wait for the first request")
+        if name.endswith("-light") and keyed.get("theme-toggle", {}).get("name") != "Switch to dark theme":
+            errors.append("Light onboarding fixture did not switch theme")
     if name.startswith("cost"):
         if name != "cost-pricing" and ("cost-total" not in keyed or "cost-coverage" not in keyed):
             errors.append("Cost summary did not open")

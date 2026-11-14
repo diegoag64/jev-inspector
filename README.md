@@ -63,6 +63,14 @@ Use `python` on Windows. The launcher prepares the pinned Rune sources, builds t
 
 The demo sends one batch of synthetic requests. It needs no API key and never contacts TypeSafe. Close the window to stop everything. Add `--continuous` to keep traffic flowing, or `--skip-build` when the binaries are current.
 
+### Build the Mac app
+
+```sh
+python3 tools/bundle_macos.py --install
+```
+
+This builds `Jev Inspector.app` and copies it to Applications. The app runs the relay itself, and on first launch it asks which port to use. Quitting the app stops its relay. See the [Mac app guide](docs/macos-app.md).
+
 To browse curated examples without a relay:
 
 ```sh
@@ -91,6 +99,7 @@ Your backend keeps its existing API key; the relay forwards it upstream. Omit `-
 | Guide | What you'll find |
 | --- | --- |
 | [Bridge quickstart](docs/bridge-quickstart.md) | Run the relay in front of your backend |
+| [Mac app](docs/macos-app.md) | Build the double-click app, onboarding, and port settings |
 | [Workspace guide](docs/inspector-workspace.md) | Controls, shortcuts, pricing, and capture limits |
 | [Relay behavior](docs/bridge-v1.md) | What the relay forwards, stores, and rejects |
 | [Diagram components](docs/diagrams.md) | The reusable `rune-diagram` crate |

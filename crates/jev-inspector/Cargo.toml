@@ -9,6 +9,8 @@ publish = false
 
 [dependencies]
 jev-protocol.workspace = true
+jev-bridge = { path = "../jev-bridge" }
+tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 reqwest = { workspace = true, features = ["blocking"] }
