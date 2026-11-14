@@ -40,6 +40,26 @@ that interpreter for Python QA commands below.
 Run `python dev.py demo` for traffic through the relay, or
 `cargo run -p jev-inspector -- --showcase` for offline examples.
 
+### Send demo requests by hand
+
+`tools/request_sender.py` is a development-only terminal app for driving the
+inspector one request at a time, for example during a demo or while checking a UI
+state. Start the demo, then run the sender in a second terminal:
+
+```sh
+python dev.py demo
+python tools/request_sender.py
+```
+
+It lists every example in `examples/demo-requests.json`, including the QA-only edge
+cases (401, 204, non-JSON 503, and `GET /v1/models`), and sends them to
+`127.0.0.1:8787`. Press ⏎ or 1–9 to send, **a** for the showcase batch, **r** for a
+random example, **p** for the port, **m** for the model (default `jev-latest`),
+**k** for an API key, and **q** to quit. `--port`, `--model`, and `JEV_API_KEY` set
+the starting values. The key stays in memory only. Use it against the demo's mock
+upstream: a relay forwarding to TypeSafe sends these synthetic requests to the real
+API.
+
 ## Make a change
 
 Keep UI code in `jev-inspector`, reusable graph behavior in `rune-diagram`, relay
