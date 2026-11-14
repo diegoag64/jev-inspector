@@ -8,6 +8,7 @@ exclude = [".upstream/rune-inspector/crates/*"]
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
+repository = "https://github.com/diegoag64/jev-inspector"
 
 [workspace.dependencies]
 rune-diagram = { path = "crates/rune-diagram" }

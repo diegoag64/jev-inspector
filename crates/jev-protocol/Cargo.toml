@@ -3,6 +3,9 @@ name = "jev-protocol"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+description = "Shared exchange and session types for jev-bridge and jev-inspector"
+publish = false
 
 [dependencies]
 serde.workspace = true

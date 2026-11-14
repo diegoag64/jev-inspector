@@ -3,6 +3,9 @@ name = "jev-inspector"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+description = "Native desktop inspector for TypeSafe API traffic captured by jev-bridge"
+publish = false
 
 [dependencies]
 jev-protocol.workspace = true

@@ -2,17 +2,9 @@
 
 Use this checklist for inspector UI reviews. A screenshot of a completed request does not cover the states that precede it or the ways loading can fail.
 
-## Why the loading view escaped the earlier reviews
+## Inventory UI states
 
-The earlier review packet contained 24 screenshots. None showed an uncached exchange loading. The default demo and saved fixtures supplied captured bodies immediately, so normal tab screenshots bypassed the loading branch in `detail_view.rs`.
-
-The rubric listed empty, error, disconnected, paused, and saved-session states, but did not name loading, in-flight bodies, or recovery transitions. A runtime test checked copying a request ID while detail was absent. That test checked the copy action, not the loading layout.
-
-Both reviewers inspected source, so lack of source access was not the problem. The evidence packet omitted the visual state, and the review process did not require an independent inventory of UI branches. That likely contributed to the miss. The resulting scores described the inspected fixtures too broadly. Neither review established complete native Windows usability.
-
-## Inventory before scoring
-
-For each visible branch, record its trigger, visual fixture, behavior test, and any missing evidence. Reviewers must inspect the source independently and add states the supplied packet omits.
+For each visible branch, record its trigger, visual fixture, behavior test, and any missing evidence. Reviewers must inspect the source independently and add states the supplied screenshots omit.
 
 | Area | States and transitions to inspect |
 | --- | --- |

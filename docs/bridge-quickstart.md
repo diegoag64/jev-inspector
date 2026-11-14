@@ -30,7 +30,7 @@ Run:
 python dev.py demo
 ```
 
-On this Windows workspace, use `.venv\Scripts\python.exe` if `python` is not on PATH.
+On Windows, use `.venv\Scripts\python.exe` if `python` is not on PATH.
 On macOS, use `python3` if needed. The script uses only Python's standard library.
 
 The command builds the binaries, starts a loopback mock API, starts the real Rust
